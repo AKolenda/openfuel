@@ -1,0 +1,21 @@
+{
+  "url": "https://openfuel.ca/preview/",
+  "browser": "Chrome 152, isolated headless profile through Playwriter",
+  "transport": "Browser DNS override for openfuel.ca to authoritative Cloudflare address 172.67.221.176; default local resolver still returned cached NODATA. HTTPS certificate verification stayed enabled.",
+  "checks": [
+    "Landing page serves actual Edmonton station map screenshot and working Open the app link",
+    "Denied browser location shows city search and zero fictional station fallback",
+    "Simulated Edmonton city-centre device coordinates (53.55014, -113.46871; 25 m accuracy) load 178 actual nearby stations from production D1",
+    "Real OpenStreetMap tiles and contributor attribution render",
+    "Blue device marker remains visible above mobile station sheet",
+    "Unknown station pump prices remain blank",
+    "Station detail opens actual coordinates, provider directions links, and unverified community-price explanation",
+    "Workers fallback performs real Edmonton city search and loads the same 178 stations",
+    "Built archive contains all six current web/test changes byte-for-byte; landing map PNG matches source"
+  ],
+  "writes_to_production": 0,
+  "screenshot": "evidence/browser/production-openfuel-mobile.png",
+  "location_note": "Device position was controlled test data at public Edmonton city centre, not the operator's actual location.",
+  "console_note": "No JavaScript runtime exceptions observed. The domain injects a Cloudflare Insights beacon, which is blocked by the restrictive application script CSP. API, map, and permission functionality remain working.",
+  "harness": "172 deterministic browser checks passed separately; see evidence/browser-results.json."
+}

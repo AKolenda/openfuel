@@ -1,0 +1,20 @@
+title = "OpenFuel source secret scanning"
+
+[extend]
+useDefault = true
+
+# Exact synthetic test fixture; this is not a real Supabase key.
+[[allowlists]]
+description = "Explicit fake publishable key used by the archived Worker tests"
+condition = "AND"
+paths = ['''(^|/)services/edge/worker\.test\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^sb_publishable_12345678901234567890$''']
+
+# Python type annotations can resemble generic secret assignments to a scanner.
+[[allowlists]]
+description = "Ed25519PrivateKey parameter type annotation, not key material"
+condition = "AND"
+paths = ['''(^|/)services/api/openfuel/audit\.py$''']
+regexTarget = "secret"
+regexes = ['''^Ed25519PrivateKey$''']

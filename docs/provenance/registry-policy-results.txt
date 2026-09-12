@@ -1,0 +1,25 @@
+test_close_stations_only_flagged_for_review (test_policy.PolicyTests.test_close_stations_only_flagged_for_review) ... ok
+test_coordinate_validation (test_policy.PolicyTests.test_coordinate_validation) ... ok
+test_edit_cannot_change_status (test_policy.PolicyTests.test_edit_cannot_change_status) ... ok
+test_existing_station_conflict (test_policy.PolicyTests.test_existing_station_conflict) ... ok
+test_new_station_needs_moderation (test_policy.PolicyTests.test_new_station_needs_moderation) ... ok
+test_no_double_publish (test_policy.PolicyTests.test_no_double_publish) ... ok
+test_no_public_pending_event (test_policy.PolicyTests.test_no_public_pending_event) ... ok
+test_permanent_closure_two_reviewers (test_policy.PolicyTests.test_permanent_closure_two_reviewers) ... ok
+test_public_export_has_no_identities (test_policy.PolicyTests.test_public_export_has_no_identities) ... ok
+test_rejected_proposal_stays_rejected (test_policy.PolicyTests.test_rejected_proposal_stays_rejected) ... ok
+test_reopen_keeps_same_id (test_policy.PolicyTests.test_reopen_keeps_same_id) ... ok
+test_repeat_attester_only_counts_once (test_policy.PolicyTests.test_repeat_attester_only_counts_once) ... ok
+test_stale_decision_rejected (test_policy.PolicyTests.test_stale_decision_rejected) ... ok
+test_tampering_detected (test_policy.PolicyTests.test_tampering_detected) ... ok
+test_temporary_not_permanent (test_policy.PolicyTests.test_temporary_not_permanent) ... ok
+test_three_attesters_prioritize_without_publishing (test_policy.PolicyTests.test_three_attesters_prioritize_without_publishing) ... ok
+test_tokens_not_linkable_between_proposals (test_policy.PolicyTests.test_tokens_not_linkable_between_proposals) ... ok
+test_truncation_detected_against_retained_checkpoint (test_policy.PolicyTests.test_truncation_detected_against_retained_checkpoint) ... ok
+test_unchecked_evidence_rejected (test_policy.PolicyTests.test_unchecked_evidence_rejected) ... ok
+test_valid_ledger (test_policy.PolicyTests.test_valid_ledger) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.001s
+
+OK

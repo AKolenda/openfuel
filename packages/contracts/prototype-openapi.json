@@ -1,0 +1,449 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenFuel shared sample prototype",
+    "version": "0.3.0",
+    "description": "Cloudflare D1-backed synthetic stations and sample reports; no live fuel prices."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/stations": {
+      "get": {
+        "operationId": "prototypeStations",
+        "summary": "Read shared synthetic stations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "fuel",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "regular",
+                "premium",
+                "diesel"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "demo-region"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sample station snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Stations"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports": {
+      "post": {
+        "operationId": "prototypeReport",
+        "summary": "Save a sample price for all clients",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResult"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Identical report already saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Station missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request ID conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 2 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Use application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Report limit or playground full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "prototypeHealth",
+        "summary": "Check database health",
+        "responses": {
+          "200": {
+            "description": "Check database health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions": {
+      "get": {
+        "operationId": "prototypeRegions",
+        "summary": "List the one sample region",
+        "responses": {
+          "200": {
+            "description": "List the one sample region",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ReportInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "station_id",
+          "fuel_type",
+          "price_milli",
+          "client_id"
+        ],
+        "properties": {
+          "station_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,64}$"
+          },
+          "fuel_type": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "premium",
+              "diesel"
+            ]
+          },
+          "price_milli": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 3999,
+            "description": "Integer thousandths of CAD/L: 1429 = 142.9 cents/L"
+          },
+          "client_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{16,80}$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{16,80}$",
+            "description": "Optional idempotency ID for retries of identical data"
+          }
+        }
+      },
+      "Report": {
+        "type": "object",
+        "required": [
+          "id",
+          "station_id",
+          "fuel_type",
+          "price_milli",
+          "observed_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "station_id": {
+            "type": "string"
+          },
+          "fuel_type": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "premium",
+              "diesel"
+            ]
+          },
+          "price_milli": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 3999,
+            "description": "Integer thousandths of CAD/L: 1429 = 142.9 cents/L"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Station": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "prices",
+          "ages",
+          "synthetic"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "synthetic": {
+            "const": true
+          },
+          "x": {
+            "type": "number",
+            "description": "Sample map X, not longitude"
+          },
+          "y": {
+            "type": "number",
+            "description": "Sample map Y, not latitude"
+          },
+          "distanceMetres": {
+            "type": "integer"
+          },
+          "minutes": {
+            "type": "integer"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "memberDiscount": {
+            "type": "integer"
+          },
+          "prices": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 500,
+                  "maximum": 3999,
+                  "description": "Integer thousandths of CAD/L: 1429 = 142.9 cents/L"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "ages": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "observedAt": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "priceSources": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "sample",
+                "community-prototype"
+              ]
+            }
+          }
+        }
+      },
+      "Stations": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "const": "prototype"
+          },
+          "is_demo": {
+            "const": true
+          },
+          "region": {
+            "const": "demo-region"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "next_cursor": {
+            "type": "null"
+          },
+          "stations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Station"
+            },
+            "maxItems": 100
+          }
+        }
+      },
+      "ReportResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "is_demo": {
+            "const": true
+          },
+          "report": {
+            "$ref": "#/components/schemas/Report"
+          }
+        }
+      }
+    }
+  }
+}

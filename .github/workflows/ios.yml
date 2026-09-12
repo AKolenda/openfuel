@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Builds source for a simulator; this is not a store archive or signed device release.
+name: Native iOS
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['apps/ios/**', 'packages/mobile/**', 'packages/design/**', 'tools/generate_mobile.py', 'packages/fixtures/**', 'tools/**', '.github/workflows/ios.yml']
+permissions:
+  contents: read
+jobs:
+  simulator-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install project generator
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - run: python tools/project.py fixtures --check
+      - run: python tools/project.py ios-core
+      - name: Generate and build the SwiftUI app
+        run: python tools/project.py ios-build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build-evidence
+          path: evidence/ios-*.txt
+          if-no-files-found: warn

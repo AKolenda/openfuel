@@ -1,0 +1,1 @@
+SwiftUI and UI-test syntax parsed; NOT Apple SDK type-checking or a native app build.

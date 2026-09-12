@@ -1,0 +1,184 @@
+{
+  "repository": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "<repo>/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:53:50.317962+00:00",
+    "log": "repository.txt"
+  },
+  "api": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "<repo>/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:53:57.086765+00:00",
+    "log": "api.txt"
+  },
+  "registry": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "<repo>/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:53:57.646061+00:00",
+    "log": "registry.txt"
+  },
+  "android-core": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "/usr/bin/java",
+      "-jar",
+      "<repo>/.local/checks/android-core-checks.jar"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:34:01.020913+00:00",
+    "log": "android-core.txt"
+  },
+  "ios-core": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "/usr/local/swift/usr/bin/swift",
+      "test",
+      "--package-path",
+      "<repo>/apps/ios/OpenFuelCore"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:34:01.667777+00:00",
+    "log": "ios-core.txt"
+  },
+  "browser": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "<repo>/tests/browser_checks.py"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:34:14.742207+00:00",
+    "log": "browser.txt"
+  },
+  "edge-read-api": {
+    "status": "passed",
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:36:15.409284+00:00",
+    "log": "edge-read-api.txt",
+    "scope": "Node standards runtime with mocked Supabase fetch; not deployed workerd"
+  },
+  "android-build": {
+    "status": "passed",
+    "exit_code": 0,
+    "command": [
+      "/home/bucic/.local/share/openfuel-toolchains/gradle-8.11.1/bin/gradle",
+      "--no-daemon",
+      ":app:testDebugUnitTest",
+      ":app:assembleDebug"
+    ],
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:23:57.644326+00:00",
+    "log": "android-build.txt"
+  },
+  "ios-build": {
+    "status": "blocked",
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:36:15.409284+00:00",
+    "log": "ios-build-unavailable.txt",
+    "scope": "macOS/Xcode unavailable; no SwiftUI type-check or iPhone build"
+  },
+  "database-migrations": {
+    "status": "not_executed",
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:36:15.409284+00:00",
+    "log": "database-tooling-unavailable.txt",
+    "scope": "Supabase CLI/Docker/PostgreSQL unavailable; pgTAP assertions are written only"
+  },
+  "native-visual-approval": {
+    "status": "blocked",
+    "runtime": "Linux",
+    "checked_at": "2026-09-07T05:36:15.409284+00:00",
+    "log": "native-baseline-unapproved.txt",
+    "scope": "No actual native screenshots or human-approved baselines"
+  },
+  "prototype-python": {
+    "status": "passed",
+    "exit_code": 0,
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:27:36.460549+00:00",
+    "command": [
+      "python",
+      "-m",
+      "pytest",
+      "tests",
+      "services/api/tests",
+      "services/registry",
+      "-q"
+    ],
+    "log": "prototype-python-tests.txt"
+  },
+  "prototype-edge": {
+    "status": "passed",
+    "exit_code": 0,
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:27:36.460549+00:00",
+    "command": [
+      "node",
+      "--test",
+      "services/edge/*.test.mjs"
+    ],
+    "log": "prototype-edge-tests.txt"
+  },
+  "android-emulator": {
+    "status": "passed",
+    "exit_code": 0,
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:27:36.460549+00:00",
+    "command": [
+      "gradle",
+      ":app:connectedDebugAndroidTest"
+    ],
+    "log": "android-emulator.txt"
+  },
+  "ios-prototype-core": {
+    "status": "passed",
+    "exit_code": 0,
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:27:36.460549+00:00",
+    "command": [
+      "swift",
+      "test",
+      "--package-path",
+      "apps/ios/OpenFuelCore"
+    ],
+    "log": "ios-prototype-core.txt"
+  },
+  "ios-prototype-live": {
+    "status": "passed",
+    "exit_code": 0,
+    "runtime": "Linux",
+    "checked_at": "2026-09-12T05:27:36.460549+00:00",
+    "command": [
+      "swift",
+      "test",
+      "--filter",
+      "PrototypeLiveTests"
+    ],
+    "log": "ios-prototype-live.txt"
+  }
+}

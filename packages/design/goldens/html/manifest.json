@@ -1,0 +1,20 @@
+{
+  "type": "browser_reference_only",
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "scale": 1
+  },
+  "states": [
+    "list",
+    "cards",
+    "wide",
+    "sort",
+    "settings",
+    "about",
+    "detail",
+    "report"
+  ],
+  "network": "blocked; initial badges only",
+  "native_visual_parity": "not verified"
+}

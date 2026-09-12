@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Build an artifact only. Hosting credentials/provider are intentionally not configured.
+name: Website and documentation
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['apps/web/**', 'apps/docs/**', 'packages/**', 'docs/**', 'tools/**', '.github/workflows/website.yml']
+permissions:
+  contents: read
+jobs:
+  build-static-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python tools/project.py site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openfuel-website-and-docs
+          path: dist/site/
+          if-no-files-found: error

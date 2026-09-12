@@ -1,0 +1,2 @@
+ERROR: gradle is not installed or not on PATH. Run `python tools/project.py doctor` and see docs/BUILD.md. Nothing was built.
+exit_code=1

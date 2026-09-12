@@ -1,0 +1,5 @@
+# Optional LOCAL Cloudflare Worker overrides.
+# npm run dev uses local D1 and needs no secrets.
+# DB, ASSETS and REPORT_LIMITER bindings come from wrangler.jsonc.
+# Never put cloud tokens, signing keys or private database values in mobile/web builds.
+OPENFUEL_ENV=development

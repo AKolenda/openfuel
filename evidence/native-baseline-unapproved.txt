@@ -1,0 +1,2 @@
+BLOCKED: No human-approved native baseline exists. Run actual native capture and review against the HTML reference first.
+exit_code=2

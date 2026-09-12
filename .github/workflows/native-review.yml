@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Manual screenshot generation, separate from deployment. Not executed in the delivered archive.
+name: Capture actual native UI for review
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Enable emulator KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            cd apps/android && gradle --no-daemon connectedDebugAndroidTest
+            mkdir -p ../../evidence/native/android
+            adb pull /sdcard/Android/data/ca.openfuel.prototype/files/screenshots/ ../../evidence/native/android/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-real-ui-review
+          path: |
+            evidence/native/android
+            apps/android/app/build/reports/androidTests
+  ios-screens:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Build and test on an available iPhone simulator
+        run: |
+          mkdir -p evidence/native
+          cd apps/ios
+          xcodegen generate
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys;d=json.load(sys.stdin); print(next(v["udid"] for rows in d["devices"].values() for v in rows if "iPhone" in v["name"]))')
+          xcodebuild -project OpenFuel.xcodeproj -scheme OpenFuel -configuration Debug -destination "platform=iOS Simulator,id=$DEVICE" -resultBundlePath ../../evidence/native/ios.xcresult CODE_SIGNING_ALLOWED=NO test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-real-ui-review
+          path: evidence/native/ios.xcresult

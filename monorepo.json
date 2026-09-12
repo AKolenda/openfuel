@@ -1,0 +1,79 @@
+{
+  "name": "openfuel",
+  "licence": "AGPL-3.0-only",
+  "components": {
+    "website": {
+      "path": "apps/web",
+      "route": "/",
+      "build": "site"
+    },
+    "documentation": {
+      "path": "apps/docs",
+      "route": "/docs/",
+      "build": "site"
+    },
+    "web_reference": {
+      "path": "apps/web/preview",
+      "route": "/preview/"
+    },
+    "android": {
+      "path": "apps/android",
+      "runtime": "Kotlin / Jetpack Compose",
+      "data": "Real nearby OSM stations, foreground location, unverified community reports, device cache",
+      "command": "android-build"
+    },
+    "ios": {
+      "path": "apps/ios",
+      "runtime": "SwiftUI + Swift Package",
+      "data": "Earlier SwiftUI sample client; real-station migration and Apple SDK build unverified",
+      "command": "ios-build"
+    },
+    "api": {
+      "path": "services/api",
+      "runtime": "Python / FastAPI / SQLite",
+      "command": "api"
+    },
+    "registry": {
+      "path": "services/registry",
+      "runtime": "Python review policy reference; not a live publication API"
+    },
+    "edge": {
+      "path": "services/live",
+      "runtime": "Cloudflare Worker + D1 live station API",
+      "build": "site + wrangler deploy"
+    },
+    "database": {
+      "path": "services/live/migrations",
+      "runtime": "Cloudflare D1; local SQLite via Wrangler"
+    },
+    "expo": {
+      "path": "apps/expo",
+      "runtime": "React Native / Expo Go",
+      "data": "Real nearby stations and unverified community reports",
+      "command": "npm run expo"
+    },
+    "station_data": {
+      "path": "packages/data",
+      "runtime": "Attribution-preserving public geography and dated reference snapshots"
+    }
+  },
+  "toolchain": {
+    "python": ">=3.11",
+    "android": {
+      "gradle": "8.11.1",
+      "agp": "8.9.2",
+      "kotlin": "2.1.20",
+      "sdk": 35,
+      "jdk": ">=17"
+    },
+    "ios": {
+      "minimumOS": "17",
+      "swiftPackageTools": "5.9",
+      "projectGenerator": "XcodeGen"
+    },
+    "wrangler": "4.131.1",
+    "supabaseCLI": "2.48.3"
+  },
+  "no_publication_performed": false,
+  "native_visual_parity_verified": false
+}

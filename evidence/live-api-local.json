@@ -1,0 +1,48 @@
+{
+  "checked_at": "2026-09-12T05:54:43.721600+00:00",
+  "origin": "http://localhost:8787",
+  "read_only": true,
+  "health": {
+    "ok": true,
+    "service": "openfuel",
+    "database": "cloudflare-d1",
+    "databaseConfigured": true,
+    "writesEnabled": true,
+    "mode": "live",
+    "is_demo": false,
+    "station_count": 12543
+  },
+  "checks": [
+    {
+      "city": "Edmonton",
+      "nearby_stations": 180,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Calgary",
+      "nearby_stations": 172,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Toronto",
+      "nearby_stations": 87,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Montréal",
+      "nearby_stations": 175,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Vancouver",
+      "nearby_stations": 100,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Yellowknife",
+      "nearby_stations": 6,
+      "reference_period": "2026-07"
+    }
+  ],
+  "passed": true
+}

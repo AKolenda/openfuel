@@ -1,0 +1,32 @@
+{
+  "name": "openfuel-monorepo",
+  "private": true,
+  "version": "0.4.0",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "build": "python3 tools/project.py site",
+    "test:edge": "node --test services/edge/*.test.mjs",
+    "dev:edge": "wrangler dev",
+    "deploy:staging": "npm run deploy",
+    "deploy:production": "npm run deploy",
+    "dev": "npm run build && npm run db:local && npm run db:seed:local && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "db:local": "wrangler d1 migrations apply openfuel-data --local",
+    "db:remote": "wrangler d1 migrations apply openfuel-data --remote",
+    "test:live": "node --test services/live/*.test.mjs",
+    "db:seed:local": "python3 tools/seed_database.py --local",
+    "db:seed:remote": "python3 tools/seed_database.py --remote",
+    "expo": "npm --prefix apps/expo start",
+    "test": "npm run test:live && npm run test:edge"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "openfuelToolPins": {
+    "wrangler": "4.131.1",
+    "supabaseCLI": "2.48.3"
+  },
+  "devDependencies": {
+    "wrangler": "4.131.1"
+  }
+}

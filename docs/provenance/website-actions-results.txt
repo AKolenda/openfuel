@@ -1,0 +1,12 @@
+PASS a French 320px no overflow
+PASS a source-dialog at mobile bottom
+PASS a downloaded HTML is source
+PASS a status-dialog at mobile bottom
+PASS b French 320px no overflow
+PASS b source-dialog at mobile bottom
+PASS b downloaded HTML is source
+PASS b status-dialog at mobile bottom
+PASS b price board switches grade
+PASS b CSV includes synthetic data marker
+10/10 passed
+Runtime errors: []

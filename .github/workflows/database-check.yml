@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+name: Database migration and privilege checks
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['supabase/**', 'tools/database.py', '.github/workflows/database*.yml']
+permissions:
+  contents: read
+jobs:
+  clean-local-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.48.3
+      - run: supabase start
+      - name: Rebuild LOCAL database from empty + local fixtures
+        run: supabase db reset --local
+      - run: supabase db lint --local --level warning
+      - run: supabase test db
+      - if: always()
+        run: supabase stop --no-backup

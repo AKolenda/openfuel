@@ -1,0 +1,68 @@
+PASS 320 List is default
+PASS 320 filters-dialog at bottom
+PASS 320 filters-dialog closes
+PASS 320 sort-dialog at bottom
+PASS 320 sort-dialog closes
+PASS 320 about-dialog at bottom
+PASS 320 about-dialog closes
+PASS 320 maps-dialog at bottom
+PASS 320 maps-dialog closes
+PASS 320 report-dialog at bottom
+PASS 320 report-dialog closes
+PASS 320 audit-dialog at bottom
+PASS 320 audit-dialog closes
+PASS 320 sorting applies
+PASS 320 settings apply retained
+PASS 320 Escape dismisses
+PASS 320 short drag snaps back
+PASS 320 long drag dismisses
+PASS 320 about-dialog at bottom
+PASS 320 reduced motion
+PASS 320 reduced motion close
+PASS 320 no horizontal overflow
+PASS 390 List is default
+PASS 390 filters-dialog at bottom
+PASS 390 filters-dialog closes
+PASS 390 sort-dialog at bottom
+PASS 390 sort-dialog closes
+PASS 390 about-dialog at bottom
+PASS 390 about-dialog closes
+PASS 390 maps-dialog at bottom
+PASS 390 maps-dialog closes
+PASS 390 report-dialog at bottom
+PASS 390 report-dialog closes
+PASS 390 audit-dialog at bottom
+PASS 390 audit-dialog closes
+PASS 390 sorting applies
+PASS 390 settings apply retained
+PASS 390 Escape dismisses
+PASS 390 short drag snaps back
+PASS 390 long drag dismisses
+PASS 390 about-dialog at bottom
+PASS 390 reduced motion
+PASS 390 reduced motion close
+PASS 390 no horizontal overflow
+PASS 430 List is default
+PASS 430 filters-dialog at bottom
+PASS 430 filters-dialog closes
+PASS 430 sort-dialog at bottom
+PASS 430 sort-dialog closes
+PASS 430 about-dialog at bottom
+PASS 430 about-dialog closes
+PASS 430 maps-dialog at bottom
+PASS 430 maps-dialog closes
+PASS 430 report-dialog at bottom
+PASS 430 report-dialog closes
+PASS 430 audit-dialog at bottom
+PASS 430 audit-dialog closes
+PASS 430 sorting applies
+PASS 430 settings apply retained
+PASS 430 Escape dismisses
+PASS 430 short drag snaps back
+PASS 430 long drag dismisses
+PASS 430 about-dialog at bottom
+PASS 430 reduced motion
+PASS 430 reduced motion close
+PASS 430 no horizontal overflow
+66/66 passed
+Runtime errors: []

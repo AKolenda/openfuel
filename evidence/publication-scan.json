@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-09-12T05:55:19.926499+00:00",
+  "scanner": "gitleaks 8.30.1",
+  "scanner_checksum_verified": true,
+  "configuration": ".gitleaks.toml",
+  "secret_values_redacted": true,
+  "source_files": 311,
+  "source_bytes": 17294318,
+  "prior_git_history_found": false,
+  "original_archives_checked_for_git_metadata": 8,
+  "scans": [
+    {
+      "target": "source",
+      "exit_code": 0,
+      "findings": 0
+    },
+    {
+      "target": "archive",
+      "exit_code": 0,
+      "findings": 0
+    }
+  ]
+}

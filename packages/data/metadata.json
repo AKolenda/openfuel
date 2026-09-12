@@ -1,0 +1,13 @@
+{
+  "country": "CA",
+  "station_count": 12543,
+  "osm_snapshot_at": "2026-09-12T05:38:56Z",
+  "imported_at": "2026-09-12T05:38:56Z",
+  "station_source": "OpenStreetMap contributors",
+  "station_license": "ODbL-1.0",
+  "city_source": "GeoNames",
+  "city_license": "CC-BY-4.0",
+  "market_source": "Statistics Canada table 18-10-0001-01",
+  "market_period": "2026-07",
+  "pump_prices_seeded": 0
+}

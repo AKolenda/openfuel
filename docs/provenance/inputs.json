@@ -1,0 +1,25 @@
+{
+  "source_archives": {
+    "openfuel-android-prototype-source(1).zip": "b1d33bdf670ca10dcaf466653c8e7ffeaae635d6d76b183f64713f3184cb2d77",
+    "openfuel-canada-source(1).zip": "aaa9a192fd64b7549e41767d5bea6845097a61b395ca369de4cffbab79064d92",
+    "openfuel-documentation-review.html": "df0eca1cc647804aa048a7484a7d1113a17ca1240f193b5da80a060ed62219ca"
+  },
+  "comparison": {
+    "common_files": 26,
+    "different_common_files": [
+      "README.md"
+    ],
+    "android_source_files_identical": true
+  },
+  "paths": {
+    "web/landing-a.html": "apps/web/index.html",
+    "web/landing-b.html": "apps/web/designs/variant-b/index.html",
+    "web/app-preview.html": "apps/web/preview/index.html",
+    "android/": "apps/android/",
+    "ios-starter/": "apps/ios/",
+    "backend-reference/": "services/api/",
+    "registry/": "services/registry/",
+    "docs/": "docs/reference/",
+    "uploaded documentation review": "apps/docs/"
+  }
+}

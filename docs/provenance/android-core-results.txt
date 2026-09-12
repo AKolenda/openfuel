@@ -1,0 +1,33 @@
+PASS exact CAD price
+PASS price parser
+PASS price parser trimmed
+PASS reject NaN
+PASS reject Infinity
+PASS reject -3
+PASS reject 142.99
+PASS reject 49.9
+PASS reject 400.0
+PASS reject 142<script>
+PASS reject 142,9
+PASS reject 
+PASS best fresh first
+PASS stale last
+PASS raw cheapest includes stale
+PASS nearest
+PASS radius
+PASS fuel availability
+PASS casefolded search
+PASS fresh filter
+PASS open filter
+PASS favorites
+PASS membership discount
+PASS sample link contains no fictional address
+PASS sample link query encoded
+PASS price edit immutable
+PASS freshness per grade
+PASS valid station coordinate
+PASS invalid coordinate
+PASS new station pending
+PASS closure never auto applies
+PASS coordinates required
+32 core checks passed

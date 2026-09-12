@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Public Canadian real-station alpha; account and database identifiers are not secrets.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openfuel",
+  "account_id": "704dbfe5d9c5a730e5ef427a1a7948f9",
+  "main": "services/live/worker.mjs",
+  "compatibility_date": "2026-09-11",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist/site",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": false
+    }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openfuel-data",
+      "database_id": "dd0cc839-6fbc-4f3a-aab5-f5a85bd06263",
+      "migrations_dir": "services/live/migrations"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "REPORT_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "OPENFUEL_ENV": "public-alpha"
+  },
+  "routes": [
+    {
+      "pattern": "openfuel.ca",
+      "custom_domain": true
+    }
+  ]
+}

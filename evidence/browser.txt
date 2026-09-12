@@ -1,0 +1,253 @@
+PASS HTTP route /
+PASS HTTP route /docs/
+PASS HTTP route /docs/pages.js
+PASS HTTP route /preview/
+PASS HTTP route /shared/contracts/openapi.json
+PASS HTTP route /designs/variant-b/
+PASS HTTP route /repo-test/
+PASS HTTP route /repo-test/docs/
+PASS HTTP route /repo-test/preview/
+PASS Source download contains all four apps
+PASS Source download has no compiled binaries, fonts or local data
+PASS 1440px website no horizontal overflow
+PASS 1440px website source and docs routes
+PASS 1440px French toggle
+PASS Canonical preview frame route used
+PASS 1440px website loads six sample map results
+PASS 1440px docs start page renders
+PASS 1440px no top-right AGPL badge
+PASS 1440px docs search
+PASS 1440px no decorative active-menu dot
+PASS 1440px docs route start
+PASS 1440px docs route repo
+PASS 1440px docs route website
+PASS 1440px docs route android
+PASS 1440px docs route ios
+PASS 1440px docs route api
+PASS 1440px docs route parity
+PASS 1440px docs route state
+PASS 1440px docs route maps
+PASS 1440px docs route testing
+PASS 1440px docs route privacy
+PASS 1440px docs route hosting
+PASS 1440px docs route environment
+PASS 1440px docs route migrations
+PASS 1440px docs route licence
+PASS 1440px docs route github
+PASS 1440px iOS limitation is truthful
+PASS 1440px evidence table exists
+PASS 1440px real output opens
+PASS Canonical preview frame route used
+PASS 1440px docs use the same map preview
+PASS 1440px list remains default
+PASS 1440px initials mode causes no remote logo elements
+PASS 1440px cards switch works
+PASS 1440px sort still works
+PASS 1440px map no horizontal overflow
+PASS 390px website no horizontal overflow
+PASS 390px website source and docs routes
+PASS 390px French toggle
+PASS Canonical preview frame route used
+PASS 390px website loads six sample map results
+PASS 390px docs start page renders
+PASS 390px no top-right AGPL badge
+PASS 390px documentation menu is a bottom sheet
+PASS 390px mobile docs search
+PASS 390px docs route start
+PASS 390px docs route repo
+PASS 390px docs route website
+PASS 390px docs route android
+PASS 390px docs route ios
+PASS 390px docs route api
+PASS 390px docs route parity
+PASS 390px docs route state
+PASS 390px docs route maps
+PASS 390px docs route testing
+PASS 390px docs route privacy
+PASS 390px docs route hosting
+PASS 390px docs route environment
+PASS 390px docs route migrations
+PASS 390px docs route licence
+PASS 390px docs route github
+PASS 390px iOS limitation is truthful
+PASS 390px evidence table exists
+PASS 390px real output opens
+PASS Canonical preview frame route used
+PASS 390px docs use the same map preview
+PASS 390px list remains default
+PASS 390px initials mode causes no remote logo elements
+PASS 390px cards switch works
+PASS 390px map About is a bottom sheet
+PASS 390px sort still works
+PASS 390px map no horizontal overflow
+PASS 320px website no horizontal overflow
+PASS 320px website source and docs routes
+PASS 320px French toggle
+PASS Canonical preview frame route used
+PASS 320px website loads six sample map results
+PASS 320px docs start page renders
+PASS 320px no top-right AGPL badge
+PASS 320px documentation menu is a bottom sheet
+PASS 320px mobile docs search
+PASS 320px docs route start
+PASS 320px docs route repo
+PASS 320px docs route website
+PASS 320px docs route android
+PASS 320px docs route ios
+PASS 320px docs route api
+PASS 320px docs route parity
+PASS 320px docs route state
+PASS 320px docs route maps
+PASS 320px docs route testing
+PASS 320px docs route privacy
+PASS 320px docs route hosting
+PASS 320px docs route environment
+PASS 320px docs route migrations
+PASS 320px docs route licence
+PASS 320px docs route github
+PASS 320px iOS limitation is truthful
+PASS 320px evidence table exists
+PASS 320px real output opens
+PASS Canonical preview frame route used
+PASS 320px docs use the same map preview
+PASS 320px list remains default
+PASS 320px initials mode causes no remote logo elements
+PASS 320px cards switch works
+PASS 320px map About is a bottom sheet
+PASS 320px sort still works
+PASS 320px map no horizontal overflow
+PASS Retained design B loads
+PASS Design B links back to same docs
+PASS No JavaScript exceptions
+PASS No third-party resources requested in default site/docs/preview
+{
+  "mode": "local-resources-inlined; localhost browser navigation blocked by sandbox policy",
+  "passed": 122,
+  "checks": [
+    "HTTP route /",
+    "HTTP route /docs/",
+    "HTTP route /docs/pages.js",
+    "HTTP route /preview/",
+    "HTTP route /shared/contracts/openapi.json",
+    "HTTP route /designs/variant-b/",
+    "HTTP route /repo-test/",
+    "HTTP route /repo-test/docs/",
+    "HTTP route /repo-test/preview/",
+    "Source download contains all four apps",
+    "Source download has no compiled binaries, fonts or local data",
+    "1440px website no horizontal overflow",
+    "1440px website source and docs routes",
+    "1440px French toggle",
+    "Canonical preview frame route used",
+    "1440px website loads six sample map results",
+    "1440px docs start page renders",
+    "1440px no top-right AGPL badge",
+    "1440px docs search",
+    "1440px no decorative active-menu dot",
+    "1440px docs route start",
+    "1440px docs route repo",
+    "1440px docs route website",
+    "1440px docs route android",
+    "1440px docs route ios",
+    "1440px docs route api",
+    "1440px docs route parity",
+    "1440px docs route state",
+    "1440px docs route maps",
+    "1440px docs route testing",
+    "1440px docs route privacy",
+    "1440px docs route hosting",
+    "1440px docs route environment",
+    "1440px docs route migrations",
+    "1440px docs route licence",
+    "1440px docs route github",
+    "1440px iOS limitation is truthful",
+    "1440px evidence table exists",
+    "1440px real output opens",
+    "Canonical preview frame route used",
+    "1440px docs use the same map preview",
+    "1440px list remains default",
+    "1440px initials mode causes no remote logo elements",
+    "1440px cards switch works",
+    "1440px sort still works",
+    "1440px map no horizontal overflow",
+    "390px website no horizontal overflow",
+    "390px website source and docs routes",
+    "390px French toggle",
+    "Canonical preview frame route used",
+    "390px website loads six sample map results",
+    "390px docs start page renders",
+    "390px no top-right AGPL badge",
+    "390px documentation menu is a bottom sheet",
+    "390px mobile docs search",
+    "390px docs route start",
+    "390px docs route repo",
+    "390px docs route website",
+    "390px docs route android",
+    "390px docs route ios",
+    "390px docs route api",
+    "390px docs route parity",
+    "390px docs route state",
+    "390px docs route maps",
+    "390px docs route testing",
+    "390px docs route privacy",
+    "390px docs route hosting",
+    "390px docs route environment",
+    "390px docs route migrations",
+    "390px docs route licence",
+    "390px docs route github",
+    "390px iOS limitation is truthful",
+    "390px evidence table exists",
+    "390px real output opens",
+    "Canonical preview frame route used",
+    "390px docs use the same map preview",
+    "390px list remains default",
+    "390px initials mode causes no remote logo elements",
+    "390px cards switch works",
+    "390px map About is a bottom sheet",
+    "390px sort still works",
+    "390px map no horizontal overflow",
+    "320px website no horizontal overflow",
+    "320px website source and docs routes",
+    "320px French toggle",
+    "Canonical preview frame route used",
+    "320px website loads six sample map results",
+    "320px docs start page renders",
+    "320px no top-right AGPL badge",
+    "320px documentation menu is a bottom sheet",
+    "320px mobile docs search",
+    "320px docs route start",
+    "320px docs route repo",
+    "320px docs route website",
+    "320px docs route android",
+    "320px docs route ios",
+    "320px docs route api",
+    "320px docs route parity",
+    "320px docs route state",
+    "320px docs route maps",
+    "320px docs route testing",
+    "320px docs route privacy",
+    "320px docs route hosting",
+    "320px docs route environment",
+    "320px docs route migrations",
+    "320px docs route licence",
+    "320px docs route github",
+    "320px iOS limitation is truthful",
+    "320px evidence table exists",
+    "320px real output opens",
+    "Canonical preview frame route used",
+    "320px docs use the same map preview",
+    "320px list remains default",
+    "320px initials mode causes no remote logo elements",
+    "320px cards switch works",
+    "320px map About is a bottom sheet",
+    "320px sort still works",
+    "320px map no horizontal overflow",
+    "Retained design B loads",
+    "Design B links back to same docs",
+    "No JavaScript exceptions",
+    "No third-party resources requested in default site/docs/preview"
+  ],
+  "javascript_errors": [],
+  "external_requests": [],
+  "scope": "Actual built static files and code, HTTP route/package checks, desktop/mobile browser interaction. Not native app screenshots."
+}

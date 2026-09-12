@@ -1,0 +1,2 @@
+ERROR: Install Supabase CLI 2.48.3; no database changes were attempted
+exit_code=1

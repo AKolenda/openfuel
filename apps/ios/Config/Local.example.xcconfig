@@ -1,0 +1,4 @@
+// PUBLIC configuration. Copy to Local.xcconfig (gitignored).
+// XCConfig parses // as a comment; use an empty substitution inside HTTPS URLs.
+OPENFUEL_API_BASE_URL = https:/$()/YOUR_STAGING_WORKER.workers.dev/api/v1
+OPENFUEL_DATA_MODE = prototype

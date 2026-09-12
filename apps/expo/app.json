@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "OpenFuel",
+    "slug": "openfuel",
+    "version": "0.4.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ca.openfuel.expo"
+    },
+    "android": {
+      "package": "ca.openfuel.expo",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "OpenFuel uses your location to find nearby fuel stations. Your location is not attached to price reports."
+        }
+      ],
+      "expo-status-bar",
+      "expo-font"
+    ]
+  }
+}

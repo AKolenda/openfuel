@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#285b43">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="description" content="Find real fuel stations near you on OpenStreetMap and share pump prices with the OpenFuel community.">
+  <title>OpenFuel — Fuel near you</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vendor/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/leaflet.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#station-list">Skip to stations</a>
+  <main class="app">
+    <div id="map" aria-label="Interactive fuel station map"></div>
+    <header class="search-header">
+      <div class="search-bar">
+        <a class="wordmark" href="/" aria-label="OpenFuel home">openfuel<span></span></a>
+        <form id="search-form" role="search">
+          <label class="sr-only" for="place-search">Search Canadian city or coordinates</label>
+          <input id="place-search" type="search" placeholder="City or coordinates" autocomplete="off" maxlength="160">
+          <button class="search-button" type="submit" aria-label="Search places">⌕</button>
+        </form>
+        <button class="icon-button" id="about-button" aria-label="About OpenFuel">i</button>
+      </div>
+      <div id="search-results" class="search-results" hidden aria-label="Place search results"></div>
+      <div class="filter-row" aria-label="Fuel and station filters">
+        <div class="fuel-tabs" aria-label="Fuel type">
+          <button data-fuel="regular" aria-pressed="true">Regular</button>
+          <button data-fuel="premium" aria-pressed="false">Premium</button>
+          <button data-fuel="diesel" aria-pressed="false">Diesel</button>
+        </div>
+        <button class="saved-button" id="saved-button" aria-label="Show saved stations" aria-pressed="false">♡</button>
+      </div>
+    </header>
+    <div class="map-actions">
+      <button id="search-area" class="area-button" hidden>Search this area</button>
+      <button id="locate-button" class="locate-button" aria-label="Use my location" title="Use my location">◎</button>
+    </div>
+    <p id="tile-warning" class="map-warning" hidden>Map tiles unavailable. You can still use the station list.</p>
+    <section class="results-panel" aria-label="Nearby stations">
+      <button id="sheet-toggle" class="sheet-grip" aria-label="Expand station list" aria-expanded="false"><span></span></button>
+      <div class="results-heading">
+        <div class="results-title-row"><h1 id="results-title">Fuel near you</h1><button id="refresh-button" class="text-button" disabled>Refresh</button></div>
+        <p id="location-status" role="status">Allow location to find fuel nearby, or search a place.</p>
+        <div class="list-controls">
+          <label><span class="sr-only">Search radius</span><select id="radius"><option value="5000">Within 5 km</option><option value="10000" selected>Within 10 km</option><option value="25000">Within 25 km</option><option value="50000">Within 50 km</option></select></label>
+          <label><span class="sr-only">Sort stations</span><select id="sort"><option value="distance">Nearest first</option><option value="price">Lowest reported price</option></select></label>
+        </div>
+      </div>
+      <p id="connection-status" class="connection-status" role="status">Real stations. Community pump prices.</p>
+      <div id="station-list" class="station-list" tabindex="-1">
+        <div class="empty-state"><span class="empty-icon">◎</span><h2>Your next fill-up starts here.</h2><p>Use your location or search a city to see real fuel stations. Prices appear when someone reports them.</p><button class="primary-button" id="empty-locate">Use my location</button><p class="small">Your browser asks first. No background tracking.</p></div>
+      </div>
+      <footer class="panel-footer"><a href="/downloads/openfuel-android.apk" download>Android APK</a><span>·</span><a href="/docs/">About the project</a><span>·</span><button id="privacy-button">Privacy</button></footer>
+    </section>
+  </main>
+  <dialog id="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
+  <dialog id="report-dialog" aria-labelledby="report-title">
+    <div class="dialog-head"><h2 id="report-title">Share a pump price</h2><button class="close-button" data-close aria-label="Close report">×</button></div>
+    <form id="report-form" class="dialog-body">
+      <p id="report-station"></p>
+      <label class="field">Fuel<select id="report-fuel"><option value="regular">Regular</option><option value="premium">Premium</option><option value="diesel">Diesel</option></select></label>
+      <label class="field">Price in Canadian cents per litre<div class="price-field"><input id="report-price" type="text" inputmode="decimal" placeholder="e.g. 149.9" autocomplete="off" required maxlength="5" aria-describedby="report-hint report-error"><span>¢/L</span></div></label>
+      <p class="muted" id="report-hint">Enter the standard pump price you see now, before loyalty or membership discounts. Shared reports are unverified.</p>
+      <label class="confirmation"><input type="checkbox" id="report-observed" required>I have just checked this price at this station.</label>
+      <p class="error" id="report-error" role="alert" hidden></p>
+      <button id="submit-report" class="primary-button full-width" type="submit">Share price</button>
+    </form>
+  </dialog>
+  <dialog id="about-dialog" aria-labelledby="about-title">
+    <div class="dialog-head"><h2 id="about-title">An open road ahead.</h2><button class="close-button" data-close aria-label="Close about OpenFuel">×</button></div>
+    <div class="dialog-body prose"><p>OpenFuel is a community fuel map for Canada. Station locations come from OpenStreetMap. Pump prices come from people checking the station, and are marked unverified.</p><h3>What you see</h3><p>A dash means there is no reported price. Distances are straight-line measurements, not driving distances. Station details may be incomplete; check the price at the pump.</p><h3>Your location</h3><p>Your browser asks before sharing your device location. Coordinates are sent to OpenFuel to find nearby stations. We do not track your journey or request background location. You can search a place instead.</p><p>The last few searched areas, station snapshots, saved stations and an anonymous report identifier are stored in this browser. Network operators receive normal request metadata. OpenStreetMap receives map tile requests; city searches use the GeoNames Canadian place index through our server.</p><p>Directions open Google Maps or Apple Maps with the station’s actual coordinates. The map app handles your route and any origin-location permission.</p><p>Saved station details remain available when the connection drops. Maps need a network connection; there is no offline tile download.</p><div class="about-links"><a href="/docs/">Project documentation</a><a href="/downloads/openfuel-source.zip" download>Download source</a><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap data licence</a><a href="https://www.geonames.org/" target="_blank" rel="noopener">Place search: GeoNames (CC BY 4.0)</a><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Report a map issue</a></div><button id="clear-local" class="secondary-button full-width">Clear this browser’s saved data</button></div>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <noscript><p class="noscript">Enable JavaScript to use the map and find stations.</p></noscript>
+</body>
+</html>

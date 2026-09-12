@@ -1,0 +1,19 @@
+{
+  "product": "OpenFuel",
+  "channel": "prototype",
+  "data": "synthetic shared sample stations",
+  "android": {
+    "path": "/downloads/openfuel-android.apk",
+    "bytes": 17465610,
+    "sha256": "b41200c3a0f662c178c1ad2e06a588612298478e8437de8e23d6c5a7d252be20",
+    "minimumAndroid": "8.0",
+    "signing": "debug"
+  },
+  "source": "/downloads/openfuel-source.zip",
+  "ios": "SwiftUI source; macOS/Xcode required to build",
+  "verified_at": "2026-09-12T05:30:14.535633+00:00",
+  "worker_version": "cea32695-9546-40ff-ac18-ff6c7a0e2dbe",
+  "website": "https://openfuel-prototype.openfuel-monorepo.workers.dev",
+  "database_name": "openfuel-prototype",
+  "remote_apk_matches_local": true
+}

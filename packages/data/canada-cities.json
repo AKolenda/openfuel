@@ -1,0 +1,4082 @@
+[
+  {
+    "id": "5881791",
+    "name": "Abbotsford, British Columbia, Canada",
+    "search_name": "abbotsford, british columbia, canada abbotsford",
+    "latitude": 49.05798,
+    "longitude": -122.25257,
+    "population": 141397
+  },
+  {
+    "id": "5882600",
+    "name": "Agincourt North, Ontario, Canada",
+    "search_name": "agincourt north, ontario, canada agincourt north",
+    "latitude": 43.80418,
+    "longitude": -79.27528,
+    "population": 29113
+  },
+  {
+    "id": "5882725",
+    "name": "Ahuntsic-Cartierville, Quebec, Canada",
+    "search_name": "ahuntsic-cartierville, quebec, canada ahuntsic-cartierville",
+    "latitude": 45.56667,
+    "longitude": -73.66667,
+    "population": 135336
+  },
+  {
+    "id": "5882799",
+    "name": "Airdrie, Alberta, Canada",
+    "search_name": "airdrie, alberta, canada airdrie",
+    "latitude": 51.30011,
+    "longitude": -114.03528,
+    "population": 90044
+  },
+  {
+    "id": "5882873",
+    "name": "Ajax, Ontario, Canada",
+    "search_name": "ajax, ontario, canada ajax",
+    "latitude": 43.85012,
+    "longitude": -79.03288,
+    "population": 119677
+  },
+  {
+    "id": "5884051",
+    "name": "Alliston, Ontario, Canada",
+    "search_name": "alliston, ontario, canada alliston",
+    "latitude": 44.15011,
+    "longitude": -79.86635,
+    "population": 18809
+  },
+  {
+    "id": "5884083",
+    "name": "Alma, Quebec, Canada",
+    "search_name": "alma, quebec, canada alma",
+    "latitude": 48.55009,
+    "longitude": -71.6491,
+    "population": 29526
+  },
+  {
+    "id": "5884238",
+    "name": "Alta Vista, Ontario, Canada",
+    "search_name": "alta vista, ontario, canada alta vista",
+    "latitude": 45.38639,
+    "longitude": -75.65806,
+    "population": 24726
+  },
+  {
+    "id": "5884588",
+    "name": "Amos, Quebec, Canada",
+    "search_name": "amos, quebec, canada amos",
+    "latitude": 48.56688,
+    "longitude": -78.11624,
+    "population": 17918
+  },
+  {
+    "id": "5886586",
+    "name": "Arbutus Ridge, British Columbia, Canada",
+    "search_name": "arbutus ridge, british columbia, canada arbutus ridge",
+    "latitude": 49.24966,
+    "longitude": -123.16934,
+    "population": 15295
+  },
+  {
+    "id": "5886971",
+    "name": "Armdale, Nova Scotia, Canada",
+    "search_name": "armdale, nova scotia, canada armdale",
+    "latitude": 44.63593,
+    "longitude": -63.62636,
+    "population": 16502
+  },
+  {
+    "id": "5888377",
+    "name": "Aurora, Ontario, Canada",
+    "search_name": "aurora, ontario, canada aurora",
+    "latitude": 44.00011,
+    "longitude": -79.46632,
+    "population": 55445
+  },
+  {
+    "id": "5889745",
+    "name": "Baie-Comeau, Quebec, Canada",
+    "search_name": "baie-comeau, quebec, canada baie-comeau",
+    "latitude": 49.21679,
+    "longitude": -68.14894,
+    "population": 21536
+  },
+  {
+    "id": "5894171",
+    "name": "Barrie, Ontario, Canada",
+    "search_name": "barrie, ontario, canada barrie",
+    "latitude": 44.40011,
+    "longitude": -79.66634,
+    "population": 147829
+  },
+  {
+    "id": "5895482",
+    "name": "Bayview Village, Ontario, Canada",
+    "search_name": "bayview village, ontario, canada bayview village",
+    "latitude": 43.77639,
+    "longitude": -79.38028,
+    "population": 21396
+  },
+  {
+    "id": "5895650",
+    "name": "Beaconsfield, Quebec, Canada",
+    "search_name": "beaconsfield, quebec, canada beaconsfield",
+    "latitude": 45.43341,
+    "longitude": -73.86586,
+    "population": 19194
+  },
+  {
+    "id": "5897321",
+    "name": "Bedford, Nova Scotia, Canada",
+    "search_name": "bedford, nova scotia, canada bedford",
+    "latitude": 44.72552,
+    "longitude": -63.66732,
+    "population": 21474
+  },
+  {
+    "id": "5897884",
+    "name": "Belleville, Ontario, Canada",
+    "search_name": "belleville, ontario, canada belleville",
+    "latitude": 44.16682,
+    "longitude": -77.38277,
+    "population": 50716
+  },
+  {
+    "id": "5898138",
+    "name": "Beloeil, Quebec, Canada",
+    "search_name": "beloeil, quebec, canada beloeil",
+    "latitude": 45.56839,
+    "longitude": -73.20568,
+    "population": 18927
+  },
+  {
+    "id": "5898265",
+    "name": "Bendale, Ontario, Canada",
+    "search_name": "bendale, ontario, canada bendale",
+    "latitude": 43.76681,
+    "longitude": -79.25326,
+    "population": 29960
+  },
+  {
+    "id": "5903510",
+    "name": "Blainville, Quebec, Canada",
+    "search_name": "blainville, quebec, canada blainville",
+    "latitude": 45.66678,
+    "longitude": -73.88249,
+    "population": 46493
+  },
+  {
+    "id": "5905132",
+    "name": "Boisbriand, Quebec, Canada",
+    "search_name": "boisbriand, quebec, canada boisbriand",
+    "latitude": 45.61678,
+    "longitude": -73.83249,
+    "population": 26483
+  },
+  {
+    "id": "5905308",
+    "name": "Bolton, Ontario, Canada",
+    "search_name": "bolton, ontario, canada bolton",
+    "latitude": 43.87952,
+    "longitude": -79.73791,
+    "population": 26795
+  },
+  {
+    "id": "5906267",
+    "name": "Boucherville, Quebec, Canada",
+    "search_name": "boucherville, quebec, canada boucherville",
+    "latitude": 45.59104,
+    "longitude": -73.43605,
+    "population": 39062
+  },
+  {
+    "id": "5906831",
+    "name": "Bowmanville, Ontario, Canada",
+    "search_name": "bowmanville, ontario, canada bowmanville",
+    "latitude": 43.91682,
+    "longitude": -78.68286,
+    "population": 39371
+  },
+  {
+    "id": "5907092",
+    "name": "Bracebridge, Ontario, Canada",
+    "search_name": "bracebridge, ontario, canada bracebridge",
+    "latitude": 45.03341,
+    "longitude": -79.31633,
+    "population": 16010
+  },
+  {
+    "id": "5907364",
+    "name": "Brampton, Ontario, Canada",
+    "search_name": "brampton, ontario, canada brampton",
+    "latitude": 43.68341,
+    "longitude": -79.76633,
+    "population": 656480
+  },
+  {
+    "id": "5907896",
+    "name": "Brandon, Manitoba, Canada",
+    "search_name": "brandon, manitoba, canada brandon",
+    "latitude": 49.84692,
+    "longitude": -99.95306,
+    "population": 48859
+  },
+  {
+    "id": "5907983",
+    "name": "Brant, Ontario, Canada",
+    "search_name": "brant, ontario, canada brant",
+    "latitude": 43.1334,
+    "longitude": -80.34967,
+    "population": 34415
+  },
+  {
+    "id": "5907990",
+    "name": "Brantford, Ontario, Canada",
+    "search_name": "brantford, ontario, canada brantford",
+    "latitude": 43.1334,
+    "longitude": -80.26636,
+    "population": 104688
+  },
+  {
+    "id": "5908737",
+    "name": "Bridlewood, Ontario, Canada",
+    "search_name": "bridlewood, ontario, canada bridlewood",
+    "latitude": 45.28522,
+    "longitude": -75.8569,
+    "population": 24400
+  },
+  {
+    "id": "5908809",
+    "name": "Brighouse-City Centre, British Columbia, Canada",
+    "search_name": "brighouse-city centre, british columbia, canada brighouse-city centre",
+    "latitude": 49.16667,
+    "longitude": -123.13333,
+    "population": 62855
+  },
+  {
+    "id": "5909204",
+    "name": "Broadmoor, British Columbia, Canada",
+    "search_name": "broadmoor, british columbia, canada broadmoor",
+    "latitude": 49.15,
+    "longitude": -123.13333,
+    "population": 23050
+  },
+  {
+    "id": "5909278",
+    "name": "Brocklehurst, British Columbia, Canada",
+    "search_name": "brocklehurst, british columbia, canada brocklehurst",
+    "latitude": 50.70825,
+    "longitude": -120.41337,
+    "population": 16713
+  },
+  {
+    "id": "5909294",
+    "name": "Brockville, Ontario, Canada",
+    "search_name": "brockville, ontario, canada brockville",
+    "latitude": 44.59132,
+    "longitude": -75.68705,
+    "population": 23886
+  },
+  {
+    "id": "5909483",
+    "name": "Brooklin, Ontario, Canada",
+    "search_name": "brooklin, ontario, canada brooklin",
+    "latitude": 43.95833,
+    "longitude": -78.95972,
+    "population": 25000
+  },
+  {
+    "id": "5909629",
+    "name": "Brossard, Quebec, Canada",
+    "search_name": "brossard, quebec, canada brossard",
+    "latitude": 45.45008,
+    "longitude": -73.46583,
+    "population": 69575
+  },
+  {
+    "id": "5911592",
+    "name": "Burlington, Ontario, Canada",
+    "search_name": "burlington, ontario, canada burlington",
+    "latitude": 43.38621,
+    "longitude": -79.83713,
+    "population": 186948
+  },
+  {
+    "id": "5911606",
+    "name": "Burnaby, British Columbia, Canada",
+    "search_name": "burnaby, british columbia, canada burnaby",
+    "latitude": 49.26636,
+    "longitude": -122.95263,
+    "population": 249125
+  },
+  {
+    "id": "5913414",
+    "name": "Caledon, Ontario, Canada",
+    "search_name": "caledon, ontario, canada caledon",
+    "latitude": 43.86544,
+    "longitude": -79.99322,
+    "population": 76581
+  },
+  {
+    "id": "5913490",
+    "name": "Calgary, Alberta, Canada",
+    "search_name": "calgary, alberta, canada calgary",
+    "latitude": 51.05011,
+    "longitude": -114.08529,
+    "population": 1306784
+  },
+  {
+    "id": "5913695",
+    "name": "Cambridge, Ontario, Canada",
+    "search_name": "cambridge, ontario, canada cambridge",
+    "latitude": 43.3601,
+    "longitude": -80.31269,
+    "population": 129920
+  },
+  {
+    "id": "5914132",
+    "name": "Campbell River, British Columbia, Canada",
+    "search_name": "campbell river, british columbia, canada campbell river",
+    "latitude": 50.01634,
+    "longitude": -125.24459,
+    "population": 33430
+  },
+  {
+    "id": "5914653",
+    "name": "Camrose, Alberta, Canada",
+    "search_name": "camrose, alberta, canada camrose",
+    "latitude": 53.01684,
+    "longitude": -112.83525,
+    "population": 20405
+  },
+  {
+    "id": "5914826",
+    "name": "Candiac, Quebec, Canada",
+    "search_name": "candiac, quebec, canada candiac",
+    "latitude": 45.38338,
+    "longitude": -73.51587,
+    "population": 15947
+  },
+  {
+    "id": "5916896",
+    "name": "Cariboo, British Columbia, Canada",
+    "search_name": "cariboo, british columbia, canada cariboo",
+    "latitude": 49.25,
+    "longitude": -122.88333,
+    "population": 22780
+  },
+  {
+    "id": "5917781",
+    "name": "Cartierville, Quebec, Canada",
+    "search_name": "cartierville, quebec, canada cartierville",
+    "latitude": 45.53118,
+    "longitude": -73.70358,
+    "population": 34667
+  },
+  {
+    "id": "5919137",
+    "name": "Central Saanich, British Columbia, Canada",
+    "search_name": "central saanich, british columbia, canada central saanich",
+    "latitude": 48.56634,
+    "longitude": -123.41932,
+    "population": 17385
+  },
+  {
+    "id": "5919248",
+    "name": "Centretown, Ontario, Canada",
+    "search_name": "centretown, ontario, canada centretown",
+    "latitude": 45.41534,
+    "longitude": -75.69639,
+    "population": 25687
+  },
+  {
+    "id": "5919566",
+    "name": "Chambly, Quebec, Canada",
+    "search_name": "chambly, quebec, canada chambly",
+    "latitude": 45.45008,
+    "longitude": -73.28246,
+    "population": 22608
+  },
+  {
+    "id": "5920288",
+    "name": "Charlottetown, Prince Edward Island, Canada",
+    "search_name": "charlottetown, prince edward island, canada charlottetown",
+    "latitude": 46.23459,
+    "longitude": -63.1256,
+    "population": 38809
+  },
+  {
+    "id": "5920433",
+    "name": "Châteauguay, Quebec, Canada",
+    "search_name": "chateauguay, quebec, canada chateauguay",
+    "latitude": 45.38338,
+    "longitude": -73.74919,
+    "population": 42786
+  },
+  {
+    "id": "5920457",
+    "name": "Chatham, Ontario, Canada",
+    "search_name": "chatham, ontario, canada chatham",
+    "latitude": 42.41224,
+    "longitude": -82.18494,
+    "population": 43550
+  },
+  {
+    "id": "5921060",
+    "name": "Chestermere, Alberta, Canada",
+    "search_name": "chestermere, alberta, canada chestermere",
+    "latitude": 51.03341,
+    "longitude": -113.81867,
+    "population": 32255
+  },
+  {
+    "id": "5921225",
+    "name": "Chicoutimi, Quebec, Canada",
+    "search_name": "chicoutimi, quebec, canada chicoutimi",
+    "latitude": 48.41963,
+    "longitude": -71.06369,
+    "population": 69004
+  },
+  {
+    "id": "5921356",
+    "name": "Chilliwack, British Columbia, Canada",
+    "search_name": "chilliwack, british columbia, canada chilliwack",
+    "latitude": 49.16638,
+    "longitude": -121.95257,
+    "population": 101491
+  },
+  {
+    "id": "5921719",
+    "name": "Chomedey, Quebec, Canada",
+    "search_name": "chomedey, quebec, canada chomedey",
+    "latitude": 45.53333,
+    "longitude": -73.75,
+    "population": 94030
+  },
+  {
+    "id": "5923101",
+    "name": "Clarence-Rockland, Ontario, Canada",
+    "search_name": "clarence-rockland, ontario, canada clarence-rockland",
+    "latitude": 45.5501,
+    "longitude": -75.29101,
+    "population": 20790
+  },
+  {
+    "id": "5923921",
+    "name": "Cliffcrest, Ontario, Canada",
+    "search_name": "cliffcrest, ontario, canada cliffcrest",
+    "latitude": 43.72192,
+    "longitude": -79.23091,
+    "population": 15935
+  },
+  {
+    "id": "5924204",
+    "name": "Cloverdale, British Columbia, Canada",
+    "search_name": "cloverdale, british columbia, canada cloverdale",
+    "latitude": 49.10797,
+    "longitude": -122.7276,
+    "population": 73355
+  },
+  {
+    "id": "5924579",
+    "name": "Cobourg, Ontario, Canada",
+    "search_name": "cobourg, ontario, canada cobourg",
+    "latitude": 43.95977,
+    "longitude": -78.16515,
+    "population": 18099
+  },
+  {
+    "id": "5924618",
+    "name": "Cochrane, Alberta, Canada",
+    "search_name": "cochrane, alberta, canada cochrane",
+    "latitude": 51.18341,
+    "longitude": -114.46871,
+    "population": 32199
+  },
+  {
+    "id": "5925975",
+    "name": "Collingwood, Ontario, Canada",
+    "search_name": "collingwood, ontario, canada collingwood",
+    "latitude": 44.4834,
+    "longitude": -80.21638,
+    "population": 21793
+  },
+  {
+    "id": "5926268",
+    "name": "Colwood, British Columbia, Canada",
+    "search_name": "colwood, british columbia, canada colwood",
+    "latitude": 48.43293,
+    "longitude": -123.48591,
+    "population": 16859
+  },
+  {
+    "id": "5926511",
+    "name": "Conception Bay South, Newfoundland and Labrador, Canada",
+    "search_name": "conception bay south, newfoundland and labrador, canada conception bay south",
+    "latitude": 47.49989,
+    "longitude": -52.99806,
+    "population": 27168
+  },
+  {
+    "id": "5927690",
+    "name": "Coquitlam, British Columbia, Canada",
+    "search_name": "coquitlam, british columbia, canada coquitlam",
+    "latitude": 49.2846,
+    "longitude": -122.78217,
+    "population": 148625
+  },
+  {
+    "id": "5927969",
+    "name": "Corner Brook, Newfoundland and Labrador, Canada",
+    "search_name": "corner brook, newfoundland and labrador, canada corner brook",
+    "latitude": 48.95001,
+    "longitude": -57.95202,
+    "population": 19316
+  },
+  {
+    "id": "5928065",
+    "name": "Cornwall, Ontario, Canada",
+    "search_name": "cornwall, ontario, canada cornwall",
+    "latitude": 45.01809,
+    "longitude": -74.72815,
+    "population": 48821
+  },
+  {
+    "id": "5928488",
+    "name": "Côte-Saint-Luc, Quebec, Canada",
+    "search_name": "cote-saint-luc, quebec, canada cote-saint-luc",
+    "latitude": 45.46536,
+    "longitude": -73.66585,
+    "population": 31395
+  },
+  {
+    "id": "5930890",
+    "name": "Courtenay, British Columbia, Canada",
+    "search_name": "courtenay, british columbia, canada courtenay",
+    "latitude": 49.68657,
+    "longitude": -124.9936,
+    "population": 28420
+  },
+  {
+    "id": "5931006",
+    "name": "Coventry Hills, Alberta, Canada",
+    "search_name": "coventry hills, alberta, canada coventry hills",
+    "latitude": 51.16869,
+    "longitude": -114.05903,
+    "population": 17350
+  },
+  {
+    "id": "5931800",
+    "name": "Cranbrook, British Columbia, Canada",
+    "search_name": "cranbrook, british columbia, canada cranbrook",
+    "latitude": 49.49991,
+    "longitude": -115.76879,
+    "population": 20047
+  },
+  {
+    "id": "5935277",
+    "name": "Dartmouth, Nova Scotia, Canada",
+    "search_name": "dartmouth, nova scotia, canada dartmouth",
+    "latitude": 44.67134,
+    "longitude": -63.57719,
+    "population": 101343
+  },
+  {
+    "id": "5937615",
+    "name": "Delta, British Columbia, Canada",
+    "search_name": "delta, british columbia, canada delta",
+    "latitude": 49.08917,
+    "longitude": -123.05322,
+    "population": 101668
+  },
+  {
+    "id": "5938513",
+    "name": "Deux-Montagnes, Quebec, Canada",
+    "search_name": "deux-montagnes, quebec, canada deux-montagnes",
+    "latitude": 45.53455,
+    "longitude": -73.90168,
+    "population": 17402
+  },
+  {
+    "id": "5939219",
+    "name": "Dieppe, New Brunswick, Canada",
+    "search_name": "dieppe, new brunswick, canada dieppe",
+    "latitude": 46.07844,
+    "longitude": -64.68735,
+    "population": 27304
+  },
+  {
+    "id": "5940956",
+    "name": "Dollard-Des Ormeaux, Quebec, Canada",
+    "search_name": "dollard-des ormeaux, quebec, canada dollard-des ormeaux",
+    "latitude": 45.49452,
+    "longitude": -73.82419,
+    "population": 48930
+  },
+  {
+    "id": "5941905",
+    "name": "Dorset Park, Ontario, Canada",
+    "search_name": "dorset park, ontario, canada dorset park",
+    "latitude": 43.75386,
+    "longitude": -79.28215,
+    "population": 25003
+  },
+  {
+    "id": "5941925",
+    "name": "Dorval, Quebec, Canada",
+    "search_name": "dorval, quebec, canada dorval",
+    "latitude": 45.4473,
+    "longitude": -73.75335,
+    "population": 18980
+  },
+  {
+    "id": "5942845",
+    "name": "Drummondville, Quebec, Canada",
+    "search_name": "drummondville, quebec, canada drummondville",
+    "latitude": 45.88336,
+    "longitude": -72.48241,
+    "population": 59489
+  },
+  {
+    "id": "5943865",
+    "name": "Duncan, British Columbia, Canada",
+    "search_name": "duncan, british columbia, canada duncan",
+    "latitude": 48.78293,
+    "longitude": -123.70266,
+    "population": 22199
+  },
+  {
+    "id": "5944526",
+    "name": "Duvernay, Quebec, Canada",
+    "search_name": "duvernay, quebec, canada duvernay",
+    "latitude": 45.58333,
+    "longitude": -73.66667,
+    "population": 37460
+  },
+  {
+    "id": "5945707",
+    "name": "East Gwillimbury, Ontario, Canada",
+    "search_name": "east gwillimbury, ontario, canada east gwillimbury",
+    "latitude": 44.10087,
+    "longitude": -79.43785,
+    "population": 23991
+  },
+  {
+    "id": "5946656",
+    "name": "Edgemont, Alberta, Canada",
+    "search_name": "edgemont, alberta, canada edgemont",
+    "latitude": 51.12561,
+    "longitude": -114.14881,
+    "population": 15225
+  },
+  {
+    "id": "5946768",
+    "name": "Edmonton, Alberta, Canada",
+    "search_name": "edmonton, alberta, canada edmonton",
+    "latitude": 53.55014,
+    "longitude": -113.46871,
+    "population": 1010899
+  },
+  {
+    "id": "5948587",
+    "name": "Humbermede, Ontario, Canada",
+    "search_name": "humbermede, ontario, canada humbermede",
+    "latitude": 43.7525,
+    "longitude": -79.54417,
+    "population": 15545
+  },
+  {
+    "id": "5949512",
+    "name": "Esquimalt, British Columbia, Canada",
+    "search_name": "esquimalt, british columbia, canada esquimalt",
+    "latitude": 48.43569,
+    "longitude": -123.41174,
+    "population": 17655
+  },
+  {
+    "id": "5950268",
+    "name": "Etobicoke, Ontario, Canada",
+    "search_name": "etobicoke, ontario, canada etobicoke",
+    "latitude": 43.64415,
+    "longitude": -79.56985,
+    "population": 365000
+  },
+  {
+    "id": "5950593",
+    "name": "Evergreen, Alberta, Canada",
+    "search_name": "evergreen, alberta, canada evergreen",
+    "latitude": 50.92917,
+    "longitude": -114.1,
+    "population": 20780
+  },
+  {
+    "id": "5954556",
+    "name": "Fleetwood, British Columbia, Canada",
+    "search_name": "fleetwood, british columbia, canada fleetwood",
+    "latitude": 49.16667,
+    "longitude": -122.8,
+    "population": 65565
+  },
+  {
+    "id": "5954579",
+    "name": "Flemingdon Park, Ontario, Canada",
+    "search_name": "flemingdon park, ontario, canada flemingdon park",
+    "latitude": 43.71806,
+    "longitude": -79.33222,
+    "population": 21933
+  },
+  {
+    "id": "5955526",
+    "name": "Forest Heights, Ontario, Canada",
+    "search_name": "forest heights, ontario, canada forest heights",
+    "latitude": 43.41944,
+    "longitude": -80.52333,
+    "population": 15581
+  },
+  {
+    "id": "5955815",
+    "name": "Fort Erie, Ontario, Canada",
+    "search_name": "fort erie, ontario, canada fort erie",
+    "latitude": 42.90012,
+    "longitude": -78.93286,
+    "population": 30710
+  },
+  {
+    "id": "5955895",
+    "name": "Fort McMurray, Alberta, Canada",
+    "search_name": "fort mcmurray, alberta, canada fort mcmurray",
+    "latitude": 56.72676,
+    "longitude": -111.38103,
+    "population": 66573
+  },
+  {
+    "id": "5955960",
+    "name": "Fort St. John, British Columbia, Canada",
+    "search_name": "fort st. john, british columbia, canada fort st. john",
+    "latitude": 56.24988,
+    "longitude": -120.85292,
+    "population": 21465
+  },
+  {
+    "id": "5957564",
+    "name": "Fraser Heights, British Columbia, Canada",
+    "search_name": "fraser heights, british columbia, canada fraser heights",
+    "latitude": 49.2,
+    "longitude": -122.78333,
+    "population": 25000
+  },
+  {
+    "id": "5957776",
+    "name": "Fredericton, New Brunswick, Canada",
+    "search_name": "fredericton, new brunswick, canada fredericton",
+    "latitude": 45.94541,
+    "longitude": -66.66558,
+    "population": 63116
+  },
+  {
+    "id": "5959974",
+    "name": "Gatineau, Quebec, Canada",
+    "search_name": "gatineau, quebec, canada gatineau",
+    "latitude": 45.47723,
+    "longitude": -75.70164,
+    "population": 300045
+  },
+  {
+    "id": "5960533",
+    "name": "Georgetown, Ontario, Canada",
+    "search_name": "georgetown, ontario, canada georgetown",
+    "latitude": 43.65011,
+    "longitude": -79.91634,
+    "population": 44058
+  },
+  {
+    "id": "5961564",
+    "name": "Glace Bay, Nova Scotia, Canada",
+    "search_name": "glace bay, nova scotia, canada glace bay",
+    "latitude": 46.19695,
+    "longitude": -59.95698,
+    "population": 16915
+  },
+  {
+    "id": "5962204",
+    "name": "Gloucester, Ontario, Canada",
+    "search_name": "gloucester, ontario, canada gloucester",
+    "latitude": 45.35,
+    "longitude": -75.63333,
+    "population": 150012
+  },
+  {
+    "id": "5963453",
+    "name": "Gordon Head, British Columbia, Canada",
+    "search_name": "gordon head, british columbia, canada gordon head",
+    "latitude": 48.48333,
+    "longitude": -123.31667,
+    "population": 21270
+  },
+  {
+    "id": "5964215",
+    "name": "Granby, Quebec, Canada",
+    "search_name": "granby, quebec, canada granby",
+    "latitude": 45.40008,
+    "longitude": -72.73243,
+    "population": 66222
+  },
+  {
+    "id": "5964347",
+    "name": "Grande Prairie, Alberta, Canada",
+    "search_name": "grande prairie, alberta, canada grande prairie",
+    "latitude": 55.16667,
+    "longitude": -118.80271,
+    "population": 70385
+  },
+  {
+    "id": "5964700",
+    "name": "Greater Sudbury, Ontario, Canada",
+    "search_name": "greater sudbury, ontario, canada greater sudbury",
+    "latitude": 46.49,
+    "longitude": -80.99001,
+    "population": 166004
+  },
+  {
+    "id": "5964731",
+    "name": "Grandview-Woodlands, British Columbia, Canada",
+    "search_name": "grandview-woodlands, british columbia, canada grandview-woodlands",
+    "latitude": 49.27738,
+    "longitude": -123.07079,
+    "population": 29175
+  },
+  {
+    "id": "5965812",
+    "name": "Greater Napanee, Ontario, Canada",
+    "search_name": "greater napanee, ontario, canada greater napanee",
+    "latitude": 44.25012,
+    "longitude": -76.94944,
+    "population": 15892
+  },
+  {
+    "id": "5966078",
+    "name": "Greenfield Park, Quebec, Canada",
+    "search_name": "greenfield park, quebec, canada greenfield park",
+    "latitude": 45.48649,
+    "longitude": -73.46223,
+    "population": 16733
+  },
+  {
+    "id": "5967149",
+    "name": "Grimsby, Ontario, Canada",
+    "search_name": "grimsby, ontario, canada grimsby",
+    "latitude": 43.20011,
+    "longitude": -79.56631,
+    "population": 27314
+  },
+  {
+    "id": "5967629",
+    "name": "Guelph, Ontario, Canada",
+    "search_name": "guelph, ontario, canada guelph",
+    "latitude": 43.54594,
+    "longitude": -80.25599,
+    "population": 143740
+  },
+  {
+    "id": "5967687",
+    "name": "Guildford, British Columbia, Canada",
+    "search_name": "guildford, british columbia, canada guildford",
+    "latitude": 49.19167,
+    "longitude": -122.8,
+    "population": 64985
+  },
+  {
+    "id": "5969721",
+    "name": "Halton Hills, Ontario, Canada",
+    "search_name": "halton hills, ontario, canada halton hills",
+    "latitude": 43.6403,
+    "longitude": -79.93146,
+    "population": 62951
+  },
+  {
+    "id": "5969782",
+    "name": "Hamilton, Ontario, Canada",
+    "search_name": "hamilton, ontario, canada hamilton",
+    "latitude": 43.25011,
+    "longitude": -79.84963,
+    "population": 569353
+  },
+  {
+    "id": "5970149",
+    "name": "Haney, British Columbia, Canada",
+    "search_name": "haney, british columbia, canada haney",
+    "latitude": 49.21667,
+    "longitude": -122.6,
+    "population": 21041
+  },
+  {
+    "id": "5971859",
+    "name": "Hastings-Sunrise, British Columbia, Canada",
+    "search_name": "hastings-sunrise, british columbia, canada hastings-sunrise",
+    "latitude": 49.28333,
+    "longitude": -123.03333,
+    "population": 34575
+  },
+  {
+    "id": "5973973",
+    "name": "Henry Farm, Ontario, Canada",
+    "search_name": "henry farm, ontario, canada henry farm",
+    "latitude": 43.76952,
+    "longitude": -79.3524,
+    "population": 15723
+  },
+  {
+    "id": "5974407",
+    "name": "Hespeler, Ontario, Canada",
+    "search_name": "hespeler, ontario, canada hespeler",
+    "latitude": 43.4334,
+    "longitude": -80.31637,
+    "population": 18445
+  },
+  {
+    "id": "5975182",
+    "name": "Hillcrest Village, Ontario, Canada",
+    "search_name": "hillcrest village, ontario, canada hillcrest village",
+    "latitude": 43.80486,
+    "longitude": -79.35442,
+    "population": 16934
+  },
+  {
+    "id": "5978765",
+    "name": "Huntsville, Ontario, Canada",
+    "search_name": "huntsville, ontario, canada huntsville",
+    "latitude": 45.33341,
+    "longitude": -79.21632,
+    "population": 19816
+  },
+  {
+    "id": "5983433",
+    "name": "Innisfil, Ontario, Canada",
+    "search_name": "innisfil, ontario, canada innisfil",
+    "latitude": 44.30011,
+    "longitude": -79.64964,
+    "population": 43326
+  },
+  {
+    "id": "5987650",
+    "name": "Joliette, Quebec, Canada",
+    "search_name": "joliette, quebec, canada joliette",
+    "latitude": 46.0164,
+    "longitude": -73.4236,
+    "population": 34772
+  },
+  {
+    "id": "5989045",
+    "name": "Kamloops, British Columbia, Canada",
+    "search_name": "kamloops, british columbia, canada kamloops",
+    "latitude": 50.66648,
+    "longitude": -120.3192,
+    "population": 104460
+  },
+  {
+    "id": "5989117",
+    "name": "Kanata, Ontario, Canada",
+    "search_name": "kanata, ontario, canada kanata",
+    "latitude": 45.3001,
+    "longitude": -75.91606,
+    "population": 90000
+  },
+  {
+    "id": "5990579",
+    "name": "Kelowna, British Columbia, Canada",
+    "search_name": "kelowna, british columbia, canada kelowna",
+    "latitude": 49.88307,
+    "longitude": -119.48568,
+    "population": 144576
+  },
+  {
+    "id": "5990916",
+    "name": "Kennedy Park, Ontario, Canada",
+    "search_name": "kennedy park, ontario, canada kennedy park",
+    "latitude": 43.72267,
+    "longitude": -79.26052,
+    "population": 17123
+  },
+  {
+    "id": "5991055",
+    "name": "Kenora, Ontario, Canada",
+    "search_name": "kenora, ontario, canada kenora",
+    "latitude": 49.76741,
+    "longitude": -94.48985,
+    "population": 15096
+  },
+  {
+    "id": "5991085",
+    "name": "Kensington-Cedar Cottage, British Columbia, Canada",
+    "search_name": "kensington-cedar cottage, british columbia, canada kensington-cedar cottage",
+    "latitude": 49.25,
+    "longitude": -123.06667,
+    "population": 49235
+  },
+  {
+    "id": "5991370",
+    "name": "Keswick, Ontario, Canada",
+    "search_name": "keswick, ontario, canada keswick",
+    "latitude": 44.25011,
+    "longitude": -79.46632,
+    "population": 21000
+  },
+  {
+    "id": "5991909",
+    "name": "Killarney, British Columbia, Canada",
+    "search_name": "killarney, british columbia, canada killarney",
+    "latitude": 49.22594,
+    "longitude": -123.04282,
+    "population": 29325
+  },
+  {
+    "id": "5992500",
+    "name": "Kingston, Ontario, Canada",
+    "search_name": "kingston, ontario, canada kingston",
+    "latitude": 44.22976,
+    "longitude": -76.48098,
+    "population": 132485
+  },
+  {
+    "id": "5992526",
+    "name": "Kingsville, Ontario, Canada",
+    "search_name": "kingsville, ontario, canada kingsville",
+    "latitude": 42.10009,
+    "longitude": -82.73312,
+    "population": 22119
+  },
+  {
+    "id": "5992830",
+    "name": "Kirkland, Quebec, Canada",
+    "search_name": "kirkland, quebec, canada kirkland",
+    "latitude": 45.45008,
+    "longitude": -73.86586,
+    "population": 20491
+  },
+  {
+    "id": "5992996",
+    "name": "Kitchener, Ontario, Canada",
+    "search_name": "kitchener, ontario, canada kitchener",
+    "latitude": 43.42537,
+    "longitude": -80.5112,
+    "population": 256885
+  },
+  {
+    "id": "5993123",
+    "name": "Kitsilano, British Columbia, Canada",
+    "search_name": "kitsilano, british columbia, canada kitsilano",
+    "latitude": 49.26667,
+    "longitude": -123.16667,
+    "population": 43045
+  },
+  {
+    "id": "6047861",
+    "name": "Laflèche, Quebec, Canada",
+    "search_name": "lafleche, quebec, canada lafleche",
+    "latitude": 45.50008,
+    "longitude": -73.46587,
+    "population": 17499
+  },
+  {
+    "id": "6049388",
+    "name": "Langford, British Columbia, Canada",
+    "search_name": "langford, british columbia, canada langford",
+    "latitude": 48.44963,
+    "longitude": -123.50261,
+    "population": 46584
+  },
+  {
+    "id": "6049429",
+    "name": "Langley, British Columbia, Canada",
+    "search_name": "langley, british columbia, canada langley",
+    "latitude": 49.10107,
+    "longitude": -122.65883,
+    "population": 132603
+  },
+  {
+    "id": "6049863",
+    "name": "La Prairie, Quebec, Canada",
+    "search_name": "la prairie, quebec, canada la prairie",
+    "latitude": 45.41678,
+    "longitude": -73.49917,
+    "population": 23357
+  },
+  {
+    "id": "6050177",
+    "name": "LaSalle, Ontario, Canada",
+    "search_name": "lasalle, ontario, canada lasalle",
+    "latitude": 42.24481,
+    "longitude": -83.06095,
+    "population": 32721
+  },
+  {
+    "id": "6050263",
+    "name": "L'Assomption, Quebec, Canada",
+    "search_name": "l'assomption, quebec, canada l'assomption",
+    "latitude": 45.82318,
+    "longitude": -73.4294,
+    "population": 15906
+  },
+  {
+    "id": "6050610",
+    "name": "Laval, Quebec, Canada",
+    "search_name": "laval, quebec, canada laval",
+    "latitude": 45.56995,
+    "longitude": -73.692,
+    "population": 438366
+  },
+  {
+    "id": "6050619",
+    "name": "Laval-des-Rapides, Quebec, Canada",
+    "search_name": "laval-des-rapides, quebec, canada laval-des-rapides",
+    "latitude": 45.55642,
+    "longitude": -73.70007,
+    "population": 36933
+  },
+  {
+    "id": "6051122",
+    "name": "Leamington, Ontario, Canada",
+    "search_name": "leamington, ontario, canada leamington",
+    "latitude": 42.05009,
+    "longitude": -82.59981,
+    "population": 35730
+  },
+  {
+    "id": "6051562",
+    "name": "Leduc, Alberta, Canada",
+    "search_name": "leduc, alberta, canada leduc",
+    "latitude": 53.26682,
+    "longitude": -113.55201,
+    "population": 15561
+  },
+  {
+    "id": "6052788",
+    "name": "Les Coteaux, Quebec, Canada",
+    "search_name": "les coteaux, quebec, canada les coteaux",
+    "latitude": 45.28338,
+    "longitude": -74.23254,
+    "population": 17396
+  },
+  {
+    "id": "6053154",
+    "name": "Lethbridge, Alberta, Canada",
+    "search_name": "lethbridge, alberta, canada lethbridge",
+    "latitude": 49.69999,
+    "longitude": -112.81856,
+    "population": 103197
+  },
+  {
+    "id": "6054350",
+    "name": "Lindsay, Ontario, Canada",
+    "search_name": "lindsay, ontario, canada lindsay",
+    "latitude": 44.35012,
+    "longitude": -78.73286,
+    "population": 20354
+  },
+  {
+    "id": "6058024",
+    "name": "Lloydminster, Alberta, Canada",
+    "search_name": "lloydminster, alberta, canada lloydminster",
+    "latitude": 53.27237,
+    "longitude": -110.02256,
+    "population": 31582
+  },
+  {
+    "id": "6058560",
+    "name": "London, Ontario, Canada",
+    "search_name": "london, ontario, canada london",
+    "latitude": 42.98339,
+    "longitude": -81.23304,
+    "population": 422324
+  },
+  {
+    "id": "6059891",
+    "name": "Longueuil, Quebec, Canada",
+    "search_name": "longueuil, quebec, canada longueuil",
+    "latitude": 45.5152,
+    "longitude": -73.46818,
+    "population": 229330
+  },
+  {
+    "id": "6061334",
+    "name": "Lower Lonsdale, British Columbia, Canada",
+    "search_name": "lower lonsdale, british columbia, canada lower lonsdale",
+    "latitude": 49.31406,
+    "longitude": -123.0725,
+    "population": 19718
+  },
+  {
+    "id": "6062163",
+    "name": "Lutes Mountain, New Brunswick, Canada",
+    "search_name": "lutes mountain, new brunswick, canada lutes mountain",
+    "latitude": 46.13544,
+    "longitude": -64.90504,
+    "population": 16311
+  },
+  {
+    "id": "6064180",
+    "name": "Magog, Quebec, Canada",
+    "search_name": "magog, quebec, canada magog",
+    "latitude": 45.26678,
+    "longitude": -72.14909,
+    "population": 15550
+  },
+  {
+    "id": "6064365",
+    "name": "Maillardville, British Columbia, Canada",
+    "search_name": "maillardville, british columbia, canada maillardville",
+    "latitude": 49.23839,
+    "longitude": -122.86676,
+    "population": 15837
+  },
+  {
+    "id": "6064969",
+    "name": "Malvern, Ontario, Canada",
+    "search_name": "malvern, ontario, canada malvern",
+    "latitude": 43.80938,
+    "longitude": -79.22344,
+    "population": 43794
+  },
+  {
+    "id": "6065686",
+    "name": "Maple Ridge, British Columbia, Canada",
+    "search_name": "maple ridge, british columbia, canada maple ridge",
+    "latitude": 49.21939,
+    "longitude": -122.60193,
+    "population": 82256
+  },
+  {
+    "id": "6066513",
+    "name": "Markham, Ontario, Canada",
+    "search_name": "markham, ontario, canada markham",
+    "latitude": 43.86682,
+    "longitude": -79.2663,
+    "population": 338503
+  },
+  {
+    "id": "6067494",
+    "name": "Mascouche, Quebec, Canada",
+    "search_name": "mascouche, quebec, canada mascouche",
+    "latitude": 45.74965,
+    "longitude": -73.59956,
+    "population": 34626
+  },
+  {
+    "id": "6070250",
+    "name": "McKenzie Towne, Alberta, Canada",
+    "search_name": "mckenzie towne, alberta, canada mckenzie towne",
+    "latitude": 50.91342,
+    "longitude": -113.96736,
+    "population": 17505
+  },
+  {
+    "id": "6071618",
+    "name": "Medicine Hat, Alberta, Canada",
+    "search_name": "medicine hat, alberta, canada medicine hat",
+    "latitude": 50.03928,
+    "longitude": -110.67661,
+    "population": 63138
+  },
+  {
+    "id": "6072539",
+    "name": "Metrotown, British Columbia, Canada",
+    "search_name": "metrotown, british columbia, canada metrotown",
+    "latitude": 49.225,
+    "longitude": -123.0,
+    "population": 52355
+  },
+  {
+    "id": "6073363",
+    "name": "Midland, Ontario, Canada",
+    "search_name": "midland, ontario, canada midland",
+    "latitude": 44.7501,
+    "longitude": -79.88296,
+    "population": 24353
+  },
+  {
+    "id": "6074143",
+    "name": "Milliken, Ontario, Canada",
+    "search_name": "milliken, ontario, canada milliken",
+    "latitude": 43.82499,
+    "longitude": -79.29872,
+    "population": 26572
+  },
+  {
+    "id": "6074377",
+    "name": "Milton, Ontario, Canada",
+    "search_name": "milton, ontario, canada milton",
+    "latitude": 43.51681,
+    "longitude": -79.88294,
+    "population": 132979
+  },
+  {
+    "id": "6074409",
+    "name": "Mimico, Ontario, Canada",
+    "search_name": "mimico, ontario, canada mimico",
+    "latitude": 43.61616,
+    "longitude": -79.51269,
+    "population": 33964
+  },
+  {
+    "id": "6075061",
+    "name": "Mirabel, Quebec, Canada",
+    "search_name": "mirabel, quebec, canada mirabel",
+    "latitude": 45.65008,
+    "longitude": -74.08251,
+    "population": 34626
+  },
+  {
+    "id": "6075081",
+    "name": "Miramichi, New Brunswick, Canada",
+    "search_name": "miramichi, new brunswick, canada miramichi",
+    "latitude": 47.02895,
+    "longitude": -65.50186,
+    "population": 17537
+  },
+  {
+    "id": "6075292",
+    "name": "Mission, British Columbia, Canada",
+    "search_name": "mission, british columbia, canada mission",
+    "latitude": 49.13298,
+    "longitude": -122.30258,
+    "population": 41519
+  },
+  {
+    "id": "6075357",
+    "name": "Mississauga, Ontario, Canada",
+    "search_name": "mississauga, ontario, canada mississauga",
+    "latitude": 43.5789,
+    "longitude": -79.6583,
+    "population": 717961
+  },
+  {
+    "id": "6076211",
+    "name": "Moncton, New Brunswick, Canada",
+    "search_name": "moncton, new brunswick, canada moncton",
+    "latitude": 46.09454,
+    "longitude": -64.7965,
+    "population": 86106
+  },
+  {
+    "id": "6077243",
+    "name": "Montréal, Quebec, Canada",
+    "search_name": "montreal, quebec, canada montreal",
+    "latitude": 45.50884,
+    "longitude": -73.58781,
+    "population": 1762949
+  },
+  {
+    "id": "6077315",
+    "name": "Mont-Royal, Quebec, Canada",
+    "search_name": "mont-royal, quebec, canada mont-royal",
+    "latitude": 45.51675,
+    "longitude": -73.64918,
+    "population": 18933
+  },
+  {
+    "id": "6077340",
+    "name": "Mont-Saint-Hilaire, Quebec, Canada",
+    "search_name": "mont-saint-hilaire, quebec, canada mont-saint-hilaire",
+    "latitude": 45.56515,
+    "longitude": -73.1868,
+    "population": 15720
+  },
+  {
+    "id": "6078112",
+    "name": "Moose Jaw, Saskatchewan, Canada",
+    "search_name": "moose jaw, saskatchewan, canada moose jaw",
+    "latitude": 50.40005,
+    "longitude": -105.53445,
+    "population": 33890
+  },
+  {
+    "id": "6082231",
+    "name": "Mount Pearl, Newfoundland and Labrador, Canada",
+    "search_name": "mount pearl, newfoundland and labrador, canada mount pearl",
+    "latitude": 47.51659,
+    "longitude": -52.78135,
+    "population": 22477
+  },
+  {
+    "id": "6082322",
+    "name": "Mount Pleasant, British Columbia, Canada",
+    "search_name": "mount pleasant, british columbia, canada mount pleasant",
+    "latitude": 49.26667,
+    "longitude": -123.1,
+    "population": 33000
+  },
+  {
+    "id": "6085772",
+    "name": "Nanaimo, British Columbia, Canada",
+    "search_name": "nanaimo, british columbia, canada nanaimo",
+    "latitude": 49.16638,
+    "longitude": -123.94003,
+    "population": 90504
+  },
+  {
+    "id": "6087029",
+    "name": "Nepean, Ontario, Canada",
+    "search_name": "nepean, ontario, canada nepean",
+    "latitude": 45.33619,
+    "longitude": -75.7225,
+    "population": 180000
+  },
+  {
+    "id": "6087579",
+    "name": "New Glasgow, Nova Scotia, Canada",
+    "search_name": "new glasgow, nova scotia, canada new glasgow",
+    "latitude": 45.58344,
+    "longitude": -62.64863,
+    "population": 18665
+  },
+  {
+    "id": "6087701",
+    "name": "Newmarket, Ontario, Canada",
+    "search_name": "newmarket, ontario, canada newmarket",
+    "latitude": 44.05011,
+    "longitude": -79.46631,
+    "population": 91034
+  },
+  {
+    "id": "6087790",
+    "name": "Newton, British Columbia, Canada",
+    "search_name": "newton, british columbia, canada newton",
+    "latitude": 49.13333,
+    "longitude": -122.85,
+    "population": 159390
+  },
+  {
+    "id": "6087844",
+    "name": "New Westminster, British Columbia, Canada",
+    "search_name": "new westminster, british columbia, canada new westminster",
+    "latitude": 49.20678,
+    "longitude": -122.91092,
+    "population": 78916
+  },
+  {
+    "id": "6087892",
+    "name": "Niagara Falls, Ontario, Canada",
+    "search_name": "niagara falls, ontario, canada niagara falls",
+    "latitude": 43.10012,
+    "longitude": -79.06627,
+    "population": 99818
+  },
+  {
+    "id": "6087905",
+    "name": "Niagara-on-the-Lake, Ontario, Canada",
+    "search_name": "niagara-on-the-lake, ontario, canada niagara-on-the-lake",
+    "latitude": 43.25655,
+    "longitude": -79.08527,
+    "population": 17511
+  },
+  {
+    "id": "6089125",
+    "name": "Norfolk County, Ontario, Canada",
+    "search_name": "norfolk county, ontario, canada norfolk county",
+    "latitude": 42.8334,
+    "longitude": -80.38297,
+    "population": 60847
+  },
+  {
+    "id": "6089404",
+    "name": "North Battleford, Saskatchewan, Canada",
+    "search_name": "north battleford, saskatchewan, canada north battleford",
+    "latitude": 52.77972,
+    "longitude": -108.2967,
+    "population": 19440
+  },
+  {
+    "id": "6089426",
+    "name": "North Bay, Ontario, Canada",
+    "search_name": "north bay, ontario, canada north bay",
+    "latitude": 46.3168,
+    "longitude": -79.46633,
+    "population": 50396
+  },
+  {
+    "id": "6089661",
+    "name": "North Cowichan, British Columbia, Canada",
+    "search_name": "north cowichan, british columbia, canada north cowichan",
+    "latitude": 48.84133,
+    "longitude": -123.68596,
+    "population": 29676
+  },
+  {
+    "id": "6089692",
+    "name": "North Delta, British Columbia, Canada",
+    "search_name": "north delta, british columbia, canada north delta",
+    "latitude": 49.16667,
+    "longitude": -122.91667,
+    "population": 60769
+  },
+  {
+    "id": "6090785",
+    "name": "North Vancouver, British Columbia, Canada",
+    "search_name": "north vancouver, british columbia, canada north vancouver",
+    "latitude": 49.31636,
+    "longitude": -123.06934,
+    "population": 88168
+  },
+  {
+    "id": "6091314",
+    "name": "Notre-Dame-de-Grâce, Quebec, Canada",
+    "search_name": "notre-dame-de-grace, quebec, canada notre-dame-de-grace",
+    "latitude": 45.47675,
+    "longitude": -73.61432,
+    "population": 68152
+  },
+  {
+    "id": "6091919",
+    "name": "Oak Bay, British Columbia, Canada",
+    "search_name": "oak bay, british columbia, canada oak bay",
+    "latitude": 48.44964,
+    "longitude": -123.3026,
+    "population": 18015
+  },
+  {
+    "id": "6092122",
+    "name": "Oakville, Ontario, Canada",
+    "search_name": "oakville, ontario, canada oakville",
+    "latitude": 43.45011,
+    "longitude": -79.68292,
+    "population": 213759
+  },
+  {
+    "id": "6092125",
+    "name": "Oakwood Village, Ontario, Canada",
+    "search_name": "oakwood village, ontario, canada oakwood village",
+    "latitude": 43.68278,
+    "longitude": -79.43833,
+    "population": 21210
+  },
+  {
+    "id": "6092896",
+    "name": "Okanagan Mission, British Columbia, Canada",
+    "search_name": "okanagan mission, british columbia, canada okanagan mission",
+    "latitude": 49.81667,
+    "longitude": -119.48333,
+    "population": 38374
+  },
+  {
+    "id": "6093010",
+    "name": "Okotoks, Alberta, Canada",
+    "search_name": "okotoks, alberta, canada okotoks",
+    "latitude": 50.72885,
+    "longitude": -113.98281,
+    "population": 30214
+  },
+  {
+    "id": "6093513",
+    "name": "Wîhkwêntôwin, Alberta, Canada",
+    "search_name": "wihkwentowin, alberta, canada wihkwentowin",
+    "latitude": 53.54306,
+    "longitude": -113.52222,
+    "population": 18180
+  },
+  {
+    "id": "6094201",
+    "name": "Orangeville, Ontario, Canada",
+    "search_name": "orangeville, ontario, canada orangeville",
+    "latitude": 43.9168,
+    "longitude": -80.09967,
+    "population": 30734
+  },
+  {
+    "id": "6094325",
+    "name": "Orillia, Ontario, Canada",
+    "search_name": "orillia, ontario, canada orillia",
+    "latitude": 44.60868,
+    "longitude": -79.42068,
+    "population": 31166
+  },
+  {
+    "id": "6094578",
+    "name": "Oshawa, Ontario, Canada",
+    "search_name": "oshawa, ontario, canada oshawa",
+    "latitude": 43.90012,
+    "longitude": -78.84957,
+    "population": 175383
+  },
+  {
+    "id": "6094817",
+    "name": "Ottawa, Ontario, Canada",
+    "search_name": "ottawa, ontario, canada ottawa",
+    "latitude": 45.41117,
+    "longitude": -75.69812,
+    "population": 1017449
+  },
+  {
+    "id": "6094835",
+    "name": "Ottawa South, Ontario, Canada",
+    "search_name": "ottawa south, ontario, canada ottawa south",
+    "latitude": 45.3921,
+    "longitude": -75.68725,
+    "population": 125090
+  },
+  {
+    "id": "6095645",
+    "name": "Owen Sound, Ontario, Canada",
+    "search_name": "owen sound, ontario, canada owen sound",
+    "latitude": 44.56717,
+    "longitude": -80.94349,
+    "population": 21341
+  },
+  {
+    "id": "6096582",
+    "name": "Panorama Hills, Alberta, Canada",
+    "search_name": "panorama hills, alberta, canada panorama hills",
+    "latitude": 51.15286,
+    "longitude": -114.081,
+    "population": 25535
+  },
+  {
+    "id": "6096729",
+    "name": "Paradise, Newfoundland and Labrador, Canada",
+    "search_name": "paradise, newfoundland and labrador, canada paradise",
+    "latitude": 47.52909,
+    "longitude": -52.88136,
+    "population": 22957
+  },
+  {
+    "id": "6101141",
+    "name": "Penticton, British Columbia, Canada",
+    "search_name": "penticton, british columbia, canada penticton",
+    "latitude": 49.48062,
+    "longitude": -119.58584,
+    "population": 33761
+  },
+  {
+    "id": "6101606",
+    "name": "Petawawa, Ontario, Canada",
+    "search_name": "petawawa, ontario, canada petawawa",
+    "latitude": 45.89452,
+    "longitude": -77.28007,
+    "population": 17187
+  },
+  {
+    "id": "6101645",
+    "name": "Peterborough, Ontario, Canada",
+    "search_name": "peterborough, ontario, canada peterborough",
+    "latitude": 44.30012,
+    "longitude": -78.31623,
+    "population": 85807
+  },
+  {
+    "id": "6104111",
+    "name": "Pickering, Ontario, Canada",
+    "search_name": "pickering, ontario, canada pickering",
+    "latitude": 43.90012,
+    "longitude": -79.13289,
+    "population": 91771
+  },
+  {
+    "id": "6104319",
+    "name": "Pierrefonds, Quebec, Canada",
+    "search_name": "pierrefonds, quebec, canada pierrefonds",
+    "latitude": 45.45989,
+    "longitude": -73.89284,
+    "population": 59093
+  },
+  {
+    "id": "6105815",
+    "name": "Pitt Meadows, British Columbia, Canada",
+    "search_name": "pitt meadows, british columbia, canada pitt meadows",
+    "latitude": 49.22119,
+    "longitude": -122.68965,
+    "population": 18573
+  },
+  {
+    "id": "6107325",
+    "name": "Pointe-Claire, Quebec, Canada",
+    "search_name": "pointe-claire, quebec, canada pointe-claire",
+    "latitude": 45.44868,
+    "longitude": -73.81669,
+    "population": 30161
+  },
+  {
+    "id": "6111632",
+    "name": "Port Alberni, British Columbia, Canada",
+    "search_name": "port alberni, british columbia, canada port alberni",
+    "latitude": 49.24133,
+    "longitude": -124.8028,
+    "population": 20712
+  },
+  {
+    "id": "6111704",
+    "name": "Port Colborne, Ontario, Canada",
+    "search_name": "port colborne, ontario, canada port colborne",
+    "latitude": 42.90012,
+    "longitude": -79.23288,
+    "population": 18306
+  },
+  {
+    "id": "6111706",
+    "name": "Port Coquitlam, British Columbia, Canada",
+    "search_name": "port coquitlam, british columbia, canada port coquitlam",
+    "latitude": 49.26637,
+    "longitude": -122.76932,
+    "population": 58000
+  },
+  {
+    "id": "6111962",
+    "name": "Port Moody, British Columbia, Canada",
+    "search_name": "port moody, british columbia, canada port moody",
+    "latitude": 49.28124,
+    "longitude": -122.82457,
+    "population": 27512
+  },
+  {
+    "id": "6113335",
+    "name": "Prince Albert, Saskatchewan, Canada",
+    "search_name": "prince albert, saskatchewan, canada prince albert",
+    "latitude": 53.20008,
+    "longitude": -105.76772,
+    "population": 35102
+  },
+  {
+    "id": "6113355",
+    "name": "Prince Edward, Ontario, Canada",
+    "search_name": "prince edward, ontario, canada prince edward",
+    "latitude": 44.00012,
+    "longitude": -77.24946,
+    "population": 25496
+  },
+  {
+    "id": "6113365",
+    "name": "Prince George, British Columbia, Canada",
+    "search_name": "prince george, british columbia, canada prince george",
+    "latitude": 53.9166,
+    "longitude": -122.75301,
+    "population": 78943
+  },
+  {
+    "id": "6115355",
+    "name": "Quinte West, Ontario, Canada",
+    "search_name": "quinte west, ontario, canada quinte west",
+    "latitude": 44.10742,
+    "longitude": -77.57035,
+    "population": 43577
+  },
+  {
+    "id": "6115383",
+    "name": "Quispamsis, New Brunswick, Canada",
+    "search_name": "quispamsis, new brunswick, canada quispamsis",
+    "latitude": 45.42135,
+    "longitude": -65.95127,
+    "population": 18768
+  },
+  {
+    "id": "6118158",
+    "name": "Red Deer, Alberta, Canada",
+    "search_name": "red deer, alberta, canada red deer",
+    "latitude": 52.26682,
+    "longitude": -113.802,
+    "population": 100844
+  },
+  {
+    "id": "6119109",
+    "name": "Regina, Saskatchewan, Canada",
+    "search_name": "regina, saskatchewan, canada regina",
+    "latitude": 50.45008,
+    "longitude": -104.6178,
+    "population": 226404
+  },
+  {
+    "id": "6119451",
+    "name": "Renfrew-Collingwood, British Columbia, Canada",
+    "search_name": "renfrew-collingwood, british columbia, canada renfrew-collingwood",
+    "latitude": 49.245,
+    "longitude": -123.03758,
+    "population": 51530
+  },
+  {
+    "id": "6119518",
+    "name": "Repentigny, Quebec, Canada",
+    "search_name": "repentigny, quebec, canada repentigny",
+    "latitude": 45.74222,
+    "longitude": -73.45008,
+    "population": 84965
+  },
+  {
+    "id": "6122085",
+    "name": "Richmond, British Columbia, Canada",
+    "search_name": "richmond, british columbia, canada richmond",
+    "latitude": 49.17003,
+    "longitude": -123.13683,
+    "population": 209937
+  },
+  {
+    "id": "6122091",
+    "name": "Richmond Hill, Ontario, Canada",
+    "search_name": "richmond hill, ontario, canada richmond hill",
+    "latitude": 43.87111,
+    "longitude": -79.43725,
+    "population": 202022
+  },
+  {
+    "id": "6122758",
+    "name": "Riverview, New Brunswick, Canada",
+    "search_name": "riverview, new brunswick, canada riverview",
+    "latitude": 46.05455,
+    "longitude": -64.81597,
+    "population": 20584
+  },
+  {
+    "id": "6126305",
+    "name": "Rock Forest, Quebec, Canada",
+    "search_name": "rock forest, quebec, canada rock forest",
+    "latitude": 45.35699,
+    "longitude": -71.99676,
+    "population": 35500
+  },
+  {
+    "id": "6128081",
+    "name": "Rouge, Ontario, Canada",
+    "search_name": "rouge, ontario, canada rouge",
+    "latitude": 43.80406,
+    "longitude": -79.16571,
+    "population": 46496
+  },
+  {
+    "id": "6128577",
+    "name": "Rouyn-Noranda, Quebec, Canada",
+    "search_name": "rouyn-noranda, quebec, canada rouyn-noranda",
+    "latitude": 48.23656,
+    "longitude": -79.02311,
+    "population": 23504
+  },
+  {
+    "id": "6136777",
+    "name": "Rutland, British Columbia, Canada",
+    "search_name": "rutland, british columbia, canada rutland",
+    "latitude": 49.89977,
+    "longitude": -119.38567,
+    "population": 34800
+  },
+  {
+    "id": "6136944",
+    "name": "Saanich, British Columbia, Canada",
+    "search_name": "saanich, british columbia, canada saanich",
+    "latitude": 48.54964,
+    "longitude": -123.36931,
+    "population": 117735
+  },
+  {
+    "id": "6137146",
+    "name": "Saddle Ridge, Alberta, Canada",
+    "search_name": "saddle ridge, alberta, canada saddle ridge",
+    "latitude": 51.13262,
+    "longitude": -113.94676,
+    "population": 24365
+  },
+  {
+    "id": "6137270",
+    "name": "Saguenay, Quebec, Canada",
+    "search_name": "saguenay, quebec, canada saguenay",
+    "latitude": 48.41675,
+    "longitude": -71.06573,
+    "population": 148886
+  },
+  {
+    "id": "6137489",
+    "name": "Saint-Basile-le-Grand, Quebec, Canada",
+    "search_name": "saint-basile-le-grand, quebec, canada saint-basile-le-grand",
+    "latitude": 45.53338,
+    "longitude": -73.28246,
+    "population": 15605
+  },
+  {
+    "id": "6137540",
+    "name": "Saint-Bruno-de-Montarville, Quebec, Canada",
+    "search_name": "saint-bruno-de-montarville, quebec, canada saint-bruno-de-montarville",
+    "latitude": 45.53341,
+    "longitude": -73.34916,
+    "population": 24388
+  },
+  {
+    "id": "6137579",
+    "name": "Saint-Charles-Borromée, Quebec, Canada",
+    "search_name": "saint-charles-borromee, quebec, canada saint-charles-borromee",
+    "latitude": 46.05007,
+    "longitude": -73.46586,
+    "population": 15285
+  },
+  {
+    "id": "6137633",
+    "name": "Saint-Constant, Quebec, Canada",
+    "search_name": "saint-constant, quebec, canada saint-constant",
+    "latitude": 45.36678,
+    "longitude": -73.56588,
+    "population": 27359
+  },
+  {
+    "id": "6137780",
+    "name": "Sainte-Catherine, Quebec, Canada",
+    "search_name": "sainte-catherine, quebec, canada sainte-catherine",
+    "latitude": 45.40008,
+    "longitude": -73.58248,
+    "population": 16762
+  },
+  {
+    "id": "6137781",
+    "name": "Sainte-Catherine, Quebec, Canada",
+    "search_name": "sainte-catherine, quebec, canada sainte-catherine",
+    "latitude": 46.31836,
+    "longitude": -72.56632,
+    "population": 16211
+  },
+  {
+    "id": "6137941",
+    "name": "Sainte-Julie, Quebec, Canada",
+    "search_name": "sainte-julie, quebec, canada sainte-julie",
+    "latitude": 45.58338,
+    "longitude": -73.33246,
+    "population": 29019
+  },
+  {
+    "id": "6138121",
+    "name": "Sainte-Thérèse, Quebec, Canada",
+    "search_name": "sainte-therese, quebec, canada sainte-therese",
+    "latitude": 45.63922,
+    "longitude": -73.82757,
+    "population": 25224
+  },
+  {
+    "id": "6138175",
+    "name": "Saint-Eustache, Quebec, Canada",
+    "search_name": "saint-eustache, quebec, canada saint-eustache",
+    "latitude": 45.565,
+    "longitude": -73.90554,
+    "population": 42062
+  },
+  {
+    "id": "6138369",
+    "name": "Saint-Hubert, Quebec, Canada",
+    "search_name": "saint-hubert, quebec, canada saint-hubert",
+    "latitude": 45.50008,
+    "longitude": -73.41583,
+    "population": 82548
+  },
+  {
+    "id": "6138374",
+    "name": "Saint-Hyacinthe, Quebec, Canada",
+    "search_name": "saint-hyacinthe, quebec, canada saint-hyacinthe",
+    "latitude": 45.63076,
+    "longitude": -72.95699,
+    "population": 50326
+  },
+  {
+    "id": "6138495",
+    "name": "Saint-Jean-sur-Richelieu, Quebec, Canada",
+    "search_name": "saint-jean-sur-richelieu, quebec, canada saint-jean-sur-richelieu",
+    "latitude": 45.30713,
+    "longitude": -73.26259,
+    "population": 98036
+  },
+  {
+    "id": "6138501",
+    "name": "Saint-Jérôme, Quebec, Canada",
+    "search_name": "saint-jerome, quebec, canada saint-jerome",
+    "latitude": 45.78036,
+    "longitude": -74.00365,
+    "population": 54948
+  },
+  {
+    "id": "6138517",
+    "name": "Saint John, New Brunswick, Canada",
+    "search_name": "saint john, new brunswick, canada saint john",
+    "latitude": 45.27076,
+    "longitude": -66.05616,
+    "population": 71808
+  },
+  {
+    "id": "6138525",
+    "name": "Saint John West, New Brunswick, Canada",
+    "search_name": "saint john west, new brunswick, canada saint john west",
+    "latitude": 45.25937,
+    "longitude": -66.07776,
+    "population": 15255
+  },
+  {
+    "id": "6138610",
+    "name": "Saint-Laurent, Quebec, Canada",
+    "search_name": "saint-laurent, quebec, canada saint-laurent",
+    "latitude": 45.50008,
+    "longitude": -73.66585,
+    "population": 98828
+  },
+  {
+    "id": "6138617",
+    "name": "Saint-Lazare, Quebec, Canada",
+    "search_name": "saint-lazare, quebec, canada saint-lazare",
+    "latitude": 45.40008,
+    "longitude": -74.13256,
+    "population": 19889
+  },
+  {
+    "id": "6138625",
+    "name": "Saint-Léonard, Quebec, Canada",
+    "search_name": "saint-leonard, quebec, canada saint-leonard",
+    "latitude": 45.58773,
+    "longitude": -73.59501,
+    "population": 79495
+  },
+  {
+    "id": "6138643",
+    "name": "Saint-Lin-Laurentides, Quebec, Canada",
+    "search_name": "saint-lin-laurentides, quebec, canada saint-lin-laurentides",
+    "latitude": 45.85008,
+    "longitude": -73.76588,
+    "population": 17463
+  },
+  {
+    "id": "6138671",
+    "name": "Saint-Louis-de-Terrebonne, Quebec, Canada",
+    "search_name": "saint-louis-de-terrebonne, quebec, canada saint-louis-de-terrebonne",
+    "latitude": 45.70198,
+    "longitude": -73.78669,
+    "population": 119944
+  },
+  {
+    "id": "6138791",
+    "name": "Saint-Michel, Quebec, Canada",
+    "search_name": "saint-michel, quebec, canada saint-michel",
+    "latitude": 45.56758,
+    "longitude": -73.62168,
+    "population": 56420
+  },
+  {
+    "id": "6139184",
+    "name": "Saint-Vincent-de-Paul, Quebec, Canada",
+    "search_name": "saint-vincent-de-paul, quebec, canada saint-vincent-de-paul",
+    "latitude": 45.61678,
+    "longitude": -73.64918,
+    "population": 15194
+  },
+  {
+    "id": "6139289",
+    "name": "Salaberry-de-Valleyfield, Quebec, Canada",
+    "search_name": "salaberry-de-valleyfield, quebec, canada salaberry-de-valleyfield",
+    "latitude": 45.25008,
+    "longitude": -74.13253,
+    "population": 42787
+  },
+  {
+    "id": "6139417",
+    "name": "Salmon Arm, British Columbia, Canada",
+    "search_name": "salmon arm, british columbia, canada salmon arm",
+    "latitude": 50.69981,
+    "longitude": -119.26907,
+    "population": 19432
+  },
+  {
+    "id": "6141190",
+    "name": "Sarnia, Ontario, Canada",
+    "search_name": "sarnia, ontario, canada sarnia",
+    "latitude": 42.97866,
+    "longitude": -82.40407,
+    "population": 72125
+  },
+  {
+    "id": "6141256",
+    "name": "Saskatoon, Saskatchewan, Canada",
+    "search_name": "saskatoon, saskatchewan, canada saskatoon",
+    "latitude": 52.13238,
+    "longitude": -106.66892,
+    "population": 266141
+  },
+  {
+    "id": "6141439",
+    "name": "Sault Ste. Marie, Ontario, Canada",
+    "search_name": "sault ste. marie, ontario, canada sault ste. marie",
+    "latitude": 46.51677,
+    "longitude": -84.33325,
+    "population": 72051
+  },
+  {
+    "id": "6141900",
+    "name": "Scarborough Village, Ontario, Canada",
+    "search_name": "scarborough village, ontario, canada scarborough village",
+    "latitude": 43.73899,
+    "longitude": -79.22124,
+    "population": 16724
+  },
+  {
+    "id": "6142912",
+    "name": "Seafair, British Columbia, Canada",
+    "search_name": "seafair, british columbia, canada seafair",
+    "latitude": 49.15,
+    "longitude": -123.18333,
+    "population": 16070
+  },
+  {
+    "id": "6144312",
+    "name": "Sept-Îles, Quebec, Canada",
+    "search_name": "sept-iles, quebec, canada sept-iles",
+    "latitude": 50.20011,
+    "longitude": -66.38208,
+    "population": 28534
+  },
+  {
+    "id": "6145489",
+    "name": "Shawinigan, Quebec, Canada",
+    "search_name": "shawinigan, quebec, canada shawinigan",
+    "latitude": 46.56675,
+    "longitude": -72.74913,
+    "population": 38211
+  },
+  {
+    "id": "6146143",
+    "name": "Sherbrooke, Quebec, Canada",
+    "search_name": "sherbrooke, quebec, canada sherbrooke",
+    "latitude": 45.40008,
+    "longitude": -71.89908,
+    "population": 129447
+  },
+  {
+    "id": "6146279",
+    "name": "Sherwood Park, Alberta, Canada",
+    "search_name": "sherwood park, alberta, canada sherwood park",
+    "latitude": 53.51684,
+    "longitude": -113.3187,
+    "population": 70618
+  },
+  {
+    "id": "6151264",
+    "name": "Sooke, British Columbia, Canada",
+    "search_name": "sooke, british columbia, canada sooke",
+    "latitude": 48.37463,
+    "longitude": -123.72762,
+    "population": 15086
+  },
+  {
+    "id": "6151350",
+    "name": "Sorel-Tracy, Quebec, Canada",
+    "search_name": "sorel-tracy, quebec, canada sorel-tracy",
+    "latitude": 46.04178,
+    "longitude": -73.11358,
+    "population": 41629
+  },
+  {
+    "id": "6152674",
+    "name": "South Surrey, British Columbia, Canada",
+    "search_name": "south surrey, british columbia, canada south surrey",
+    "latitude": 49.05,
+    "longitude": -122.79167,
+    "population": 77170
+  },
+  {
+    "id": "6154383",
+    "name": "Spruce Grove, Alberta, Canada",
+    "search_name": "spruce grove, alberta, canada spruce grove",
+    "latitude": 53.53344,
+    "longitude": -113.91874,
+    "population": 38985
+  },
+  {
+    "id": "6154636",
+    "name": "Squamish, British Columbia, Canada",
+    "search_name": "squamish, british columbia, canada squamish",
+    "latitude": 49.69925,
+    "longitude": -123.15631,
+    "population": 23819
+  },
+  {
+    "id": "6155033",
+    "name": "St. Albert, Alberta, Canada",
+    "search_name": "st. albert, alberta, canada st. albert",
+    "latitude": 53.63344,
+    "longitude": -113.63533,
+    "population": 57719
+  },
+  {
+    "id": "6155721",
+    "name": "St. Catharines, Ontario, Canada",
+    "search_name": "st. catharines, ontario, canada st. catharines",
+    "latitude": 43.17126,
+    "longitude": -79.24267,
+    "population": 136803
+  },
+  {
+    "id": "6155938",
+    "name": "Steeles, Ontario, Canada",
+    "search_name": "steeles, ontario, canada steeles",
+    "latitude": 43.81205,
+    "longitude": -79.33082,
+    "population": 24623
+  },
+  {
+    "id": "6156102",
+    "name": "Steinbach, Manitoba, Canada",
+    "search_name": "steinbach, manitoba, canada steinbach",
+    "latitude": 49.52579,
+    "longitude": -96.68451,
+    "population": 15829
+  },
+  {
+    "id": "6156855",
+    "name": "Stittsville, Ontario, Canada",
+    "search_name": "stittsville, ontario, canada stittsville",
+    "latitude": 45.2501,
+    "longitude": -75.91606,
+    "population": 40889
+  },
+  {
+    "id": "6157390",
+    "name": "Stoney Creek, Ontario, Canada",
+    "search_name": "stoney creek, ontario, canada stoney creek",
+    "latitude": 43.21681,
+    "longitude": -79.76633,
+    "population": 76382
+  },
+  {
+    "id": "6157536",
+    "name": "Stony Plain, Alberta, Canada",
+    "search_name": "stony plain, alberta, canada stony plain",
+    "latitude": 53.53343,
+    "longitude": -114.00205,
+    "population": 17993
+  },
+  {
+    "id": "6157718",
+    "name": "Stouffville, Ontario, Canada",
+    "search_name": "stouffville, ontario, canada stouffville",
+    "latitude": 43.96682,
+    "longitude": -79.2496,
+    "population": 36753
+  },
+  {
+    "id": "6157977",
+    "name": "Stratford, Ontario, Canada",
+    "search_name": "stratford, ontario, canada stratford",
+    "latitude": 43.36679,
+    "longitude": -80.94972,
+    "population": 31465
+  },
+  {
+    "id": "6158027",
+    "name": "Strathroy, Ontario, Canada",
+    "search_name": "strathroy, ontario, canada strathroy",
+    "latitude": 42.9551,
+    "longitude": -81.62232,
+    "population": 23871
+  },
+  {
+    "id": "6158070",
+    "name": "Strawberry Hill, British Columbia, Canada",
+    "search_name": "strawberry hill, british columbia, canada strawberry hill",
+    "latitude": 49.13333,
+    "longitude": -122.88333,
+    "population": 41000
+  },
+  {
+    "id": "6158357",
+    "name": "St. Thomas, Ontario, Canada",
+    "search_name": "st. thomas, ontario, canada st. thomas",
+    "latitude": 42.77361,
+    "longitude": -81.18038,
+    "population": 38909
+  },
+  {
+    "id": "6159905",
+    "name": "Surrey, British Columbia, Canada",
+    "search_name": "surrey, british columbia, canada surrey",
+    "latitude": 49.10635,
+    "longitude": -122.82509,
+    "population": 568322
+  },
+  {
+    "id": "6160603",
+    "name": "Swift Current, Saskatchewan, Canada",
+    "search_name": "swift current, saskatchewan, canada swift current",
+    "latitude": 50.28337,
+    "longitude": -107.80135,
+    "population": 16604
+  },
+  {
+    "id": "6160806",
+    "name": "Sylvan Lake, Alberta, Canada",
+    "search_name": "sylvan lake, alberta, canada sylvan lake",
+    "latitude": 52.311,
+    "longitude": -114.08375,
+    "population": 17477
+  },
+  {
+    "id": "6161443",
+    "name": "Tam O'Shanter-Sullivan, Ontario, Canada",
+    "search_name": "tam o'shanter-sullivan, ontario, canada tam o'shanter-sullivan",
+    "latitude": 43.77977,
+    "longitude": -79.29502,
+    "population": 27446
+  },
+  {
+    "id": "6161637",
+    "name": "Taradale, Alberta, Canada",
+    "search_name": "taradale, alberta, canada taradale",
+    "latitude": 51.11829,
+    "longitude": -113.93681,
+    "population": 17630
+  },
+  {
+    "id": "6162416",
+    "name": "Tecumseh, Ontario, Canada",
+    "search_name": "tecumseh, ontario, canada tecumseh",
+    "latitude": 42.316,
+    "longitude": -82.884,
+    "population": 23229
+  },
+  {
+    "id": "6162703",
+    "name": "Templeton-Est, Quebec, Canada",
+    "search_name": "templeton-est, quebec, canada templeton-est",
+    "latitude": 45.49389,
+    "longitude": -75.58833,
+    "population": 20000
+  },
+  {
+    "id": "6162949",
+    "name": "Terrace, British Columbia, Canada",
+    "search_name": "terrace, british columbia, canada terrace",
+    "latitude": 54.51634,
+    "longitude": -128.60345,
+    "population": 19443
+  },
+  {
+    "id": "6163012",
+    "name": "Terrebonne, Quebec, Canada",
+    "search_name": "terrebonne, quebec, canada terrebonne",
+    "latitude": 45.70004,
+    "longitude": -73.64732,
+    "population": 111575
+  },
+  {
+    "id": "6163363",
+    "name": "The Beaches, Ontario, Canada",
+    "search_name": "the beaches, ontario, canada the beaches",
+    "latitude": 43.67372,
+    "longitude": -79.29539,
+    "population": 21567
+  },
+  {
+    "id": "6165683",
+    "name": "Thornhill, Ontario, Canada",
+    "search_name": "thornhill, ontario, canada thornhill",
+    "latitude": 43.815,
+    "longitude": -79.4242,
+    "population": 115292
+  },
+  {
+    "id": "6165719",
+    "name": "Thorold, Ontario, Canada",
+    "search_name": "thorold, ontario, canada thorold",
+    "latitude": 43.11682,
+    "longitude": -79.19958,
+    "population": 18801
+  },
+  {
+    "id": "6166142",
+    "name": "Thunder Bay, Ontario, Canada",
+    "search_name": "thunder bay, ontario, canada thunder bay",
+    "latitude": 48.38202,
+    "longitude": -89.25018,
+    "population": 108843
+  },
+  {
+    "id": "6166580",
+    "name": "Tillsonburg, Ontario, Canada",
+    "search_name": "tillsonburg, ontario, canada tillsonburg",
+    "latitude": 42.85986,
+    "longitude": -80.72617,
+    "population": 18615
+  },
+  {
+    "id": "6166739",
+    "name": "Timmins, Ontario, Canada",
+    "search_name": "timmins, ontario, canada timmins",
+    "latitude": 48.46686,
+    "longitude": -81.33312,
+    "population": 41788
+  },
+  {
+    "id": "6167865",
+    "name": "Toronto, Ontario, Canada",
+    "search_name": "toronto, ontario, canada toronto",
+    "latitude": 43.70643,
+    "longitude": -79.39864,
+    "population": 2794356
+  },
+  {
+    "id": "6169141",
+    "name": "Trois-Rivières, Quebec, Canada",
+    "search_name": "trois-rivieres, quebec, canada trois-rivieres",
+    "latitude": 46.34515,
+    "longitude": -72.5477,
+    "population": 144472
+  },
+  {
+    "id": "6169661",
+    "name": "Tsawwassen, British Columbia, Canada",
+    "search_name": "tsawwassen, british columbia, canada tsawwassen",
+    "latitude": 49.01667,
+    "longitude": -123.08333,
+    "population": 21588
+  },
+  {
+    "id": "6170682",
+    "name": "Tuscany, Alberta, Canada",
+    "search_name": "tuscany, alberta, canada tuscany",
+    "latitude": 51.12432,
+    "longitude": -114.24494,
+    "population": 19700
+  },
+  {
+    "id": "6172932",
+    "name": "Uxbridge, Ontario, Canada",
+    "search_name": "uxbridge, ontario, canada uxbridge",
+    "latitude": 44.10012,
+    "longitude": -79.11628,
+    "population": 21176
+  },
+  {
+    "id": "6173004",
+    "name": "Val-des-Arbres, Quebec, Canada",
+    "search_name": "val-des-arbres, quebec, canada val-des-arbres",
+    "latitude": 45.59837,
+    "longitude": -73.67542,
+    "population": 40974
+  },
+  {
+    "id": "6173017",
+    "name": "Val-d'Or, Quebec, Canada",
+    "search_name": "val-d'or, quebec, canada val-d'or",
+    "latitude": 48.0974,
+    "longitude": -77.79737,
+    "population": 25541
+  },
+  {
+    "id": "6173331",
+    "name": "Vancouver, British Columbia, Canada",
+    "search_name": "vancouver, british columbia, canada vancouver",
+    "latitude": 49.24966,
+    "longitude": -123.11934,
+    "population": 662248
+  },
+  {
+    "id": "6173404",
+    "name": "Vanier, Ontario, Canada",
+    "search_name": "vanier, ontario, canada vanier",
+    "latitude": 45.4399,
+    "longitude": -75.66498,
+    "population": 17000
+  },
+  {
+    "id": "6173508",
+    "name": "Varennes, Quebec, Canada",
+    "search_name": "varennes, quebec, canada varennes",
+    "latitude": 45.68338,
+    "longitude": -73.43246,
+    "population": 20994
+  },
+  {
+    "id": "6173570",
+    "name": "Vaudreuil-Dorion, Quebec, Canada",
+    "search_name": "vaudreuil-dorion, quebec, canada vaudreuil-dorion",
+    "latitude": 45.40008,
+    "longitude": -74.03251,
+    "population": 25789
+  },
+  {
+    "id": "6173577",
+    "name": "Vaughan, Ontario, Canada",
+    "search_name": "vaughan, ontario, canada vaughan",
+    "latitude": 43.8361,
+    "longitude": -79.49827,
+    "population": 323103
+  },
+  {
+    "id": "6173614",
+    "name": "Vedder Crossing, British Columbia, Canada",
+    "search_name": "vedder crossing, british columbia, canada vedder crossing",
+    "latitude": 49.1,
+    "longitude": -121.96667,
+    "population": 22620
+  },
+  {
+    "id": "6173767",
+    "name": "Verdun, Quebec, Canada",
+    "search_name": "verdun, quebec, canada verdun",
+    "latitude": 45.46005,
+    "longitude": -73.57058,
+    "population": 69229
+  },
+  {
+    "id": "6173864",
+    "name": "Vernon, British Columbia, Canada",
+    "search_name": "vernon, british columbia, canada vernon",
+    "latitude": 50.26729,
+    "longitude": -119.27337,
+    "population": 40116
+  },
+  {
+    "id": "6174041",
+    "name": "Victoria, British Columbia, Canada",
+    "search_name": "victoria, british columbia, canada victoria",
+    "latitude": 48.4359,
+    "longitude": -123.35155,
+    "population": 289625
+  },
+  {
+    "id": "6174068",
+    "name": "Victoria-Fraserview, British Columbia, Canada",
+    "search_name": "victoria-fraserview, british columbia, canada victoria-fraserview",
+    "latitude": 49.21667,
+    "longitude": -123.06667,
+    "population": 31065
+  },
+  {
+    "id": "6174151",
+    "name": "Victoriaville, Quebec, Canada",
+    "search_name": "victoriaville, quebec, canada victoriaville",
+    "latitude": 46.05007,
+    "longitude": -71.96579,
+    "population": 34426
+  },
+  {
+    "id": "6176421",
+    "name": "Wasaga Beach, Ontario, Canada",
+    "search_name": "wasaga beach, ontario, canada wasaga beach",
+    "latitude": 44.5168,
+    "longitude": -80.01637,
+    "population": 20675
+  },
+  {
+    "id": "6176722",
+    "name": "Waterdown, Ontario, Canada",
+    "search_name": "waterdown, ontario, canada waterdown",
+    "latitude": 43.33341,
+    "longitude": -79.88293,
+    "population": 24400
+  },
+  {
+    "id": "6176823",
+    "name": "Waterloo, Ontario, Canada",
+    "search_name": "waterloo, ontario, canada waterloo",
+    "latitude": 43.4668,
+    "longitude": -80.51639,
+    "population": 104986
+  },
+  {
+    "id": "6177869",
+    "name": "Welland, Ontario, Canada",
+    "search_name": "welland, ontario, canada welland",
+    "latitude": 42.98342,
+    "longitude": -79.24958,
+    "population": 52293
+  },
+  {
+    "id": "6178582",
+    "name": "West End, British Columbia, Canada",
+    "search_name": "west end, british columbia, canada west end",
+    "latitude": 49.28333,
+    "longitude": -123.13333,
+    "population": 47200
+  },
+  {
+    "id": "6178999",
+    "name": "West Hill, Ontario, Canada",
+    "search_name": "west hill, ontario, canada west hill",
+    "latitude": 43.76737,
+    "longitude": -79.1795,
+    "population": 27392
+  },
+  {
+    "id": "6179226",
+    "name": "Westmount, Quebec, Canada",
+    "search_name": "westmount, quebec, canada westmount",
+    "latitude": 45.48341,
+    "longitude": -73.59918,
+    "population": 20494
+  },
+  {
+    "id": "6179268",
+    "name": "Weston, Ontario, Canada",
+    "search_name": "weston, ontario, canada weston",
+    "latitude": 43.70359,
+    "longitude": -79.51513,
+    "population": 17992
+  },
+  {
+    "id": "6179830",
+    "name": "Whalley, British Columbia, Canada",
+    "search_name": "whalley, british columbia, canada whalley",
+    "latitude": 49.17917,
+    "longitude": -122.86667,
+    "population": 102555
+  },
+  {
+    "id": "6180170",
+    "name": "Whitby, Ontario, Canada",
+    "search_name": "whitby, ontario, canada whitby",
+    "latitude": 43.88342,
+    "longitude": -78.93287,
+    "population": 138501
+  },
+  {
+    "id": "6180176",
+    "name": "Whitchurch-Stouffville, Ontario, Canada",
+    "search_name": "whitchurch-stouffville, ontario, canada whitchurch-stouffville",
+    "latitude": 44.00012,
+    "longitude": -79.3163,
+    "population": 49864
+  },
+  {
+    "id": "6180550",
+    "name": "Whitehorse, Yukon, Canada",
+    "search_name": "whitehorse, yukon, canada whitehorse",
+    "latitude": 60.71611,
+    "longitude": -135.05375,
+    "population": 28201
+  },
+  {
+    "id": "6180961",
+    "name": "White Rock, British Columbia, Canada",
+    "search_name": "white rock, british columbia, canada white rock",
+    "latitude": 49.02049,
+    "longitude": -122.79507,
+    "population": 23670
+  },
+  {
+    "id": "6182962",
+    "name": "Windsor, Ontario, Canada",
+    "search_name": "windsor, ontario, canada windsor",
+    "latitude": 42.30008,
+    "longitude": -83.01654,
+    "population": 229660
+  },
+  {
+    "id": "6183235",
+    "name": "Winnipeg, Manitoba, Canada",
+    "search_name": "winnipeg, manitoba, canada winnipeg",
+    "latitude": 49.8844,
+    "longitude": -97.14704,
+    "population": 749607
+  },
+  {
+    "id": "6183590",
+    "name": "Woburn, Ontario, Canada",
+    "search_name": "woburn, ontario, canada woburn",
+    "latitude": 43.76657,
+    "longitude": -79.22773,
+    "population": 53485
+  },
+  {
+    "id": "6184206",
+    "name": "Woodlawn, Nova Scotia, Canada",
+    "search_name": "woodlawn, nova scotia, canada woodlawn",
+    "latitude": 44.67747,
+    "longitude": -63.52733,
+    "population": 20000
+  },
+  {
+    "id": "6184365",
+    "name": "Woodstock, Ontario, Canada",
+    "search_name": "woodstock, ontario, canada woodstock",
+    "latitude": 43.13339,
+    "longitude": -80.7497,
+    "population": 40404
+  },
+  {
+    "id": "6185377",
+    "name": "Yellowknife, Northwest Territories, Canada",
+    "search_name": "yellowknife, northwest territories, canada yellowknife",
+    "latitude": 62.45411,
+    "longitude": -114.37248,
+    "population": 20340
+  },
+  {
+    "id": "6185607",
+    "name": "Yorkton, Saskatchewan, Canada",
+    "search_name": "yorkton, saskatchewan, canada yorkton",
+    "latitude": 51.2167,
+    "longitude": -102.46766,
+    "population": 16343
+  },
+  {
+    "id": "6324729",
+    "name": "Halifax, Nova Scotia, Canada",
+    "search_name": "halifax, nova scotia, canada halifax",
+    "latitude": 44.64269,
+    "longitude": -63.57688,
+    "population": 471559
+  },
+  {
+    "id": "6324733",
+    "name": "St. John's, Newfoundland and Labrador, Canada",
+    "search_name": "st. john's, newfoundland and labrador, canada st. john's",
+    "latitude": 47.56494,
+    "longitude": -52.70931,
+    "population": 110525
+  },
+  {
+    "id": "6325478",
+    "name": "Beauport, Quebec, Canada",
+    "search_name": "beauport, quebec, canada beauport",
+    "latitude": 46.85884,
+    "longitude": -71.19201,
+    "population": 81425
+  },
+  {
+    "id": "6325485",
+    "name": "Charlesbourg, Quebec, Canada",
+    "search_name": "charlesbourg, quebec, canada charlesbourg",
+    "latitude": 46.899,
+    "longitude": -71.305,
+    "population": 82870
+  },
+  {
+    "id": "6325488",
+    "name": "Sainte-Foy, Quebec, Canada",
+    "search_name": "sainte-foy, quebec, canada sainte-foy",
+    "latitude": 46.78139,
+    "longitude": -71.29217,
+    "population": 111300
+  },
+  {
+    "id": "6325494",
+    "name": "Québec, Quebec, Canada",
+    "search_name": "quebec, quebec, canada quebec",
+    "latitude": 46.81228,
+    "longitude": -71.21454,
+    "population": 531902
+  },
+  {
+    "id": "6325521",
+    "name": "Lévis, Quebec, Canada",
+    "search_name": "levis, quebec, canada levis",
+    "latitude": 46.80326,
+    "longitude": -71.17793,
+    "population": 143414
+  },
+  {
+    "id": "6354895",
+    "name": "Rimouski, Quebec, Canada",
+    "search_name": "rimouski, quebec, canada rimouski",
+    "latitude": 48.44879,
+    "longitude": -68.52396,
+    "population": 42240
+  },
+  {
+    "id": "6354897",
+    "name": "Rivière-du-Loup, Quebec, Canada",
+    "search_name": "riviere-du-loup, quebec, canada riviere-du-loup",
+    "latitude": 47.82699,
+    "longitude": -69.54243,
+    "population": 18586
+  },
+  {
+    "id": "6354908",
+    "name": "Sydney, Nova Scotia, Canada",
+    "search_name": "sydney, nova scotia, canada sydney",
+    "latitude": 46.1351,
+    "longitude": -60.1831,
+    "population": 105968
+  },
+  {
+    "id": "6354934",
+    "name": "Aylmer, Quebec, Canada",
+    "search_name": "aylmer, quebec, canada aylmer",
+    "latitude": 45.4002,
+    "longitude": -75.80644,
+    "population": 56542
+  },
+  {
+    "id": "6534203",
+    "name": "L'Ancienne-Lorette, Quebec, Canada",
+    "search_name": "l'ancienne-lorette, quebec, canada l'ancienne-lorette",
+    "latitude": 46.79392,
+    "longitude": -71.35191,
+    "population": 16516
+  },
+  {
+    "id": "6545023",
+    "name": "Edmundston, New Brunswick, Canada",
+    "search_name": "edmundston, new brunswick, canada edmundston",
+    "latitude": 47.3737,
+    "longitude": -68.32512,
+    "population": 16580
+  },
+  {
+    "id": "6620953",
+    "name": "Saint-Georges, Quebec, Canada",
+    "search_name": "saint-georges, quebec, canada saint-georges",
+    "latitude": 46.11353,
+    "longitude": -70.66526,
+    "population": 31173
+  },
+  {
+    "id": "6621036",
+    "name": "La Baie, Quebec, Canada",
+    "search_name": "la baie, quebec, canada la baie",
+    "latitude": 48.33982,
+    "longitude": -70.88928,
+    "population": 18036
+  },
+  {
+    "id": "6942644",
+    "name": "Hull, Quebec, Canada",
+    "search_name": "hull, quebec, canada hull",
+    "latitude": 45.42761,
+    "longitude": -75.71056,
+    "population": 63702
+  },
+  {
+    "id": "6942645",
+    "name": "Buckingham, Quebec, Canada",
+    "search_name": "buckingham, quebec, canada buckingham",
+    "latitude": 45.58563,
+    "longitude": -75.4208,
+    "population": 16685
+  },
+  {
+    "id": "6943827",
+    "name": "Thetford-Mines, Quebec, Canada",
+    "search_name": "thetford-mines, quebec, canada thetford-mines",
+    "latitude": 46.09371,
+    "longitude": -71.30539,
+    "population": 25704
+  },
+  {
+    "id": "7280414",
+    "name": "Cole Harbour, Nova Scotia, Canada",
+    "search_name": "cole harbour, nova scotia, canada cole harbour",
+    "latitude": 44.67244,
+    "longitude": -63.47506,
+    "population": 19096
+  },
+  {
+    "id": "7281936",
+    "name": "West Kelowna, British Columbia, Canada",
+    "search_name": "west kelowna, british columbia, canada west kelowna",
+    "latitude": 49.8625,
+    "longitude": -119.58333,
+    "population": 28793
+  },
+  {
+    "id": "7303786",
+    "name": "Jonquière, Quebec, Canada",
+    "search_name": "jonquiere, quebec, canada jonquiere",
+    "latitude": 48.41648,
+    "longitude": -71.24884,
+    "population": 54842
+  },
+  {
+    "id": "7535681",
+    "name": "Saint-Augustin-de-Desmaures, Quebec, Canada",
+    "search_name": "saint-augustin-de-desmaures, quebec, canada saint-augustin-de-desmaures",
+    "latitude": 46.74064,
+    "longitude": -71.45131,
+    "population": 17281
+  },
+  {
+    "id": "7602078",
+    "name": "Ladner, British Columbia, Canada",
+    "search_name": "ladner, british columbia, canada ladner",
+    "latitude": 49.08938,
+    "longitude": -123.08241,
+    "population": 23016
+  },
+  {
+    "id": "7602285",
+    "name": "Steveston, British Columbia, Canada",
+    "search_name": "steveston, british columbia, canada steveston",
+    "latitude": 49.12714,
+    "longitude": -123.18137,
+    "population": 25220
+  },
+  {
+    "id": "7669012",
+    "name": "Walnut Grove, British Columbia, Canada",
+    "search_name": "walnut grove, british columbia, canada walnut grove",
+    "latitude": 49.16473,
+    "longitude": -122.64042,
+    "population": 25683
+  },
+  {
+    "id": "7669020",
+    "name": "Willoughby, British Columbia, Canada",
+    "search_name": "willoughby, british columbia, canada willoughby",
+    "latitude": 49.12624,
+    "longitude": -122.67995,
+    "population": 31305
+  },
+  {
+    "id": "7839094",
+    "name": "Evanston, Alberta, Canada",
+    "search_name": "evanston, alberta, canada evanston",
+    "latitude": 51.16398,
+    "longitude": -114.12297,
+    "population": 18710
+  },
+  {
+    "id": "7870782",
+    "name": "Moss Park, Ontario, Canada",
+    "search_name": "moss park, ontario, canada moss park",
+    "latitude": 43.65498,
+    "longitude": -79.37153,
+    "population": 20506
+  },
+  {
+    "id": "7870882",
+    "name": "High Park North, Ontario, Canada",
+    "search_name": "high park north, ontario, canada high park north",
+    "latitude": 43.65626,
+    "longitude": -79.47454,
+    "population": 22162
+  },
+  {
+    "id": "7870883",
+    "name": "Cranston, Alberta, Canada",
+    "search_name": "cranston, alberta, canada cranston",
+    "latitude": 50.88852,
+    "longitude": -113.98144,
+    "population": 20850
+  },
+  {
+    "id": "7870884",
+    "name": "Auburn Bay, Alberta, Canada",
+    "search_name": "auburn bay, alberta, canada auburn bay",
+    "latitude": 50.88787,
+    "longitude": -113.95929,
+    "population": 18090
+  },
+  {
+    "id": "7870890",
+    "name": "Beltline, Alberta, Canada",
+    "search_name": "beltline, alberta, canada beltline",
+    "latitude": 51.03951,
+    "longitude": -114.07087,
+    "population": 25880
+  },
+  {
+    "id": "7870917",
+    "name": "Little Portugal, Ontario, Canada",
+    "search_name": "little portugal, ontario, canada little portugal",
+    "latitude": 43.64663,
+    "longitude": -79.42956,
+    "population": 15559
+  },
+  {
+    "id": "7870919",
+    "name": "Niagara, Ontario, Canada",
+    "search_name": "niagara, ontario, canada niagara",
+    "latitude": 43.64455,
+    "longitude": -79.40712,
+    "population": 31180
+  },
+  {
+    "id": "7870920",
+    "name": "Trinity-Bellwoods, Ontario, Canada",
+    "search_name": "trinity-bellwoods, ontario, canada trinity-bellwoods",
+    "latitude": 43.64791,
+    "longitude": -79.40849,
+    "population": 16556
+  },
+  {
+    "id": "7871306",
+    "name": "Morningside, Ontario, Canada",
+    "search_name": "morningside, ontario, canada morningside",
+    "latitude": 43.78727,
+    "longitude": -79.20636,
+    "population": 17455
+  },
+  {
+    "id": "7871311",
+    "name": "Eglinton East, Ontario, Canada",
+    "search_name": "eglinton east, ontario, canada eglinton east",
+    "latitude": 43.73917,
+    "longitude": -79.24576,
+    "population": 22776
+  },
+  {
+    "id": "7871317",
+    "name": "Pleasant View, Ontario, Canada",
+    "search_name": "pleasant view, ontario, canada pleasant view",
+    "latitude": 43.78609,
+    "longitude": -79.33502,
+    "population": 15818
+  },
+  {
+    "id": "7871320",
+    "name": "Fergus, Ontario, Canada",
+    "search_name": "fergus, ontario, canada fergus",
+    "latitude": 43.70604,
+    "longitude": -80.37761,
+    "population": 20767
+  },
+  {
+    "id": "8285452",
+    "name": "Ancaster, Ontario, Canada",
+    "search_name": "ancaster, ontario, canada ancaster",
+    "latitude": 43.21806,
+    "longitude": -79.98716,
+    "population": 40557
+  },
+  {
+    "id": "8533869",
+    "name": "West Vancouver, British Columbia, Canada",
+    "search_name": "west vancouver, british columbia, canada west vancouver",
+    "latitude": 49.3286,
+    "longitude": -123.16019,
+    "population": 45487
+  },
+  {
+    "id": "8556295",
+    "name": "Orléans, Ontario, Canada",
+    "search_name": "orleans, ontario, canada orleans",
+    "latitude": 45.45732,
+    "longitude": -75.50433,
+    "population": 125937
+  },
+  {
+    "id": "8558534",
+    "name": "Willowdale, Ontario, Canada",
+    "search_name": "willowdale, ontario, canada willowdale",
+    "latitude": 43.76672,
+    "longitude": -79.39909,
+    "population": 79440
+  },
+  {
+    "id": "10287505",
+    "name": "Lower Sackville, Nova Scotia, Canada",
+    "search_name": "lower sackville, nova scotia, canada lower sackville",
+    "latitude": 44.77599,
+    "longitude": -63.67865,
+    "population": 51749
+  },
+  {
+    "id": "11838435",
+    "name": "La Haute-Saint-Charles, Quebec, Canada",
+    "search_name": "la haute-saint-charles, quebec, canada la haute-saint-charles",
+    "latitude": 46.89028,
+    "longitude": -71.37222,
+    "population": 88460
+  },
+  {
+    "id": "11838437",
+    "name": "Neufchâtel-Est–Lebourgneuf, Quebec, Canada",
+    "search_name": "neufchatel-est–lebourgneuf, quebec, canada neufchatel-est-lebourgneuf",
+    "latitude": 46.85436,
+    "longitude": -71.34191,
+    "population": 37540
+  },
+  {
+    "id": "12022702",
+    "name": "Downtown Vancouver, British Columbia, Canada",
+    "search_name": "downtown vancouver, british columbia, canada downtown vancouver",
+    "latitude": 49.28277,
+    "longitude": -123.11935,
+    "population": 62030
+  },
+  {
+    "id": "12032531",
+    "name": "Chinatown, British Columbia, Canada",
+    "search_name": "chinatown, british columbia, canada chinatown",
+    "latitude": 49.27997,
+    "longitude": -123.10556,
+    "population": 24000
+  },
+  {
+    "id": "12070742",
+    "name": "Fallingbrook, Ontario, Canada",
+    "search_name": "fallingbrook, ontario, canada fallingbrook",
+    "latitude": 45.47558,
+    "longitude": -75.48401,
+    "population": 25000
+  },
+  {
+    "id": "12070755",
+    "name": "Lake Country, British Columbia, Canada",
+    "search_name": "lake country, british columbia, canada lake country",
+    "latitude": 50.0088,
+    "longitude": -119.39672,
+    "population": 15817
+  },
+  {
+    "id": "12070764",
+    "name": "Valley East, Ontario, Canada",
+    "search_name": "valley east, ontario, canada valley east",
+    "latitude": 46.64499,
+    "longitude": -80.9973,
+    "population": 17451
+  },
+  {
+    "id": "12076998",
+    "name": "Downtown Halifax, Nova Scotia, Canada",
+    "search_name": "downtown halifax, nova scotia, canada downtown halifax",
+    "latitude": 44.64826,
+    "longitude": -63.57762,
+    "population": 25555
+  },
+  {
+    "id": "12156817",
+    "name": "York University Heights, Ontario, Canada",
+    "search_name": "york university heights, ontario, canada york university heights",
+    "latitude": 43.76574,
+    "longitude": -79.48888,
+    "population": 27593
+  },
+  {
+    "id": "12156818",
+    "name": "Parkwoods-Donalda, Ontario, Canada",
+    "search_name": "parkwoods-donalda, ontario, canada parkwoods-donalda",
+    "latitude": 43.75503,
+    "longitude": -79.33018,
+    "population": 34805
+  },
+  {
+    "id": "12156819",
+    "name": "South Parkdale, Ontario, Canada",
+    "search_name": "south parkdale, ontario, canada south parkdale",
+    "latitude": 43.6367,
+    "longitude": -79.43934,
+    "population": 21849
+  },
+  {
+    "id": "12156820",
+    "name": "South Riverdale, Ontario, Canada",
+    "search_name": "south riverdale, ontario, canada south riverdale",
+    "latitude": 43.64929,
+    "longitude": -79.33565,
+    "population": 27876
+  },
+  {
+    "id": "12156821",
+    "name": "North St.James Town, Ontario, Canada",
+    "search_name": "north st.james town, ontario, canada north st.james town",
+    "latitude": 43.66962,
+    "longitude": -79.37525,
+    "population": 18615
+  },
+  {
+    "id": "12156822",
+    "name": "Waterfront Communities-The Island, Ontario, Canada",
+    "search_name": "waterfront communities-the island, ontario, canada waterfront communities-the island",
+    "latitude": 43.63388,
+    "longitude": -79.3772,
+    "population": 65913
+  },
+  {
+    "id": "12156823",
+    "name": "West Humber-Clairville, Ontario, Canada",
+    "search_name": "west humber-clairville, ontario, canada west humber-clairville",
+    "latitude": 43.71619,
+    "longitude": -79.59636,
+    "population": 33312
+  },
+  {
+    "id": "12156824",
+    "name": "Banbury-Don Mills, Ontario, Canada",
+    "search_name": "banbury-don mills, ontario, canada banbury-don mills",
+    "latitude": 43.73766,
+    "longitude": -79.34972,
+    "population": 27695
+  },
+  {
+    "id": "12156825",
+    "name": "Birchcliffe-Cliffside, Ontario, Canada",
+    "search_name": "birchcliffe-cliffside, ontario, canada birchcliffe-cliffside",
+    "latitude": 43.69468,
+    "longitude": -79.26509,
+    "population": 22291
+  },
+  {
+    "id": "12156826",
+    "name": "Islington-City Centre West, Ontario, Canada",
+    "search_name": "islington-city centre west, ontario, canada islington-city centre west",
+    "latitude": 43.63347,
+    "longitude": -79.54332,
+    "population": 43965
+  },
+  {
+    "id": "12156828",
+    "name": "Mount Pleasant West, Ontario, Canada",
+    "search_name": "mount pleasant west, ontario, canada mount pleasant west",
+    "latitude": 43.70444,
+    "longitude": -79.39336,
+    "population": 29658
+  },
+  {
+    "id": "12156835",
+    "name": "Eringate-Centennial-West Deane, Ontario, Canada",
+    "search_name": "eringate-centennial-west deane, ontario, canada eringate-centennial-west deane",
+    "latitude": 43.65802,
+    "longitude": -79.58044,
+    "population": 18588
+  },
+  {
+    "id": "12156838",
+    "name": "Dovercourt-Wallace Emerson-Junction, Ontario, Canada",
+    "search_name": "dovercourt-wallace emerson-junction, ontario, canada dovercourt-wallace emerson-junction",
+    "latitude": 43.66568,
+    "longitude": -79.43854,
+    "population": 36625
+  },
+  {
+    "id": "12156839",
+    "name": "Edenbridge-Humber Valley, Ontario, Canada",
+    "search_name": "edenbridge-humber valley, ontario, canada edenbridge-humber valley",
+    "latitude": 43.67089,
+    "longitude": -79.52246,
+    "population": 15535
+  },
+  {
+    "id": "12156840",
+    "name": "Newtonbrook East, Ontario, Canada",
+    "search_name": "newtonbrook east, ontario, canada newtonbrook east",
+    "latitude": 43.79154,
+    "longitude": -79.40594,
+    "population": 16097
+  },
+  {
+    "id": "12156842",
+    "name": "Newtonbrook West, Ontario, Canada",
+    "search_name": "newtonbrook west, ontario, canada newtonbrook west",
+    "latitude": 43.78583,
+    "longitude": -79.43142,
+    "population": 23831
+  },
+  {
+    "id": "12156843",
+    "name": "L'Amoreaux, Ontario, Canada",
+    "search_name": "l'amoreaux, ontario, canada l'amoreaux",
+    "latitude": 43.79572,
+    "longitude": -79.31408,
+    "population": 43993
+  },
+  {
+    "id": "12156845",
+    "name": "Taylor-Massey, Ontario, Canada",
+    "search_name": "taylor-massey, ontario, canada taylor-massey",
+    "latitude": 43.695,
+    "longitude": -79.2959,
+    "population": 15683
+  },
+  {
+    "id": "12156849",
+    "name": "Lansing-Westgate, Ontario, Canada",
+    "search_name": "lansing-westgate, ontario, canada lansing-westgate",
+    "latitude": 43.75427,
+    "longitude": -79.42475,
+    "population": 16164
+  },
+  {
+    "id": "12156850",
+    "name": "Lawrence Park South, Ontario, Canada",
+    "search_name": "lawrence park south, ontario, canada lawrence park south",
+    "latitude": 43.71721,
+    "longitude": -79.40604,
+    "population": 15179
+  },
+  {
+    "id": "12156851",
+    "name": "Leaside-Bennington, Ontario, Canada",
+    "search_name": "leaside-bennington, ontario, canada leaside-bennington",
+    "latitude": 43.7038,
+    "longitude": -79.36607,
+    "population": 16828
+  },
+  {
+    "id": "12156853",
+    "name": "Mount Olive-Silverstone-Jamestown, Ontario, Canada",
+    "search_name": "mount olive-silverstone-jamestown, ontario, canada mount olive-silverstone-jamestown",
+    "latitude": 43.74687,
+    "longitude": -79.58726,
+    "population": 32954
+  },
+  {
+    "id": "12156854",
+    "name": "Mount Pleasant East, Ontario, Canada",
+    "search_name": "mount pleasant east, ontario, canada mount pleasant east",
+    "latitude": 43.70485,
+    "longitude": -79.38492,
+    "population": 16775
+  },
+  {
+    "id": "12156857",
+    "name": "Willowdale West, Ontario, Canada",
+    "search_name": "willowdale west, ontario, canada willowdale west",
+    "latitude": 43.77121,
+    "longitude": -79.42756,
+    "population": 16936
+  },
+  {
+    "id": "12156858",
+    "name": "Black Creek, Ontario, Canada",
+    "search_name": "black creek, ontario, canada black creek",
+    "latitude": 43.76489,
+    "longitude": -79.52198,
+    "population": 21737
+  },
+  {
+    "id": "12156859",
+    "name": "Rockcliffe-Smythe, Ontario, Canada",
+    "search_name": "rockcliffe-smythe, ontario, canada rockcliffe-smythe",
+    "latitude": 43.67479,
+    "longitude": -79.49442,
+    "population": 22246
+  },
+  {
+    "id": "12156862",
+    "name": "Rosedale-Moore Park, Ontario, Canada",
+    "search_name": "rosedale-moore park, ontario, canada rosedale-moore park",
+    "latitude": 43.68282,
+    "longitude": -79.37967,
+    "population": 20923
+  },
+  {
+    "id": "12156865",
+    "name": "Stonegate-Queensway, Ontario, Canada",
+    "search_name": "stonegate-queensway, ontario, canada stonegate-queensway",
+    "latitude": 43.63552,
+    "longitude": -79.50113,
+    "population": 25051
+  },
+  {
+    "id": "12156867",
+    "name": "Danforth East York, Ontario, Canada",
+    "search_name": "danforth east york, ontario, canada danforth east york",
+    "latitude": 43.68947,
+    "longitude": -79.3314,
+    "population": 17180
+  },
+  {
+    "id": "12156868",
+    "name": "St. Andrew-Windfields, Ontario, Canada",
+    "search_name": "st. andrew-windfields, ontario, canada st. andrew-windfields",
+    "latitude": 43.75625,
+    "longitude": -79.37904,
+    "population": 17812
+  },
+  {
+    "id": "12156871",
+    "name": "Annex, Ontario, Canada",
+    "search_name": "annex, ontario, canada annex",
+    "latitude": 43.67159,
+    "longitude": -79.404,
+    "population": 30526
+  },
+  {
+    "id": "12156872",
+    "name": "Thorncliffe Park, Ontario, Canada",
+    "search_name": "thorncliffe park, ontario, canada thorncliffe park",
+    "latitude": 43.70775,
+    "longitude": -79.34998,
+    "population": 21108
+  },
+  {
+    "id": "12156873",
+    "name": "Victoria Village, Ontario, Canada",
+    "search_name": "victoria village, ontario, canada victoria village",
+    "latitude": 43.72849,
+    "longitude": -79.31487,
+    "population": 17510
+  },
+  {
+    "id": "12156875",
+    "name": "Wexford/Maryvale, Ontario, Canada",
+    "search_name": "wexford/maryvale, ontario, canada wexford/maryvale",
+    "latitude": 43.74857,
+    "longitude": -79.29864,
+    "population": 27917
+  },
+  {
+    "id": "12156877",
+    "name": "Westminster-Branson, Ontario, Canada",
+    "search_name": "westminster-branson, ontario, canada westminster-branson",
+    "latitude": 43.77881,
+    "longitude": -79.45242,
+    "population": 26274
+  },
+  {
+    "id": "12156878",
+    "name": "Willowdale East, Ontario, Canada",
+    "search_name": "willowdale east, ontario, canada willowdale east",
+    "latitude": 43.7706,
+    "longitude": -79.40148,
+    "population": 50434
+  },
+  {
+    "id": "12156881",
+    "name": "Willowridge-Martingrove-Richview, Ontario, Canada",
+    "search_name": "willowridge-martingrove-richview, ontario, canada willowridge-martingrove-richview",
+    "latitude": 43.68364,
+    "longitude": -79.55422,
+    "population": 22156
+  },
+  {
+    "id": "12156882",
+    "name": "Church-Yonge Corridor, Ontario, Canada",
+    "search_name": "church-yonge corridor, ontario, canada church-yonge corridor",
+    "latitude": 43.65965,
+    "longitude": -79.37902,
+    "population": 31340
+  },
+  {
+    "id": "12156883",
+    "name": "Brookhaven-Amesbury, Ontario, Canada",
+    "search_name": "brookhaven-amesbury, ontario, canada brookhaven-amesbury",
+    "latitude": 43.70133,
+    "longitude": -79.48559,
+    "population": 17757
+  },
+  {
+    "id": "12156884",
+    "name": "O'Connor-Parkview, Ontario, Canada",
+    "search_name": "o'connor-parkview, ontario, canada o'connor-parkview",
+    "latitude": 43.7068,
+    "longitude": -79.31223,
+    "population": 18675
+  },
+  {
+    "id": "12156886",
+    "name": "Kensington-Chinatown, Ontario, Canada",
+    "search_name": "kensington-chinatown, ontario, canada kensington-chinatown",
+    "latitude": 43.65355,
+    "longitude": -79.39724,
+    "population": 17945
+  },
+  {
+    "id": "12156887",
+    "name": "Bay Street Corridor, Ontario, Canada",
+    "search_name": "bay street corridor, ontario, canada bay street corridor",
+    "latitude": 43.65751,
+    "longitude": -79.38572,
+    "population": 25797
+  },
+  {
+    "id": "12156888",
+    "name": "Agincourt South-Malvern West, Ontario, Canada",
+    "search_name": "agincourt south-malvern west, ontario, canada agincourt south-malvern west",
+    "latitude": 43.78866,
+    "longitude": -79.26561,
+    "population": 23757
+  },
+  {
+    "id": "12156890",
+    "name": "East End-Danforth, Ontario, Canada",
+    "search_name": "east end-danforth, ontario, canada east end-danforth",
+    "latitude": 43.68417,
+    "longitude": -79.29936,
+    "population": 21381
+  },
+  {
+    "id": "12156893",
+    "name": "Englemount-Lawrence, Ontario, Canada",
+    "search_name": "englemount-lawrence, ontario, canada englemount-lawrence",
+    "latitude": 43.72035,
+    "longitude": -79.43741,
+    "population": 22372
+  },
+  {
+    "id": "12156896",
+    "name": "Bedford Park-Nortown, Ontario, Canada",
+    "search_name": "bedford park-nortown, ontario, canada bedford park-nortown",
+    "latitude": 43.73149,
+    "longitude": -79.42023,
+    "population": 23236
+  },
+  {
+    "id": "12156897",
+    "name": "Bathurst Manor, Ontario, Canada",
+    "search_name": "bathurst manor, ontario, canada bathurst manor",
+    "latitude": 43.76481,
+    "longitude": -79.45606,
+    "population": 15873
+  },
+  {
+    "id": "12156898",
+    "name": "Clanton Park, Ontario, Canada",
+    "search_name": "clanton park, ontario, canada clanton park",
+    "latitude": 43.74198,
+    "longitude": -79.4463,
+    "population": 16472
+  },
+  {
+    "id": "12156899",
+    "name": "Clairlea-Birchmount, Ontario, Canada",
+    "search_name": "clairlea-birchmount, ontario, canada clairlea-birchmount",
+    "latitude": 43.71359,
+    "longitude": -79.28138,
+    "population": 26984
+  },
+  {
+    "id": "12156901",
+    "name": "Don Valley Village, Ontario, Canada",
+    "search_name": "don valley village, ontario, canada don valley village",
+    "latitude": 43.78329,
+    "longitude": -79.35364,
+    "population": 27051
+  },
+  {
+    "id": "12156903",
+    "name": "Downsview-Roding-CFB, Ontario, Canada",
+    "search_name": "downsview-roding-cfb, ontario, canada downsview-roding-cfb",
+    "latitude": 43.73329,
+    "longitude": -79.49049,
+    "population": 35052
+  },
+  {
+    "id": "12156904",
+    "name": "Glenfield-Jane Heights, Ontario, Canada",
+    "search_name": "glenfield-jane heights, ontario, canada glenfield-jane heights",
+    "latitude": 43.74564,
+    "longitude": -79.51347,
+    "population": 30491
+  },
+  {
+    "id": "12156905",
+    "name": "High Park-Swansea, Ontario, Canada",
+    "search_name": "high park-swansea, ontario, canada high park-swansea",
+    "latitude": 43.64506,
+    "longitude": -79.46787,
+    "population": 23925
+  },
+  {
+    "id": "12156906",
+    "name": "Kingsview Village-The Westway, Ontario, Canada",
+    "search_name": "kingsview village-the westway, ontario, canada kingsview village-the westway",
+    "latitude": 43.69899,
+    "longitude": -79.54786,
+    "population": 22000
+  },
+  {
+    "id": "12626120",
+    "name": "L'Île-Bizard–Sainte-Geneviève, Quebec, Canada",
+    "search_name": "l'ile-bizard–sainte-genevieve, quebec, canada l'ile-bizard-sainte-genevieve",
+    "latitude": 45.49391,
+    "longitude": -73.8956,
+    "population": 19857
+  },
+  {
+    "id": "12626134",
+    "name": "Ville-Émard, Quebec, Canada",
+    "search_name": "ville-emard, quebec, canada ville-emard",
+    "latitude": 45.44979,
+    "longitude": -73.6015,
+    "population": 30440
+  },
+  {
+    "id": "12626140",
+    "name": "Snowdon, Quebec, Canada",
+    "search_name": "snowdon, quebec, canada snowdon",
+    "latitude": 45.4859,
+    "longitude": -73.63103,
+    "population": 32160
+  },
+  {
+    "id": "12626141",
+    "name": "Saint-Henri, Quebec, Canada",
+    "search_name": "saint-henri, quebec, canada saint-henri",
+    "latitude": 45.46761,
+    "longitude": -73.60064,
+    "population": 15800
+  },
+  {
+    "id": "12626156",
+    "name": "Mile End, Quebec, Canada",
+    "search_name": "mile end, quebec, canada mile end",
+    "latitude": 45.5237,
+    "longitude": -73.59631,
+    "population": 23977
+  },
+  {
+    "id": "12626157",
+    "name": "Parc-Extension, Quebec, Canada",
+    "search_name": "parc-extension, quebec, canada parc-extension",
+    "latitude": 45.52951,
+    "longitude": -73.63176,
+    "population": 33800
+  },
+  {
+    "id": "12626165",
+    "name": "Outremont, Quebec, Canada",
+    "search_name": "outremont, quebec, canada outremont",
+    "latitude": 45.51564,
+    "longitude": -73.60865,
+    "population": 23954
+  },
+  {
+    "id": "12626175",
+    "name": "Desmarchais-Crawford, Quebec, Canada",
+    "search_name": "desmarchais-crawford, quebec, canada desmarchais-crawford",
+    "latitude": 45.44554,
+    "longitude": -73.58163,
+    "population": 29688
+  },
+  {
+    "id": "12626176",
+    "name": "Ile-des-Soeurs, Quebec, Canada",
+    "search_name": "ile-des-soeurs, quebec, canada ile-des-soeurs",
+    "latitude": 45.46033,
+    "longitude": -73.54817,
+    "population": 20461
+  },
+  {
+    "id": "13495376",
+    "name": "Fairview, British Columbia, Canada",
+    "search_name": "fairview, british columbia, canada fairview",
+    "latitude": 49.26305,
+    "longitude": -123.13212,
+    "population": 33620
+  },
+  {
+    "id": "13495377",
+    "name": "Dunbar-Southlands, British Columbia, Canada",
+    "search_name": "dunbar-southlands, british columbia, canada dunbar-southlands",
+    "latitude": 49.24217,
+    "longitude": -123.1884,
+    "population": 21245
+  },
+  {
+    "id": "13495378",
+    "name": "Marpole, British Columbia, Canada",
+    "search_name": "marpole, british columbia, canada marpole",
+    "latitude": 49.21359,
+    "longitude": -123.12979,
+    "population": 27843
+  },
+  {
+    "id": "13495379",
+    "name": "Sunset, British Columbia, Canada",
+    "search_name": "sunset, british columbia, canada sunset",
+    "latitude": 49.22104,
+    "longitude": -123.09546,
+    "population": 36500
+  },
+  {
+    "id": "13495380",
+    "name": "Riley Park, British Columbia, Canada",
+    "search_name": "riley park, british columbia, canada riley park",
+    "latitude": 49.24303,
+    "longitude": -123.09319,
+    "population": 22555
+  },
+  {
+    "id": "13495388",
+    "name": "Edmonds, British Columbia, Canada",
+    "search_name": "edmonds, british columbia, canada edmonds",
+    "latitude": 49.21392,
+    "longitude": -122.93992,
+    "population": 22318
+  },
+  {
+    "id": "13495394",
+    "name": "Blundell, British Columbia, Canada",
+    "search_name": "blundell, british columbia, canada blundell",
+    "latitude": 49.15531,
+    "longitude": -123.15706,
+    "population": 18065
+  },
+  {
+    "id": "13512353",
+    "name": "Surrey City Centre, British Columbia, Canada",
+    "search_name": "surrey city centre, british columbia, canada surrey city centre",
+    "latitude": 49.18542,
+    "longitude": -122.84659,
+    "population": 33520
+  },
+  {
+    "id": "13512355",
+    "name": "Westwood Plateau, British Columbia, Canada",
+    "search_name": "westwood plateau, british columbia, canada westwood plateau",
+    "latitude": 49.30461,
+    "longitude": -122.79338,
+    "population": 19776
+  },
+  {
+    "id": "13512358",
+    "name": "Victoria-Downtown, British Columbia, Canada",
+    "search_name": "victoria-downtown, british columbia, canada victoria-downtown",
+    "latitude": 48.4277,
+    "longitude": -123.36104,
+    "population": 46309
+  },
+  {
+    "id": "13512367",
+    "name": "Carey, British Columbia, Canada",
+    "search_name": "carey, british columbia, canada carey",
+    "latitude": 48.47205,
+    "longitude": -123.39483,
+    "population": 18405
+  },
+  {
+    "id": "13512377",
+    "name": "Lougheed, British Columbia, Canada",
+    "search_name": "lougheed, british columbia, canada lougheed",
+    "latitude": 49.2481,
+    "longitude": -122.89236,
+    "population": 15300
+  },
+  {
+    "id": "13512378",
+    "name": "Harewood, British Columbia, Canada",
+    "search_name": "harewood, british columbia, canada harewood",
+    "latitude": 49.1474,
+    "longitude": -123.94739,
+    "population": 8769
+  },
+  {
+    "id": "13512383",
+    "name": "Central Lonsdale, British Columbia, Canada",
+    "search_name": "central lonsdale, british columbia, canada central lonsdale",
+    "latitude": 49.32574,
+    "longitude": -123.07234,
+    "population": 18485
+  },
+  {
+    "id": "13512416",
+    "name": "Townline, British Columbia, Canada",
+    "search_name": "townline, british columbia, canada townline",
+    "latitude": 49.06206,
+    "longitude": -122.36008,
+    "population": 21095
+  },
+  {
+    "id": "13512426",
+    "name": "Chilliwack-Downtown, British Columbia, Canada",
+    "search_name": "chilliwack-downtown, british columbia, canada chilliwack-downtown",
+    "latitude": 49.1643,
+    "longitude": -121.95907,
+    "population": 31410
+  },
+  {
+    "id": "13512545",
+    "name": "South Granville, British Columbia, Canada",
+    "search_name": "south granville, british columbia, canada south granville",
+    "latitude": 49.2602,
+    "longitude": -123.13946,
+    "population": 24820
+  },
+  {
+    "id": "13512546",
+    "name": "Downtown Eastside, British Columbia, Canada",
+    "search_name": "downtown eastside, british columbia, canada downtown eastside",
+    "latitude": 49.2818,
+    "longitude": -123.09351,
+    "population": 18477
+  },
+  {
+    "id": "13512547",
+    "name": "University Endowment Lands, British Columbia, Canada",
+    "search_name": "university endowment lands, british columbia, canada university endowment lands",
+    "latitude": 49.26418,
+    "longitude": -123.239,
+    "population": 16920
+  },
+  {
+    "id": "13512548",
+    "name": "Maywood, British Columbia, Canada",
+    "search_name": "maywood, british columbia, canada maywood",
+    "latitude": 49.22219,
+    "longitude": -123.00588,
+    "population": 19650
+  },
+  {
+    "id": "13512549",
+    "name": "East Hastings, British Columbia, Canada",
+    "search_name": "east hastings, british columbia, canada east hastings",
+    "latitude": 49.27169,
+    "longitude": -123.06186,
+    "population": 80740
+  },
+  {
+    "id": "13512769",
+    "name": "Central Coquitlam, British Columbia, Canada",
+    "search_name": "central coquitlam, british columbia, canada central coquitlam",
+    "latitude": 49.26028,
+    "longitude": -122.83815,
+    "population": 15480
+  },
+  {
+    "id": "13512932",
+    "name": "Coquitlam Town Centre, British Columbia, Canada",
+    "search_name": "coquitlam town centre, british columbia, canada coquitlam town centre",
+    "latitude": 49.27697,
+    "longitude": -122.79669,
+    "population": 24282
+  },
+  {
+    "id": "13512933",
+    "name": "Coquitlam West, British Columbia, Canada",
+    "search_name": "coquitlam west, british columbia, canada coquitlam west",
+    "latitude": 49.25702,
+    "longitude": -122.87883,
+    "population": 25656
+  },
+  {
+    "id": "13513180",
+    "name": "Renfrew Heights, British Columbia, Canada",
+    "search_name": "renfrew heights, british columbia, canada renfrew heights",
+    "latitude": 49.25448,
+    "longitude": -123.03159,
+    "population": 20570
+  },
+  {
+    "id": "13546316",
+    "name": "Le Plateau-Mont-Royal, Quebec, Canada",
+    "search_name": "le plateau-mont-royal, quebec, canada le plateau-mont-royal",
+    "latitude": 45.52833,
+    "longitude": -73.58081,
+    "population": 105813
+  },
+  {
+    "id": "13546317",
+    "name": "Ville-Marie, Quebec, Canada",
+    "search_name": "ville-marie, quebec, canada ville-marie",
+    "latitude": 45.49899,
+    "longitude": -73.57046,
+    "population": 104944
+  },
+  {
+    "id": "13546318",
+    "name": "Le Sud-Ouest, Quebec, Canada",
+    "search_name": "le sud-ouest, quebec, canada le sud-ouest",
+    "latitude": 45.47187,
+    "longitude": -73.58986,
+    "population": 86347
+  },
+  {
+    "id": "13546319",
+    "name": "Mercier–Hochelaga-Maisonneuve, Quebec, Canada",
+    "search_name": "mercier–hochelaga-maisonneuve, quebec, canada mercier-hochelaga-maisonneuve",
+    "latitude": 45.57194,
+    "longitude": -73.54626,
+    "population": 142753
+  },
+  {
+    "id": "13546320",
+    "name": "Montréal-Nord, Quebec, Canada",
+    "search_name": "montreal-nord, quebec, canada montreal-nord",
+    "latitude": 45.6016,
+    "longitude": -73.63063,
+    "population": 86857
+  },
+  {
+    "id": "13546321",
+    "name": "Pierrefonds-Roxboro, Quebec, Canada",
+    "search_name": "pierrefonds-roxboro, quebec, canada pierrefonds-roxboro",
+    "latitude": 45.5019,
+    "longitude": -73.8417,
+    "population": 73194
+  },
+  {
+    "id": "13546322",
+    "name": "Rivière-des-Prairies–Pointe-aux-Trembles, Quebec, Canada",
+    "search_name": "riviere-des-prairies–pointe-aux-trembles, quebec, canada riviere-des-prairies-pointe-aux-trembles",
+    "latitude": 45.64064,
+    "longitude": -73.58463,
+    "population": 113868
+  },
+  {
+    "id": "13546323",
+    "name": "Rosemont–La Petite-Patrie, Quebec, Canada",
+    "search_name": "rosemont–la petite-patrie, quebec, canada rosemont-la petite-patrie",
+    "latitude": 45.53661,
+    "longitude": -73.60686,
+    "population": 146501
+  },
+  {
+    "id": "13546324",
+    "name": "Villeray–Saint-Michel–Parc-Extension, Quebec, Canada",
+    "search_name": "villeray–saint-michel–parc-extension, quebec, canada villeray-saint-michel-parc-extension",
+    "latitude": 45.55869,
+    "longitude": -73.60535,
+    "population": 144814
+  },
+  {
+    "id": "13546325",
+    "name": "Le Vieux-Longueuil, Quebec, Canada",
+    "search_name": "le vieux-longueuil, quebec, canada le vieux-longueuil",
+    "latitude": 45.53721,
+    "longitude": -73.50773,
+    "population": 135218
+  },
+  {
+    "id": "13561900",
+    "name": "Halifax South End, Nova Scotia, Canada",
+    "search_name": "halifax south end, nova scotia, canada halifax south end",
+    "latitude": 44.62927,
+    "longitude": -63.57651,
+    "population": 19922
+  },
+  {
+    "id": "13561902",
+    "name": "Halifax West End, Nova Scotia, Canada",
+    "search_name": "halifax west end, nova scotia, canada halifax west end",
+    "latitude": 44.6486,
+    "longitude": -63.61946,
+    "population": 22664
+  },
+  {
+    "id": "13562300",
+    "name": "Mt Pleasant, British Columbia, Canada",
+    "search_name": "mt pleasant, british columbia, canada mt pleasant",
+    "latitude": 49.26239,
+    "longitude": -123.10019,
+    "population": 32955
+  },
+  {
+    "id": "13580764",
+    "name": "Vanier, Ontario, Canada",
+    "search_name": "vanier, ontario, canada vanier",
+    "latitude": 43.42675,
+    "longitude": -80.45148,
+    "population": 15249
+  },
+  {
+    "id": "13580769",
+    "name": "Christopher-Champlain, Ontario, Canada",
+    "search_name": "christopher-champlain, ontario, canada christopher-champlain",
+    "latitude": 43.34728,
+    "longitude": -80.30186,
+    "population": 15372
+  },
+  {
+    "id": "13580772",
+    "name": "Fiddlesticks, Ontario, Canada",
+    "search_name": "fiddlesticks, ontario, canada fiddlesticks",
+    "latitude": 43.39484,
+    "longitude": -80.28741,
+    "population": 17576
+  },
+  {
+    "id": "13589045",
+    "name": "La Cité-Limoilou, Quebec, Canada",
+    "search_name": "la cite-limoilou, quebec, canada la cite-limoilou",
+    "latitude": 46.82894,
+    "longitude": -71.22641,
+    "population": 108415
+  },
+  {
+    "id": "13589046",
+    "name": "Les Rivières, Quebec, Canada",
+    "search_name": "les rivieres, quebec, canada les rivieres",
+    "latitude": 46.81847,
+    "longitude": -71.272,
+    "population": 77000
+  },
+  {
+    "id": "13589205",
+    "name": "Nutana Sector, Saskatchewan, Canada",
+    "search_name": "nutana sector, saskatchewan, canada nutana sector",
+    "latitude": 52.09998,
+    "longitude": -106.63709,
+    "population": 72564
+  },
+  {
+    "id": "13589206",
+    "name": "Core Neighbourhoods, Saskatchewan, Canada",
+    "search_name": "core neighbourhoods, saskatchewan, canada core neighbourhoods",
+    "latitude": 52.13041,
+    "longitude": -106.67231,
+    "population": 36088
+  },
+  {
+    "id": "13589208",
+    "name": "Lakewood, Saskatchewan, Canada",
+    "search_name": "lakewood, saskatchewan, canada lakewood",
+    "latitude": 52.1085,
+    "longitude": -106.59027,
+    "population": 51237
+  },
+  {
+    "id": "13589209",
+    "name": "University Heights, Saskatchewan, Canada",
+    "search_name": "university heights, saskatchewan, canada university heights",
+    "latitude": 52.14432,
+    "longitude": -106.57867,
+    "population": 51957
+  },
+  {
+    "id": "13589211",
+    "name": "Confederation, Saskatchewan, Canada",
+    "search_name": "confederation, saskatchewan, canada confederation",
+    "latitude": 52.13912,
+    "longitude": -106.70356,
+    "population": 70192
+  },
+  {
+    "id": "13589212",
+    "name": "Lawson, Saskatchewan, Canada",
+    "search_name": "lawson, saskatchewan, canada lawson",
+    "latitude": 52.16432,
+    "longitude": -106.63884,
+    "population": 34620
+  },
+  {
+    "id": "13589220",
+    "name": "Stonebridge, Saskatchewan, Canada",
+    "search_name": "stonebridge, saskatchewan, canada stonebridge",
+    "latitude": 52.08454,
+    "longitude": -106.62266,
+    "population": 16392
+  },
+  {
+    "id": "13589240",
+    "name": "Arcola East, Saskatchewan, Canada",
+    "search_name": "arcola east, saskatchewan, canada arcola east",
+    "latitude": 50.43308,
+    "longitude": -104.53601,
+    "population": 33725
+  },
+  {
+    "id": "13589242",
+    "name": "Dewdney East, Saskatchewan, Canada",
+    "search_name": "dewdney east, saskatchewan, canada dewdney east",
+    "latitude": 50.45428,
+    "longitude": -104.54671,
+    "population": 18715
+  },
+  {
+    "id": "13607919",
+    "name": "Fredericton Northside, New Brunswick, Canada",
+    "search_name": "fredericton northside, new brunswick, canada fredericton northside",
+    "latitude": 45.97594,
+    "longitude": -66.64117,
+    "population": 28167
+  },
+  {
+    "id": "13607951",
+    "name": "Clayton Park West, Nova Scotia, Canada",
+    "search_name": "clayton park west, nova scotia, canada clayton park west",
+    "latitude": 44.65759,
+    "longitude": -63.66887,
+    "population": 16550
+  },
+  {
+    "id": "13665232",
+    "name": "Fort Garry South, Manitoba, Canada",
+    "search_name": "fort garry south, manitoba, canada fort garry south",
+    "latitude": 49.79225,
+    "longitude": -97.16359,
+    "population": 65420
+  },
+  {
+    "id": "13665233",
+    "name": "St. James-Assiniboia East, Manitoba, Canada",
+    "search_name": "st. james-assiniboia east, manitoba, canada st. james-assiniboia east",
+    "latitude": 49.88986,
+    "longitude": -97.22653,
+    "population": 27755
+  },
+  {
+    "id": "13680114",
+    "name": "Centre City, Alberta, Canada",
+    "search_name": "centre city, alberta, canada centre city",
+    "latitude": 51.04512,
+    "longitude": -114.07431,
+    "population": 41000
+  }
+]

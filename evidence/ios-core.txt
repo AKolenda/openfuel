@@ -1,0 +1,51 @@
+Building for debugging...
+[0/2] Write swift-version--1BA0962812E73E12.txt
+Build complete! (0.09s)
+Test Suite 'All tests' started at 2026-09-07 05:34:01.426
+Test Suite 'debug.xctest' started at 2026-09-07 05:34:01.428
+Test Suite 'CoreTests' started at 2026-09-07 05:34:01.428
+Test Case 'CoreTests.testExactPriceParsing' started at 2026-09-07 05:34:01.428
+Test Case 'CoreTests.testExactPriceParsing' passed (0.003 seconds)
+Test Case 'CoreTests.testRealBackendContract' started at 2026-09-07 05:34:01.430
+Test Case 'CoreTests.testRealBackendContract' passed (0.102 seconds)
+Test Case 'CoreTests.testRejectInvalidPrices' started at 2026-09-07 05:34:01.532
+Test Case 'CoreTests.testRejectInvalidPrices' passed (0.0 seconds)
+Test Case 'CoreTests.testReportSnakeCaseContract' started at 2026-09-07 05:34:01.533
+Test Case 'CoreTests.testReportSnakeCaseContract' passed (0.002 seconds)
+Test Case 'CoreTests.testTransportRules' started at 2026-09-07 05:34:01.534
+Test Case 'CoreTests.testTransportRules' passed (0.003 seconds)
+Test Suite 'CoreTests' passed at 2026-09-07 05:34:01.537
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.109 (0.109) seconds
+Test Suite 'PreviewDomainTests' started at 2026-09-07 05:34:01.537
+Test Case 'PreviewDomainTests.testCameraMatchesHTMLFit' started at 2026-09-07 05:34:01.537
+Test Case 'PreviewDomainTests.testCameraMatchesHTMLFit' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testConfigurationRejectsCredentialsAndHTTP' started at 2026-09-07 05:34:01.537
+Test Case 'PreviewDomainTests.testConfigurationRejectsCredentialsAndHTTP' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testCorruptPersistenceDoesNotMasqueradeAsSaved' started at 2026-09-07 05:34:01.537
+Test Case 'PreviewDomainTests.testCorruptPersistenceDoesNotMasqueradeAsSaved' passed (0.101 seconds)
+Test Case 'PreviewDomainTests.testDraftValidation' started at 2026-09-07 05:34:01.639
+Test Case 'PreviewDomainTests.testDraftValidation' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testFixtureMatchesApprovedHTML' started at 2026-09-07 05:34:01.639
+Test Case 'PreviewDomainTests.testFixtureMatchesApprovedHTML' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testGradeConditionsAndSaved' started at 2026-09-07 05:34:01.639
+Test Case 'PreviewDomainTests.testGradeConditionsAndSaved' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testMapsNeverSendFakeAddress' started at 2026-09-07 05:34:01.639
+Test Case 'PreviewDomainTests.testMapsNeverSendFakeAddress' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testMoneyParsing' started at 2026-09-07 05:34:01.640
+Test Case 'PreviewDomainTests.testMoneyParsing' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testPersistenceRoundTrip' started at 2026-09-07 05:34:01.640
+Test Case 'PreviewDomainTests.testPersistenceRoundTrip' passed (0.002 seconds)
+Test Case 'PreviewDomainTests.testStandardSorting' started at 2026-09-07 05:34:01.642
+Test Case 'PreviewDomainTests.testStandardSorting' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testUpdateDoesNotChangeOtherGrade' started at 2026-09-07 05:34:01.642
+Test Case 'PreviewDomainTests.testUpdateDoesNotChangeOtherGrade' passed (0.0 seconds)
+Test Suite 'PreviewDomainTests' passed at 2026-09-07 05:34:01.642
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.105 (0.105) seconds
+Test Suite 'debug.xctest' passed at 2026-09-07 05:34:01.642
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.214 (0.214) seconds
+Test Suite 'All tests' passed at 2026-09-07 05:34:01.642
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.214 (0.214) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.2.1 (c9d57c83568b06d)
+↳ Target Platform: x86_64-unknown-linux-gnu
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

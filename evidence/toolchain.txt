@@ -1,0 +1,16 @@
+OpenFuel toolchain status (discovery is not a successful build):
+  python       /opt/pyvenv/bin/python
+  git          /usr/bin/git
+  node         /opt/nvm/versions/node/v22.16.0/bin/node
+  swift        /usr/local/swift/usr/bin/swift
+  kotlinc      /root/.sdkman/candidates/kotlin/current/bin/kotlinc
+  java         /usr/bin/java
+  gradle       not found
+  xcodegen     not found
+  xcodebuild   not found
+  Android SDK  not configured
+  pytest       installed
+  fastapi      installed
+  playwright   installed
+
+Website/handbook: Python only. Full Android: JDK 17+, Gradle 8.11.1, SDK 35. Full iOS: macOS + Xcode + XcodeGen.

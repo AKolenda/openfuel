@@ -1,0 +1,15 @@
+PASS a 1440 no horizontal overflow
+PASS a 1440 French toggle
+PASS a 1440 embedded app renders
+PASS a 390 no horizontal overflow
+PASS a 390 French toggle
+PASS a mobile nav bottom
+PASS a 390 embedded app renders
+PASS b 1440 no horizontal overflow
+PASS b 1440 French toggle
+PASS b 1440 embedded app renders
+PASS b 390 no horizontal overflow
+PASS b 390 French toggle
+PASS b mobile nav bottom
+PASS b 390 embedded app renders
+Errors: []

@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-09-12T05:59:24.507730+00:00",
+  "origin": "https://openfuel.ca",
+  "read_only": true,
+  "health": {
+    "ok": true,
+    "service": "openfuel",
+    "database": "cloudflare-d1",
+    "databaseConfigured": true,
+    "writesEnabled": true,
+    "mode": "live",
+    "is_demo": false,
+    "station_count": 12543
+  },
+  "checks": [
+    {
+      "city": "Edmonton",
+      "nearby_stations": 180,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Calgary",
+      "nearby_stations": 172,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Toronto",
+      "nearby_stations": 87,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Montr\u00e9al",
+      "nearby_stations": 175,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Vancouver",
+      "nearby_stations": 100,
+      "reference_period": "2026-07"
+    },
+    {
+      "city": "Yellowknife",
+      "nearby_stations": 6,
+      "reference_period": "2026-07"
+    }
+  ],
+  "passed": true,
+  "dns_verification": "TLS checked against current Google DNS A record; workstation resolver still had cached pre-deployment NODATA."
+}

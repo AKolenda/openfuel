@@ -1,0 +1,8 @@
+
+ca.openfuel.prototype.PrototypeSyncTest:.
+
+Time: 4.886
+
+OK (1 test)
+
+

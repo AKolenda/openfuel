@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-only
+-- Run with `supabase test db` after local reset. Written but not executed in this environment.
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SET LOCAL search_path = public,extensions;
+SELECT plan(20);
+SELECT has_schema('app_private','Private schema exists');
+SELECT ok(NOT has_schema_privilege('anon','app_private','USAGE'),'anon cannot access private schema');
+SELECT ok(NOT has_table_privilege('anon','app_private.evidence','SELECT'),'anon cannot read private evidence');
+SELECT ok(NOT has_table_privilege('authenticated','app_private.proposals','SELECT'),'authenticated cannot read other proposals');
+SELECT ok(NOT has_table_privilege('service_role','app_private.events','UPDATE'),'service role has no blanket event-update grant');
+SELECT ok(has_function_privilege('anon','public.openfuel_stations_v1(text,text,text,integer,integer)','EXECUTE'),'public reads are explicitly granted');
+SELECT ok(NOT has_function_privilege('anon','app_private.publish_price(uuid,text,text,integer,timestamp with time zone,text)','EXECUTE'),'public cannot publish a price');
+SELECT ok(NOT has_function_privilege('authenticated','app_private.publish_station(uuid,bigint,text,text,text,text,double precision,double precision,app_private.station_status,text,text,boolean,text,uuid)','EXECUTE'),'authenticated cannot approve station changes');
+SELECT ok(has_function_privilege('openfuel_publisher','app_private.publish_price(uuid,text,text,integer,timestamp with time zone,text)','EXECUTE'),'publisher has exact function capability');
+SELECT throws_ok($$SELECT public.openfuel_stations_v1(p_limit=>10001)$$,'22023',NULL,'page size bounded');
+SELECT throws_ok($$SELECT public.openfuel_stations_v1(p_fuel=>'unknown')$$,'22023',NULL,'grade validated in DB too');
+SELECT lives_ok($$SELECT public.openfuel_stations_v1()$$,'public read executes with migrations');
+SELECT is(jsonb_typeof(public.openfuel_stations_v1()->'stations'),'array','station envelope is stable');
+SELECT is(jsonb_typeof(public.openfuel_regions_v1()->'regions'),'array','regions envelope is stable');
+SELECT ok(NOT (public.openfuel_stations_v1()::text LIKE '%independence_group%'),'private correlation keys excluded');
+SELECT throws_ok($$UPDATE app_private.events SET kind='tamper'$$,'55000',NULL,'ordinary update blocked');
+SELECT throws_ok($$TRUNCATE app_private.events CASCADE$$,'55000',NULL,'truncate blocked');
+SELECT throws_ok($$SELECT app_private.publish_price('10000000-0000-4000-8000-000000000001','regular','membership',1429,now(),'community')$$,'22023',NULL,'membership eligibility cannot be guessed');
+SELECT throws_ok($$SELECT app_private.publish_station('10000000-0000-4000-8000-000000000001',999,'X','X','X','demo-region',53.5,-113.4,'verified','CC0-1.0','test',true,'detail_correction')$$,'40001',NULL,'stale version refused');
+SET LOCAL ROLE anon;
+SELECT lives_ok($$SELECT public.openfuel_stations_v1()$$,'anon role can call the bounded curated RPC');
+RESET ROLE;
+SELECT * FROM finish();
+ROLLBACK;

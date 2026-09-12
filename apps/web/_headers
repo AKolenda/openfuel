@@ -1,0 +1,14 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=()
+  X-Frame-Options: SAMEORIGIN
+/config.json
+  Cache-Control: no-store
+/preview/sw.js
+  Cache-Control: no-cache
+/downloads/*
+  Cache-Control: public, max-age=300
+/downloads/openfuel-android.apk
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="openfuel-android.apk"

@@ -1,0 +1,23 @@
+OpenFuel — open-source station map
+
+First-party code/documentation: AGPL-3.0-only. Original fictional sample facts/map: CC0-1.0.
+Full terms and exclusions: LICENSE.md and LICENSES/.
+
+Imported sources: openfuel-canada-source(1).zip and openfuel-android-prototype-source(1).zip.
+The Android files are identical between those inputs. Input SHA-256 hashes and path mappings are
+recorded in docs/provenance/inputs.json. The cleaned documentation UI came from the separately
+provided openfuel-documentation-review.html; claims about unavailable native source were corrected.
+
+Third-party company names/logos and external artwork retain their owners' rights; no endorsement or
+permission is implied. Embedded Lucide-derived icon notices remain in the map source where present.
+Declared AndroidX/Compose/Material and other dependencies retain their upstream licences. No font files
+or native binaries are included. Imported screenshots are browser design evidence, not native screenshots.
+
+Current station discovery uses real OpenStreetMap data, © OpenStreetMap contributors,
+under ODbL-1.0. Canadian city search uses GeoNames under CC-BY-4.0. Monthly reference
+statistics come from Statistics Canada table 18-10-0001-01 under its Open Licence.
+See packages/data/README.md for required attribution, snapshot dates and transformations.
+These data licences remain separate from the AGPL code licence. No station pump prices
+are seeded. Community prices are unverified observations, not a licensed live price feed.
+Leaflet is bundled with its upstream notice in apps/web/preview/vendor/Leaflet-LICENSE.txt.
+Historical synthetic fixtures and illustrated geography remain test/design resources.

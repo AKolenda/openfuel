@@ -1,0 +1,6 @@
+-r services/api/requirements-dev.txt
+playwright==1.57.0
+PyYAML==6.0.3
+
+# Browser-reference capture and native screenshot regression tooling
+Pillow==12.3.0

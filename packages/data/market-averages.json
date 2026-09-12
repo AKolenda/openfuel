@@ -1,0 +1,434 @@
+[
+  {
+    "city": "Canada",
+    "latitude": 56.1304,
+    "longitude": -106.3468,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1755
+  },
+  {
+    "city": "St. John's, Newfoundland and Labrador",
+    "latitude": 47.5615,
+    "longitude": -52.7126,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1964
+  },
+  {
+    "city": "St. John's, Newfoundland and Labrador",
+    "latitude": 47.5615,
+    "longitude": -52.7126,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2023
+  },
+  {
+    "city": "St. John's, Newfoundland and Labrador",
+    "latitude": 47.5615,
+    "longitude": -52.7126,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2251
+  },
+  {
+    "city": "Charlottetown and Summerside, Prince Edward Island",
+    "latitude": 46.2382,
+    "longitude": -63.1311,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1923
+  },
+  {
+    "city": "Charlottetown and Summerside, Prince Edward Island",
+    "latitude": 46.2382,
+    "longitude": -63.1311,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2044
+  },
+  {
+    "city": "Charlottetown and Summerside, Prince Edward Island",
+    "latitude": 46.2382,
+    "longitude": -63.1311,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2292
+  },
+  {
+    "city": "Halifax, Nova Scotia",
+    "latitude": 44.6488,
+    "longitude": -63.5752,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1842
+  },
+  {
+    "city": "Halifax, Nova Scotia",
+    "latitude": 44.6488,
+    "longitude": -63.5752,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1976
+  },
+  {
+    "city": "Halifax, Nova Scotia",
+    "latitude": 44.6488,
+    "longitude": -63.5752,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2182
+  },
+  {
+    "city": "Saint John, New Brunswick",
+    "latitude": 45.2733,
+    "longitude": -66.0633,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1806
+  },
+  {
+    "city": "Saint John, New Brunswick",
+    "latitude": 45.2733,
+    "longitude": -66.0633,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1958
+  },
+  {
+    "city": "Saint John, New Brunswick",
+    "latitude": 45.2733,
+    "longitude": -66.0633,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2170
+  },
+  {
+    "city": "Québec, Quebec",
+    "latitude": 46.8139,
+    "longitude": -71.208,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1805
+  },
+  {
+    "city": "Québec, Quebec",
+    "latitude": 46.8139,
+    "longitude": -71.208,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2069
+  },
+  {
+    "city": "Québec, Quebec",
+    "latitude": 46.8139,
+    "longitude": -71.208,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2316
+  },
+  {
+    "city": "Montréal, Quebec",
+    "latitude": 45.5017,
+    "longitude": -73.5673,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1874
+  },
+  {
+    "city": "Montréal, Quebec",
+    "latitude": 45.5017,
+    "longitude": -73.5673,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2140
+  },
+  {
+    "city": "Montréal, Quebec",
+    "latitude": 45.5017,
+    "longitude": -73.5673,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2371
+  },
+  {
+    "city": "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+    "latitude": 45.4215,
+    "longitude": -75.6972,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1708
+  },
+  {
+    "city": "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+    "latitude": 45.4215,
+    "longitude": -75.6972,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2012
+  },
+  {
+    "city": "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+    "latitude": 45.4215,
+    "longitude": -75.6972,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2081
+  },
+  {
+    "city": "Toronto, Ontario",
+    "latitude": 43.6532,
+    "longitude": -79.3832,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1727
+  },
+  {
+    "city": "Toronto, Ontario",
+    "latitude": 43.6532,
+    "longitude": -79.3832,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2037
+  },
+  {
+    "city": "Toronto, Ontario",
+    "latitude": 43.6532,
+    "longitude": -79.3832,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2050
+  },
+  {
+    "city": "Thunder Bay, Ontario",
+    "latitude": 48.3809,
+    "longitude": -89.2477,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1753
+  },
+  {
+    "city": "Thunder Bay, Ontario",
+    "latitude": 48.3809,
+    "longitude": -89.2477,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2055
+  },
+  {
+    "city": "Winnipeg, Manitoba",
+    "latitude": 49.8951,
+    "longitude": -97.1384,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1662
+  },
+  {
+    "city": "Winnipeg, Manitoba",
+    "latitude": 49.8951,
+    "longitude": -97.1384,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1927
+  },
+  {
+    "city": "Winnipeg, Manitoba",
+    "latitude": 49.8951,
+    "longitude": -97.1384,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 1898
+  },
+  {
+    "city": "Regina, Saskatchewan",
+    "latitude": 50.4452,
+    "longitude": -104.6189,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1681
+  },
+  {
+    "city": "Regina, Saskatchewan",
+    "latitude": 50.4452,
+    "longitude": -104.6189,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1948
+  },
+  {
+    "city": "Regina, Saskatchewan",
+    "latitude": 50.4452,
+    "longitude": -104.6189,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 1870
+  },
+  {
+    "city": "Saskatoon, Saskatchewan",
+    "latitude": 52.1332,
+    "longitude": -106.67,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1674
+  },
+  {
+    "city": "Saskatoon, Saskatchewan",
+    "latitude": 52.1332,
+    "longitude": -106.67,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1936
+  },
+  {
+    "city": "Saskatoon, Saskatchewan",
+    "latitude": 52.1332,
+    "longitude": -106.67,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 1870
+  },
+  {
+    "city": "Edmonton, Alberta",
+    "latitude": 53.5461,
+    "longitude": -113.4938,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1625
+  },
+  {
+    "city": "Edmonton, Alberta",
+    "latitude": 53.5461,
+    "longitude": -113.4938,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1884
+  },
+  {
+    "city": "Edmonton, Alberta",
+    "latitude": 53.5461,
+    "longitude": -113.4938,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 1791
+  },
+  {
+    "city": "Calgary, Alberta",
+    "latitude": 51.0447,
+    "longitude": -114.0719,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1682
+  },
+  {
+    "city": "Calgary, Alberta",
+    "latitude": 51.0447,
+    "longitude": -114.0719,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 1944
+  },
+  {
+    "city": "Calgary, Alberta",
+    "latitude": 51.0447,
+    "longitude": -114.0719,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 1840
+  },
+  {
+    "city": "Vancouver, British Columbia",
+    "latitude": 49.2827,
+    "longitude": -123.1207,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 2007
+  },
+  {
+    "city": "Vancouver, British Columbia",
+    "latitude": 49.2827,
+    "longitude": -123.1207,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2267
+  },
+  {
+    "city": "Vancouver, British Columbia",
+    "latitude": 49.2827,
+    "longitude": -123.1207,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2354
+  },
+  {
+    "city": "Victoria, British Columbia",
+    "latitude": 48.4284,
+    "longitude": -123.3656,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1913
+  },
+  {
+    "city": "Victoria, British Columbia",
+    "latitude": 48.4284,
+    "longitude": -123.3656,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2179
+  },
+  {
+    "city": "Victoria, British Columbia",
+    "latitude": 48.4284,
+    "longitude": -123.3656,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2287
+  },
+  {
+    "city": "Whitehorse, Yukon",
+    "latitude": 60.7212,
+    "longitude": -135.0568,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1895
+  },
+  {
+    "city": "Whitehorse, Yukon",
+    "latitude": 60.7212,
+    "longitude": -135.0568,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2030
+  },
+  {
+    "city": "Whitehorse, Yukon",
+    "latitude": 60.7212,
+    "longitude": -135.0568,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 2012
+  },
+  {
+    "city": "Yellowknife, Northwest Territories",
+    "latitude": 62.454,
+    "longitude": -114.3718,
+    "period": "2026-07",
+    "fuel_type": "regular",
+    "price_milli": 1809
+  },
+  {
+    "city": "Yellowknife, Northwest Territories",
+    "latitude": 62.454,
+    "longitude": -114.3718,
+    "period": "2026-07",
+    "fuel_type": "premium",
+    "price_milli": 2059
+  },
+  {
+    "city": "Yellowknife, Northwest Territories",
+    "latitude": 62.454,
+    "longitude": -114.3718,
+    "period": "2026-07",
+    "fuel_type": "diesel",
+    "price_milli": 1982
+  }
+]

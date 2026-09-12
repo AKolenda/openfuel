@@ -1,0 +1,83 @@
+Building for debugging...
+[0/4] Write sources
+[2/4] Write swift-version--729B7DC81EC64C24.txt
+[4/6] Compiling OpenFuelCore PrototypeAPI.swift
+[5/6] Emitting module OpenFuelCore
+[7/10] Compiling OpenFuelCoreTests PrototypeLiveTests.swift
+[8/10] Emitting module OpenFuelCoreTests
+[9/10] Compiling OpenFuelCoreTests PrototypeAPITests.swift
+[10/17] <repo>/apps/ios/OpenFuelCore/.build/x86_64-unknown-linux-gnu/debug/OpenFuelCorePackageDiscoveredTests.derived/all-discovered-tests.swift
+[11/18] Write sources
+[12/18] Wrapping AST for OpenFuelCore for debugging
+[14/21] Compiling OpenFuelCorePackageDiscoveredTests all-discovered-tests.swift
+[15/21] Emitting module OpenFuelCorePackageDiscoveredTests
+[16/21] Compiling OpenFuelCorePackageDiscoveredTests OpenFuelCoreTests.swift
+[17/19] Write Objects.LinkFileList
+[18/19] Linking OpenFuelCorePackageTests.xctest
+Build complete! (3.44s)
+Test Suite 'All tests' started at 2026-09-11 23:23:54.262
+Test Suite 'debug.xctest' started at 2026-09-11 23:23:54.264
+Test Suite 'CoreTests' started at 2026-09-11 23:23:54.264
+Test Case 'CoreTests.testExactPriceParsing' started at 2026-09-11 23:23:54.264
+Test Case 'CoreTests.testExactPriceParsing' passed (0.003 seconds)
+Test Case 'CoreTests.testRealBackendContract' started at 2026-09-11 23:23:54.267
+Test Case 'CoreTests.testRealBackendContract' passed (0.001 seconds)
+Test Case 'CoreTests.testRejectInvalidPrices' started at 2026-09-11 23:23:54.268
+Test Case 'CoreTests.testRejectInvalidPrices' passed (0.0 seconds)
+Test Case 'CoreTests.testReportSnakeCaseContract' started at 2026-09-11 23:23:54.268
+Test Case 'CoreTests.testReportSnakeCaseContract' passed (0.001 seconds)
+Test Case 'CoreTests.testTransportRules' started at 2026-09-11 23:23:54.270
+Test Case 'CoreTests.testTransportRules' passed (0.002 seconds)
+Test Suite 'CoreTests' passed at 2026-09-11 23:23:54.272
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.008 (0.008) seconds
+Test Suite 'PreviewDomainTests' started at 2026-09-11 23:23:54.272
+Test Case 'PreviewDomainTests.testCameraMatchesHTMLFit' started at 2026-09-11 23:23:54.272
+Test Case 'PreviewDomainTests.testCameraMatchesHTMLFit' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testConfigurationRejectsCredentialsAndHTTP' started at 2026-09-11 23:23:54.272
+Test Case 'PreviewDomainTests.testConfigurationRejectsCredentialsAndHTTP' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testCorruptPersistenceDoesNotMasqueradeAsSaved' started at 2026-09-11 23:23:54.272
+Test Case 'PreviewDomainTests.testCorruptPersistenceDoesNotMasqueradeAsSaved' passed (0.003 seconds)
+Test Case 'PreviewDomainTests.testDraftValidation' started at 2026-09-11 23:23:54.276
+Test Case 'PreviewDomainTests.testDraftValidation' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testFixtureMatchesApprovedHTML' started at 2026-09-11 23:23:54.276
+Test Case 'PreviewDomainTests.testFixtureMatchesApprovedHTML' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testGradeConditionsAndSaved' started at 2026-09-11 23:23:54.276
+Test Case 'PreviewDomainTests.testGradeConditionsAndSaved' passed (0.001 seconds)
+Test Case 'PreviewDomainTests.testMapsNeverSendFakeAddress' started at 2026-09-11 23:23:54.277
+Test Case 'PreviewDomainTests.testMapsNeverSendFakeAddress' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testMoneyParsing' started at 2026-09-11 23:23:54.277
+Test Case 'PreviewDomainTests.testMoneyParsing' passed (0.001 seconds)
+Test Case 'PreviewDomainTests.testPersistenceRoundTrip' started at 2026-09-11 23:23:54.278
+Test Case 'PreviewDomainTests.testPersistenceRoundTrip' passed (0.011 seconds)
+Test Case 'PreviewDomainTests.testStandardSorting' started at 2026-09-11 23:23:54.288
+Test Case 'PreviewDomainTests.testStandardSorting' passed (0.0 seconds)
+Test Case 'PreviewDomainTests.testUpdateDoesNotChangeOtherGrade' started at 2026-09-11 23:23:54.288
+Test Case 'PreviewDomainTests.testUpdateDoesNotChangeOtherGrade' passed (0.1 seconds)
+Test Suite 'PreviewDomainTests' passed at 2026-09-11 23:23:54.389
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.117 (0.117) seconds
+Test Suite 'PrototypeAPITests' started at 2026-09-11 23:23:54.389
+Test Case 'PrototypeAPITests.testCloudStationResponseAdaptsNullGradesAndFreshness' started at 2026-09-11 23:23:54.389
+Test Case 'PrototypeAPITests.testCloudStationResponseAdaptsNullGradesAndFreshness' passed (0.003 seconds)
+Test Case 'PrototypeAPITests.testErrorBodyDoesNotBecomeSuccessfulReport' started at 2026-09-11 23:23:54.391
+Test Case 'PrototypeAPITests.testErrorBodyDoesNotBecomeSuccessfulReport' passed (0.002 seconds)
+Test Case 'PrototypeAPITests.testLiveDataCannotBeMisrepresentedOnTheFictionalMap' started at 2026-09-11 23:23:54.393
+Test Case 'PrototypeAPITests.testLiveDataCannotBeMisrepresentedOnTheFictionalMap' passed (0.102 seconds)
+Test Case 'PrototypeAPITests.testReportUsesExactPublicContractAndValidatesReceipt' started at 2026-09-11 23:23:54.496
+Test Case 'PrototypeAPITests.testReportUsesExactPublicContractAndValidatesReceipt' passed (0.002 seconds)
+Test Case 'PrototypeAPITests.testStationCacheAgesAcrossAppRestartsAndIdentityPersists' started at 2026-09-11 23:23:54.498
+Test Case 'PrototypeAPITests.testStationCacheAgesAcrossAppRestartsAndIdentityPersists' passed (0.009 seconds)
+Test Suite 'PrototypeAPITests' passed at 2026-09-11 23:23:54.506
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.118 (0.118) seconds
+Test Suite 'PrototypeLiveTests' started at 2026-09-11 23:23:54.506
+Test Case 'PrototypeLiveTests.testDeployedCloudflareReadReportRead' started at 2026-09-11 23:23:54.506
+<repo>/apps/ios/OpenFuelCore/Tests/OpenFuelCoreTests/PrototypeLiveTests.swift:10: PrototypeLiveTests.testDeployedCloudflareReadReportRead : Test skipped - Set OPENFUEL_LIVE_TEST_API_BASE_URL to explicitly test a deployed prototype.
+Test Case 'PrototypeLiveTests.testDeployedCloudflareReadReportRead' skipped (0.0 seconds)
+Test Suite 'PrototypeLiveTests' passed at 2026-09-11 23:23:54.507
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.0 (0.0) seconds
+Test Suite 'debug.xctest' passed at 2026-09-11 23:23:54.507
+	 Executed 22 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.242 (0.242) seconds
+Test Suite 'All tests' passed at 2026-09-11 23:23:54.507
+	 Executed 22 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.242 (0.242) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.0.3 (18c42c19cac3faf)
+✔ Test run with 0 tests passed after 0.001 seconds.

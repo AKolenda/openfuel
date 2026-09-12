@@ -1,0 +1,43 @@
+{
+  "checked_at": "2026-09-12T05:59:00Z",
+  "phase": "initial deployment before final Android pin-rendering fix",
+  "files": [
+    {
+      "path": "/",
+      "bytes": 11868,
+      "sha256": "d8bae48b194c8e323274cd28fa993c33ba41d03841542aec8deb541ffede776a"
+    },
+    {
+      "path": "/preview/",
+      "bytes": 8180,
+      "sha256": "c9d5520e7bd3ef960429b2e813e202c8f5d5a3562b5c97dbd1e7ecbf4ae3cb3f"
+    },
+    {
+      "path": "/docs/",
+      "bytes": 4170,
+      "sha256": "088d08253ef17ffe9e8930b78789cf94cfc8da749ea9f0c40099b61053f28b7d"
+    },
+    {
+      "path": "/openapi.json",
+      "bytes": 8595,
+      "sha256": "4c30923d6b339fff6c847ea0607e8842ba5a9b7c96eb17e3acfadbd512186389"
+    },
+    {
+      "path": "/downloads/release.json",
+      "bytes": 455,
+      "sha256": "f0e044ee05948effb532345141a4c0fe285ba65d0b329da19b289603698222ad"
+    },
+    {
+      "path": "/downloads/openfuel-android.apk",
+      "bytes": 23634132,
+      "sha256": "98a7fbc01ddc1246bd7abd8c19df60c3016075b930e5c3718612737985765185",
+      "matches_local_build": true
+    },
+    {
+      "path": "/downloads/openfuel-source.zip",
+      "bytes": 12679111,
+      "sha256": "099f51308ccf281ebddfea4c616ddcd8e7879c94fdfe85b0b1f7351fa33bad54",
+      "matches_local_build": true
+    }
+  ]
+}

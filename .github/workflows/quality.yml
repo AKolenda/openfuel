@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+name: Repository quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  python-and-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Contracts, repository, API, policy and browser checks
+        run: python tools/project.py check --web
+      - name: Live API and legacy edge regression checks
+        run: node --test services/live/*.test.mjs services/edge/*.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repository-check-evidence
+          path: evidence/
+          if-no-files-found: warn

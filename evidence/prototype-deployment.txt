@@ -1,0 +1,46 @@
+npm notice run openfuel-monorepo@0.3.0 deploy
+npm notice run npm run build && wrangler deploy
+npm notice run openfuel-monorepo@0.3.0 build
+npm notice run python3 tools/project.py site
+Source archive: dist/openfuel-source.zip (273 source files; no native binaries)
+Static website: dist/site/ — website /, handbook /docs/, map prototype /preview/
+
+ ⛅️ wrangler 4.131.1
+────────────────────
+🌀 Building list of assets...
+✨ Read 63 files from the assets directory /home/bucic/Documents/openfuel/dist/site
+🌀 Starting asset upload...
+🌀 Found 15 new or modified static assets to upload. Proceeding with upload...
++ /downloads/openfuel-android.apk.sha256
++ /handbook/ENVIRONMENT.md
++ /handbook/PRIVACY.md
++ /docs/pages.js
++ /preview/app.js
++ /downloads/release.json
++ /handbook/BUILD_STATUS.md
++ /docs/app.js
++ /docs/pages.json
++ /downloads/openfuel-source.zip
++ /shared/contracts/README.md
++ /handbook/INTEGRATION_GAPS.md
++ /openapi.json
++ /docs/evidence.js
++ /downloads/openfuel-android.apk
+Uploaded 5 of 15 assets
+Uploaded 10 of 15 assets
+Uploaded 15 of 15 assets
+✨ Success! Uploaded 15 files (37 already uploaded) (7.89 sec)
+
+Total Upload: 8.71 KiB / gzip: 3.12 KiB
+Worker Startup Time: 3 ms
+Your Worker has access to the following bindings:
+Binding                                      Resource                  
+env.DB (openfuel-prototype)                  D1 Database               
+env.REPORT_LIMITER (20 requests/60s)         Rate Limit                
+env.ASSETS                                   Assets                    
+env.OPENFUEL_ENV ("prototype")               Environment Variable      
+
+Uploaded openfuel-prototype (11.02 sec)
+Deployed openfuel-prototype triggers (0.43 sec)
+  https://openfuel-prototype.openfuel-monorepo.workers.dev
+Current Version ID: cea32695-9546-40ff-ac18-ff6c7a0e2dbe

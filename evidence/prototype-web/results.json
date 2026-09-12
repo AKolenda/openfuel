@@ -1,0 +1,37 @@
+{
+  "checked_at": "2026-09-12T05:30:32.324538+00:00",
+  "tool": "Playwriter headless Chrome 152, session 2",
+  "local_url": "http://127.0.0.1:8787/preview/",
+  "deployed_url": "https://openfuel-prototype.openfuel-monorepo.workers.dev/preview/",
+  "local_checks": [
+    "Read six shared stations from real local Cloudflare Worker and D1.",
+    "Report form rejects 49.9 cents/L before sending.",
+    "Report 141.3 cents/L accepted and displayed after reload.",
+    "Saved Petro-Canada favorite remains after reload.",
+    "CDP offline network emulation and full reload still display cached app shell and 141.3 cents/L with Offline saved prices status.",
+    "Restoring network and clicking Refresh retrieves shared prices.",
+    "Desktop 1440x900 and mobile390x844 inspected visually; controls, map and bottom sheet fit.",
+    "Landing English/French actions and download copy verified.",
+    "Dropped the response after a real D1 report committed, reloaded the app, verified the pending request ID persisted without automatic submission, retried unchanged141.8 cents/L, received HTTP200 with the original report ID and cleared pending state."
+  ],
+  "deployed_checks": [
+    "HTTPS application loads and reaches Shared sample prices status.",
+    "Report form accepted 141.7 cents/L for parkside regular.",
+    "Second tab received GET /api/v1/stations HTTP200 with parkside.prices.regular=1417 and is_demo=true; rendered matching price.",
+    "No JavaScript or network errors in successful online application flows.",
+    "Clicked the landing Android download link and saved17465092-byte openfuel-android.apk; downloaded SHA256 equalled deployed dist/site APK.",
+    "Clicked the source modal download and inspected ZIP:261 entries, all4 apps, no private/generated APK/database/signing extensions.",
+    "Final deployed /preview/app.js HTTP200 contains persisted pending request, request_id generation and response ID match checks."
+  ],
+  "limitations": [
+    "All stations and geography are synthetic.",
+    "Screenshots are browser evidence, not native screenshots.",
+    "Offline emulation intentionally emits ERR_INTERNET_DISCONNECTED for API fetch."
+  ],
+  "final_download": {
+    "filename": "openfuel-android.apk",
+    "bytes": 17465610,
+    "sha256": "b41200c3a0f662c178c1ad2e06a588612298478e8437de8e23d6c5a7d252be20",
+    "method": "Clicked live landing APK link with Chrome; saved complete download and hashed file."
+  }
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "route": "/",
+    "status": 200,
+    "bytes": 11653
+  },
+  {
+    "route": "/preview/",
+    "status": 200,
+    "bytes": 102796
+  },
+  {
+    "route": "/docs/",
+    "status": 200,
+    "bytes": 4092
+  },
+  {
+    "route": "/api/v1/health",
+    "status": 200,
+    "bytes": 168
+  },
+  {
+    "route": "/api/v1/stations",
+    "status": 200,
+    "bytes": 3396
+  },
+  {
+    "route": "/config.json",
+    "status": 200,
+    "bytes": 159
+  },
+  {
+    "check": "HTTPS POST → D1 → independent GET persistence; original price restored",
+    "status": "passed"
+  }
+]

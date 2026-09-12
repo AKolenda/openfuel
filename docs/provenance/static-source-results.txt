@@ -1,0 +1,14 @@
+PASS well-formed XML android/app/src/main/AndroidManifest.xml
+PASS well-formed XML android/app/src/main/res/drawable/ic_launcher.xml
+PASS well-formed XML android/app/src/main/res/values/strings.xml
+PASS well-formed XML android/app/src/main/res/values/styles.xml
+PASS well-formed XML android/app/src/main/res/values-fr/strings.xml
+PASS manifest requests no network or location permissions
+PASS native source has no WebView or React Native imports
+PASS English/French resource keys match
+PASS all Kotlin string resource references exist
+PASS list default present
+PASS native menus use ModalBottomSheet
+PASS manual build workflow present
+12/12 passed
+These are source checks, not an Android build.

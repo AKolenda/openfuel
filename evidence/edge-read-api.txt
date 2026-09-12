@@ -1,0 +1,220 @@
+TAP version 13
+# Subtest: serves static assets without contacting DB
+ok 1 - serves static assets without contacting DB
+  ---
+  duration_ms: 19.085948
+  type: 'test'
+  ...
+# Subtest: health requires no database
+ok 2 - health requires no database
+  ---
+  duration_ms: 1.05444
+  type: 'test'
+  ...
+# Subtest: rejects public POST
+ok 3 - rejects public POST
+  ---
+  duration_ms: 0.451051
+  type: 'test'
+  ...
+# Subtest: rejects public PUT
+ok 4 - rejects public PUT
+  ---
+  duration_ms: 0.226451
+  type: 'test'
+  ...
+# Subtest: rejects public DELETE
+ok 5 - rejects public DELETE
+  ---
+  duration_ms: 0.340664
+  type: 'test'
+  ...
+# Subtest: rejects public PATCH
+ok 6 - rejects public PATCH
+  ---
+  duration_ms: 0.193682
+  type: 'test'
+  ...
+# Subtest: rejects ?region=bad%27sql
+ok 7 - rejects ?region=bad%27sql
+  ---
+  duration_ms: 0.534677
+  type: 'test'
+  ...
+# Subtest: rejects ?fuel=gasoline
+ok 8 - rejects ?fuel=gasoline
+  ---
+  duration_ms: 0.276437
+  type: 'test'
+  ...
+# Subtest: rejects ?latitude=45
+ok 9 - rejects ?latitude=45
+  ---
+  duration_ms: 0.691293
+  type: 'test'
+  ...
+# Subtest: rejects ?region=a&region=b
+ok 10 - rejects ?region=a&region=b
+  ---
+  duration_ms: 0.530019
+  type: 'test'
+  ...
+# Subtest: rejects ?limit=201
+ok 11 - rejects ?limit=201
+  ---
+  duration_ms: 0.325471
+  type: 'test'
+  ...
+# Subtest: rejects ?limit=-1
+ok 12 - rejects ?limit=-1
+  ---
+  duration_ms: 0.241133
+  type: 'test'
+  ...
+# Subtest: rejects ?cursor=1.2
+ok 13 - rejects ?cursor=1.2
+  ---
+  duration_ms: 0.155364
+  type: 'test'
+  ...
+# Subtest: rejects ?payment=free
+ok 14 - rejects ?payment=free
+  ---
+  duration_ms: 0.194544
+  type: 'test'
+  ...
+# Subtest: rejects missing/privileged/placeholder key 
+ok 15 - rejects missing/privileged/placeholder key 
+  ---
+  duration_ms: 0.323558
+  type: 'test'
+  ...
+# Subtest: rejects missing/privileged/placeholder key sb_secret_do
+ok 16 - rejects missing/privileged/placeholder key sb_secret_do
+  ---
+  duration_ms: 0.18565
+  type: 'test'
+  ...
+# Subtest: rejects missing/privileged/placeholder key eyJhbGciOiJh
+ok 17 - rejects missing/privileged/placeholder key eyJhbGciOiJh
+  ---
+  duration_ms: 0.14556
+  type: 'test'
+  ...
+# Subtest: rejects missing/privileged/placeholder key sb_publishab
+ok 18 - rejects missing/privileged/placeholder key sb_publishab
+  ---
+  duration_ms: 0.235716
+  type: 'test'
+  ...
+# Subtest: fixed RPC and no client credentials forwarded
+ok 19 - fixed RPC and no client credentials forwarded
+  ---
+  duration_ms: 0.918114
+  type: 'test'
+  ...
+# Subtest: non-public upstream fields stripped
+ok 20 - non-public upstream fields stripped
+  ---
+  duration_ms: 0.479182
+  type: 'test'
+  ...
+# Subtest: private response bodies never reflected
+ok 21 - private response bodies never reflected
+  ---
+  duration_ms: 0.343939
+  type: 'test'
+  ...
+# Subtest: network failure is bounded generic failure
+ok 22 - network failure is bounded generic failure
+  ---
+  duration_ms: 0.353093
+  type: 'test'
+  ...
+# Subtest: invalid returned price rejected
+ok 23 - invalid returned price rejected
+  ---
+  duration_ms: 0.46419
+  type: 'test'
+  ...
+# Subtest: oversized responses rejected
+ok 24 - oversized responses rejected
+  ---
+  duration_ms: 2.316353
+  type: 'test'
+  ...
+# Subtest: invalid upstream domain fails closed
+ok 25 - invalid upstream domain fails closed
+  ---
+  duration_ms: 0.514145
+  type: 'test'
+  ...
+# Subtest: regions allowlist
+ok 26 - regions allowlist
+  ---
+  duration_ms: 1.102513
+  type: 'test'
+  ...
+# Subtest: unknown API path is JSON 404 not HTML SPA
+ok 27 - unknown API path is JSON 404 not HTML SPA
+  ---
+  duration_ms: 0.17246
+  type: 'test'
+  ...
+# Subtest: preflight never contacts upstream
+ok 28 - preflight never contacts upstream
+  ---
+  duration_ms: 0.280303
+  type: 'test'
+  ...
+# Subtest: HEAD has no body
+ok 29 - HEAD has no body
+  ---
+  duration_ms: 0.350098
+  type: 'test'
+  ...
+# Subtest: loopback local anonymous key works only in development
+ok 30 - loopback local anonymous key works only in development
+  ---
+  duration_ms: 0.729029
+  type: 'test'
+  ...
+# Subtest: loopback dev key rejected in staging
+ok 31 - loopback dev key rejected in staging
+  ---
+  duration_ms: 0.214293
+  type: 'test'
+  ...
+# Subtest: loopback dev key rejected in production
+ok 32 - loopback dev key rejected in production
+  ---
+  duration_ms: 1.03411
+  type: 'test'
+  ...
+# Subtest: local service role key is rejected too
+ok 33 - local service role key is rejected too
+  ---
+  duration_ms: 0.254985
+  type: 'test'
+  ...
+# Subtest: local auth key cannot be redirected to a different host
+ok 34 - local auth key cannot be redirected to a different host
+  ---
+  duration_ms: 0.246652
+  type: 'test'
+  ...
+# Subtest: local modern publishable key is accepted without an admin key
+ok 35 - local modern publishable key is accepted without an admin key
+  ---
+  duration_ms: 0.37764
+  type: 'test'
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 102.823818

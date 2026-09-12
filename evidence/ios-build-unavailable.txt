@@ -1,0 +1,2 @@
+ERROR: A full iOS build requires macOS with Xcode. Swift core tests can run here; no iOS binary was built.
+exit_code=1
