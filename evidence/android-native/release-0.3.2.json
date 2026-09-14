@@ -1,0 +1,31 @@
+{
+  "version": "0.3.2-live",
+  "version_code": 6,
+  "bytes": 3811809,
+  "sha256": "1efc643a86d092447aa0c99c3c23addfadbadddf60efb15c628ad30d63227ff7",
+  "api": "https://openfuel.ca/api/v1",
+  "min_sdk": 26,
+  "debug_signed": true,
+  "certificate_sha256": "be7334a1706de518819866752772c2536ce0b7f687c8673925a3c49dbea5be87",
+  "cleartext": false,
+  "unit_tests_passed": 8,
+  "instrumentation_passed": 6,
+  "instrumentation_skipped": 1,
+  "changes": [
+    "Fuel grades, About, data-source explanation and manual refresh in Settings",
+    "Attribution at bottom-left screen edge",
+    "Search area at top after about 750 metres of camera movement",
+    "Handle-only sheet dragging; native list pull-to-refresh",
+    "Fixed map viewport during sheet expansion and list scrolling",
+    "Incremental logo encoding and map JSON serialization off UI thread",
+    "GPS updates only the location dot"
+  ],
+  "validation": [
+    "Physical list swipes preserve sheet position and map dimensions/camera",
+    "Pull-to-refresh confirmed by newer successful GET snapshot timestamp",
+    "Fuel preference persists to device",
+    "Pan/search, sheet restore and marker anchor regressions pass"
+  ],
+  "performance_limit": "Structural optimizations and gesture regressions; no before/after device frame-rate benchmark claimed.",
+  "swift": "Matching SwiftUI source updated; Apple SDK build/device verification remains outstanding."
+}

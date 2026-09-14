@@ -15,6 +15,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.SystemBarStyle
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -95,7 +99,7 @@ private fun OpenFuelApp() {
     var syncing by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var reportError by remember { mutableStateOf<String?>(null) }
-    var grade by rememberSaveable { mutableStateOf(Grade.REGULAR) }
+    var grade by rememberSaveable { mutableStateOf(Grade.entries.find { it.name == prefs.getString("fuel-grade", "REGULAR") } ?: Grade.REGULAR) }
     var sort by rememberSaveable { mutableStateOf(SortMode.BEST) }
     var filters by remember { mutableStateOf(Filters()) }
     var favorites by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet())!!.toSet()) }
@@ -189,22 +193,37 @@ private fun OpenFuelApp() {
     val stationSheet = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = false)
     val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = stationSheet)
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().testTag("native-root")) {
-        val contentHeight = (maxHeight - 170.dp).coerceAtLeast(280.dp)
-        val peekHeight = minOf(336.dp, maxHeight * .43f)
+        val contentHeight = (maxHeight - 124.dp).coerceAtLeast(280.dp)
+        val peekHeight = minOf(280.dp, maxHeight * .36f)
         val sheetHidden = stationSheet.currentValue == SheetValue.Hidden || stationSheet.targetValue == SheetValue.Hidden
         val sheetInset = if (sheetHidden) 0.dp else peekHeight
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
             sheetPeekHeight = peekHeight,
+            sheetSwipeEnabled = false, // Only the handle moves the panel; list gestures scroll/refresh.
             sheetContainerColor = Color.White,
             containerColor = Color(0xFFEDF1EA),
             sheetShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-            sheetDragHandle = { BottomSheetDefaults.DragHandle(color = Rule, modifier = Modifier.testTag("station-sheet-handle")) },
+            sheetDragHandle = {
+                Box(Modifier.fillMaxWidth().height(40.dp).testTag("station-sheet-handle")
+                    .semantics { contentDescription = "Drag to resize station list"; stateDescription = stationSheet.currentValue.name }
+                    .pointerInput(stationSheet) {
+                        var travel = 0f
+                        detectVerticalDragGestures(onDragStart = { travel = 0f }, onVerticalDrag = { change, amount -> change.consume(); travel += amount },
+                            onDragEnd = { scope.launch {
+                                if (travel > 48.dp.toPx()) stationSheet.hide()
+                                else if (travel < -32.dp.toPx()) stationSheet.expand()
+                            } })
+                    }.clickable { scope.launch { if (stationSheet.currentValue == SheetValue.Expanded) stationSheet.partialExpand() else stationSheet.expand() } },
+                    contentAlignment = Alignment.Center) {
+                    Box(Modifier.width(36.dp).height(4.dp).background(Rule, CircleShape))
+                }
+            },
             snackbarHost = { SnackbarHost(snackbar) },
             sheetContent = {
                 Column(Modifier.fillMaxWidth().height(contentHeight)) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.fuel_nearby), fontSize = 23.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text("${gradeLabel(grade)} nearby", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Row(Modifier.clip(RoundedCornerShape(11.dp)).background(Color(DesignTokens.SOFT)).padding(3.dp)) {
                             listOf(true, false).forEach { mode ->
                                 TextButton(onClick = { cards = mode }, modifier = Modifier.height(32.dp).semantics { this.selected = cards == mode }.testTag(if (mode) "layout-cards" else "layout-list"),
@@ -220,16 +239,11 @@ private fun OpenFuelApp() {
                         Text(stringResource(R.string.station_count, visible.size), fontSize = 11.sp, color = Muted, modifier = Modifier.weight(1f))
                         TextButton(onClick = { menu = Menu.SORT }, modifier = Modifier.testTag("open-sort")) { Text(sortLabel(sort), fontSize = 11.sp); Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(16.dp)) }
                     }
-                    Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val status = when { syncing -> R.string.sync_loading; syncState == "connected" -> R.string.sync_connected;
-                            syncState == "offline" -> R.string.sync_offline; syncState == "cached" -> R.string.sync_cached; else -> R.string.sync_samples }
-                        Text(stringResource(status), fontSize = 10.sp, color = Muted, modifier = Modifier.weight(1f).testTag("sync-status"))
-                        IconButton(onClick = { if (hasSearchArea) refresh() else menu = Menu.LOCATION }, enabled = !syncing, modifier = Modifier.size(36.dp).testTag("refresh-prices")) {
-                            if (syncing) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Refresh, stringResource(R.string.refresh_prices), Modifier.size(18.dp))
-                        }
-                    }
-                    LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 30.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (syncState == "offline" || syncState == "cached") Text(
+                        if (syncState == "offline") "Offline · showing saved stations" else "Showing saved stations",
+                        Modifier.padding(horizontal = 18.dp, vertical = 4.dp).testTag("sync-status"), fontSize = 11.sp, color = Muted)
+                    PullToRefreshBox(isRefreshing = syncing, onRefresh = { if (hasSearchArea && !syncing) refresh(recenter = false) }, modifier = Modifier.weight(1f).semantics { stateDescription = if (syncing) "Refreshing" else "Idle" }.testTag("pull-refresh")) {
+                    LazyColumn(Modifier.fillMaxSize().testTag("station-list"), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 52.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (visible.isEmpty()) item {
                             Text(stringResource(R.string.no_matches), Modifier.padding(20.dp), color = Muted)
                             TextButton(onClick = { query = ""; filters = Filters(); savedOnly = false }) { Text(stringResource(R.string.reset_filters)) }
@@ -244,15 +258,16 @@ private fun OpenFuelApp() {
                             Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.suggest_station))
                         } }
                     }
+                    }
                 }
             }
         ) {
             Box(Modifier.fillMaxSize()) {
                 LiveMap(visible, grade, bestId, point, devicePoint, centerRequest, brandLogos, onMove = { moved ->
-                    val area = moved.takeIf { kotlin.math.abs(it.latitude - point.latitude) + kotlin.math.abs(it.longitude - point.longitude) > .004 }
+                    val area = moved.takeIf { approximateDistanceMetres(point, it.latitude, it.longitude) > 750 }
                     if (area != null) selectionVersion++
                     browsePoint = moved
-                }, modifier = Modifier.fillMaxSize().padding(bottom = sheetInset).testTag("station-map"), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
+                }, modifier = Modifier.fillMaxSize().testTag("station-map"), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
                 Column(Modifier.padding(16.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), shadowElevation = 5.dp) {
                         Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 15.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -266,64 +281,52 @@ private fun OpenFuelApp() {
                             IconButton(onClick = { menu = Menu.SETTINGS }, modifier = Modifier.testTag("open-settings")) { Icon(Icons.Default.Tune, stringResource(R.string.settings), tint = Forest) }
                         }
                     }
-                    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 2.dp,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("map-filter-row")) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { menu = Menu.LOCATION }, contentPadding = PaddingValues(horizontal = 3.dp),
-                                modifier = Modifier.weight(1.4f).height(48.dp).testTag("search-area")
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp).testTag("map-filter-row"), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = RoundedCornerShape(12.dp), color = Color.White) {
+                            TextButton(onClick = { menu = Menu.LOCATION }, contentPadding = PaddingValues(horizontal = 10.dp),
+                                modifier = Modifier.height(36.dp).widthIn(max = 210.dp).testTag("search-area")
                                     .semantics { contentDescription = "Choose area: ${point.label}" }) {
-                                Text(point.label.substringBefore(" ·"), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Icon(Icons.Default.LocationOn, null, Modifier.size(14.dp)); Spacer(Modifier.width(4.dp))
+                                Text(point.label.substringBefore(" ·"), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(14.dp))
                             }
-                            Grade.entries.forEach { fuel ->
-                                TextButton(onClick = { grade = fuel }, contentPadding = PaddingValues(horizontal = 3.dp),
-                                    modifier = Modifier.weight(1f).height(48.dp).testTag("fuel-${fuel.name.lowercase()}"),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.textButtonColors(containerColor = if (grade == fuel) Forest else Color.White,
-                                        contentColor = if (grade == fuel) Color.White else Forest)) {
-                                    Text(gradeLabel(fuel), fontSize = 11.sp, maxLines = 1)
-                                }
-                            }
-                            FilledIconToggleButton(checked = savedOnly, onCheckedChange = { savedOnly = it },
-                                modifier = Modifier.size(48.dp).testTag("saved-filter"),
-                                colors = IconButtonDefaults.filledIconToggleButtonColors(containerColor = Color.White, contentColor = Forest,
-                                    checkedContainerColor = Forest, checkedContentColor = Color.White)) {
-                                Icon(if (savedOnly) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, stringResource(R.string.saved), Modifier.size(20.dp))
-                            }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        FilledIconToggleButton(checked = savedOnly, onCheckedChange = { savedOnly = it },
+                            modifier = Modifier.size(40.dp).testTag("saved-filter"),
+                            colors = IconButtonDefaults.filledIconToggleButtonColors(containerColor = Color.White, contentColor = Forest,
+                                checkedContainerColor = Forest, checkedContentColor = Color.White)) {
+                            Icon(if (savedOnly) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, stringResource(R.string.saved), Modifier.size(19.dp))
                         }
                     }
                 }
-                Text("© OpenStreetMap contributors", fontSize = 10.sp, color = Ink,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 15.dp, bottom = sheetInset+80.dp).background(Color.White.copy(alpha = .9f), RoundedCornerShape(5.dp)).clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(5.dp))
             }
         }
-        // These controls belong to the screen, not the scaffold's moving sheet/body.
-        // Keep them above the native map and outside gesture/navigation-bar overlap.
         if (stationSheet.currentValue != SheetValue.Expanded && stationSheet.targetValue != SheetValue.Expanded) {
-            Column(Modifier.align(Alignment.BottomEnd).navigationBarsPadding()
-                .padding(end = 15.dp, bottom = sheetInset + 16.dp), horizontalAlignment = Alignment.End) {
-                FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.size(48.dp).testTag("use-location")) {
-                    if (locating) CircularProgressIndicator(Modifier.size(20.dp)) else Icon(Icons.Default.MyLocation, "Use my location")
-                }
-                FilledTonalIconButton(onClick = { menu = Menu.ABOUT }, modifier = Modifier.size(48.dp).testTag("map-info")) {
-                    Icon(Icons.Default.Info, stringResource(R.string.about))
-                }
-                Button(onClick = {
-                    val area = (browsePoint ?: point).copy(label = "Map area", source = SearchSource.MAP)
-                    refresh(area, recenter = false)
-                }, enabled = !syncing, modifier = Modifier.heightIn(min = 48.dp).testTag("search-map-area")) {
-                    Text(if (syncing) "Searching…" else if (syncState == "offline") "Retry area search" else "Search this area")
-                }
+            FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.align(Alignment.BottomEnd)
+                .navigationBarsPadding().padding(end = 14.dp, bottom = sheetInset + 28.dp).size(48.dp).testTag("use-location")) {
+                if (locating) CircularProgressIndicator(Modifier.size(20.dp)) else Icon(Icons.Default.MyLocation, "Use my location")
+            }
+            val movedAway = browsePoint?.let { approximateDistanceMetres(point, it.latitude, it.longitude) > 750 } == true
+            if (movedAway || syncState == "offline") Button(onClick = {
+                val area = (browsePoint ?: point).copy(label = "Map area", source = SearchSource.MAP)
+                refresh(area, recenter = false)
+            }, enabled = !syncing, modifier = Modifier.align(Alignment.TopCenter).padding(top = 132.dp).height(44.dp).testTag("search-map-area")) {
+                Text(if (syncing) "Searching…" else if (syncState == "offline") "Retry area search" else "Search this area")
             }
         }
         if (sheetHidden) FilledTonalButton(onClick = {
             cards = false
             scope.launch { stationSheet.partialExpand() }
-        }, modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 144.dp)
-            .heightIn(min = 48.dp).testTag("show-stations")) {
+        }, modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 28.dp)
+            .height(48.dp).testTag("show-stations")) {
             Icon(Icons.Default.KeyboardArrowUp, null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp)); Text("Show station list")
         }
+        // Required attribution is a quiet edge label, not a floating map action.
+        Text("© OpenStreetMap contributors", fontSize = 9.sp, color = Ink,
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().background(Color.White.copy(alpha = .85f))
+                .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp))
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
         title = { Text("Find fuel around you") },
@@ -342,7 +345,9 @@ private fun OpenFuelApp() {
                         SheetTitle(stringResource(R.string.sort_stations)) { menu = null }
                         SortMode.entries.forEach { mode -> OptionRow(sortLabel(mode), sortHelp(mode), sort == mode) { sort = mode; menu = null } }
                     }
-                    Menu.SETTINGS -> SettingsContent(filters, provider, fullWidth,
+                    Menu.SETTINGS -> SettingsContent(filters, provider, fullWidth, grade,
+                        changeGrade = { grade = it; prefs.edit().putString("fuel-grade", it.name).apply() }, about = { menu = Menu.ABOUT },
+                        refresh = { if (hasSearchArea && !syncing) refresh(recenter = false); menu = null },
                         dismiss = { menu = null }, apply = { f, p, wide ->
                             filters = f; provider = p; fullWidth = wide
                             prefs.edit().putString("maps", if (p == MapProvider.GOOGLE) "google" else "ask").putBoolean("wide", wide).apply()
@@ -479,9 +484,20 @@ private fun openMaps(context: Context, station: Station, provider: MapProvider):
     } catch (_: ActivityNotFoundException) { false } catch (_: SecurityException) { false }
 }
 
-@Composable private fun SettingsContent(initial: Filters, initialProvider: MapProvider, initialWide: Boolean, dismiss: () -> Unit, apply: (Filters, MapProvider, Boolean) -> Unit) {
+@Composable private fun SettingsContent(initial: Filters, initialProvider: MapProvider, initialWide: Boolean, grade: Grade, changeGrade: (Grade) -> Unit, about: () -> Unit, refresh: () -> Unit, dismiss: () -> Unit, apply: (Filters, MapProvider, Boolean) -> Unit) {
     var f by remember { mutableStateOf(initial) }; var provider by remember { mutableStateOf(initialProvider) }; var wide by remember { mutableStateOf(initialWide) }
     SheetTitle(stringResource(R.string.settings), dismiss)
+    Text("Fuel type", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Grade.entries.forEach { fuel -> FilterChip(selected = grade == fuel, onClick = { changeGrade(fuel) },
+            label = { Text(gradeLabel(fuel)) }, modifier = Modifier.testTag("fuel-${fuel.name.lowercase()}")) }
+    }
+    Text("Pull down at the top of the station list to refresh. Drag its handle to expand or hide the panel.", fontSize = 12.sp, color = Muted)
+    TextButton(onClick = refresh, modifier = Modifier.testTag("refresh-prices")) { Text("Refresh stations now") }
+    Text("Station data", fontWeight = FontWeight.SemiBold)
+    Text("Station locations: OpenStreetMap contributors. Community pump prices are unverified; check the report time and confirm at the pump.", fontSize = 12.sp, color = Muted)
+    TextButton(onClick = about, modifier = Modifier.testTag("open-about")) { Text("About OpenFuel and data sources") }
+
     Text(stringResource(R.string.open_with), fontWeight = FontWeight.SemiBold)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(provider == MapProvider.GOOGLE, { provider = MapProvider.GOOGLE }, label = { Text("Google Maps") })

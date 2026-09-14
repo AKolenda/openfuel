@@ -32,8 +32,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"$publicApiBase\"")
         buildConfigField("String", "DATA_MODE", "\"$dataMode\"")
-        versionCode = 5
-        versionName = "0.3.1-live"
+        versionCode = 6
+        versionName = "0.3.2-live"
     }
     sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/vendor"))
     buildFeatures { compose = true; buildConfig = true }

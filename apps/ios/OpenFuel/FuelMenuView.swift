@@ -29,6 +29,14 @@ struct FuelMenuView:View {
             ForEach(PreviewSort.allCases){s in option(sortTitle(s),selected:model.sort==s){model.sort=s;model.menu=nil}.accessibilityIdentifier("sort-\(s.rawValue)")}
         case .settings:
             Group{
+                Text("Fuel type").font(.subheadline.weight(.semibold))
+                Picker("Fuel type", selection: $model.grade) { ForEach(PreviewGrade.allCases) { grade in Text(tr(grade.rawValue)).tag(grade) } }.pickerStyle(.segmented)
+                Text("Pull down at the top of the station list to refresh. Drag its handle to resize or hide it.").font(.footnote).foregroundStyle(Color.fuelMuted)
+                Text("Station locations: OpenStreetMap contributors. Community pump prices are unverified; confirm at the pump.").font(.footnote).foregroundStyle(Color.fuelMuted)
+                Button("About OpenFuel and data sources") { model.menu = .about }.accessibilityIdentifier("open-about")
+                Button(tr("refresh_prices")) { Task { await model.refresh() } }.disabled(model.isLoading)
+                Divider()
+
                 Text(tr("open_with")).font(.subheadline.weight(.semibold))
                 Picker(tr("open_with"),selection:$draftPrefs.maps){ForEach(PreviewMaps.allCases){p in Text(p == .ask ? tr("ask_maps") : p.label).tag(p)}}.pickerStyle(.menu)
                 Text(tr("maps_choice_note")).font(.footnote).foregroundStyle(Color.fuelMuted)

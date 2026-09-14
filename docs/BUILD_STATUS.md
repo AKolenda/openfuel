@@ -15,9 +15,9 @@ Cloudflare serves the website, API, source archive and compact Android APK.
 | Worker deployment | Wrangler dry run and deployment passed; `openfuel.ca` custom domain and TLS verified |
 | Public API/downloads | Six-city read-only smoke passed; downloaded APK/source matched local bytes. See `evidence/live-api-production.json` and `evidence/live-downloads.json` |
 | Web | 235 browser checks passed across desktop and small mobile screens; real OSM tiles and city fallback verified separately, including the deployed domain. See `evidence/browser-results.json` |
-| Native Android | Eight JVM and five public-API emulator checks passed; one local-only report test skipped. Version 0.3.1-live/code 5; 3,779,165-byte HTTPS APK, debug signed, cleartext disabled. Real gesture tests verify new-area search, stable marker anchors and Cards-to-List sheet restoration. See `evidence/android-native/release-0.3.1.json` |
+| Native Android | Eight JVM and six public-API emulator checks passed; one local-only report test skipped. Version 0.3.2-live/code 6; 3,811,809-byte HTTPS APK, debug signed, cleartext disabled. Real gesture tests verify independent list scrolling, pull-to-refresh, Settings fuel selection, fixed map dimensions, area search and sheet restoration. See `evidence/android-native/release-0.3.2.json` |
 | Expo | Typecheck, six domain tests, six embedded-map browser checks and Android export passed for current source. Prior Expo Go device evidence predates this branding/layout update; no new native Expo Go run is claimed |
-| Swift | Source updated for price-above-logo markers, List restoration and Tempo logos. Prior portable results: 30 passed, one skip. Current host has no Swift compiler; Apple SDK/device verification still requires a Mac |
+| Swift | Source updated for Settings-based fuel/info, fixed map viewport, top area search and native List refresh. Prior portable results: 30 passed, one skip. Current host has no Swift compiler; Apple SDK/device verification still requires a Mac |
 | Source publication | Source and archive Gitleaks scans passed with no leaked credentials; reachable Git history is scanned before public push. See `PUBLICATION_AUDIT.md` |
 
 The production verification command is read-only:

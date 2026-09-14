@@ -11,9 +11,20 @@ html,body{height:100%;width:100%;margin:0;background:#edf1ea}#map{position:fixed
 <script>/* LEAFLET_JS */</script><script>
 const map=L.map('map',{zoomControl:false,attributionControl:false,zoomSnap:0.5}).setView([56.13,-106.35],3);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,updateWhenIdle:true,keepBuffer:1}).addTo(map);
-const markers=new Map();let locationDot=null;
-map.on('moveend',()=>{const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);});
-window.setArea=(lat,lon,overview)=>map.setView([lat,lon],overview?3:12.5,{animate:false});
+const markers=new Map();let locationDot=null,changingArea=false;
+map.on('moveend',()=>{if(!changingArea){const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);}});
+window.setArea=(lat,lon,overview)=>{changingArea=true;map.setView([lat,lon],overview?3:12.5,{animate:false});changingArea=false;};
+function stationIcon(s,logo){
+   const known=s.price!=null;
+   const chip=document.createElement('div');chip.className='station-chip'+(s.best?' best':'');
+   if(known){const price=document.createElement('div');price.className='station-price';price.textContent=(s.price/10).toFixed(1);chip.append(price);}
+   const brand=document.createElement('div');brand.className='station-brand';brand.textContent=s.name.slice(0,1).toUpperCase()||'F';
+   if(logo){const img=document.createElement('img');img.alt='';img.src=logo;brand.replaceChildren(img);}
+   chip.append(brand);
+   const w=known?64:42,h=known?66:40;
+   // The brand centre is always the geographic anchor; adding a price grows upward.
+   return L.divIcon({className:'station-pin',html:chip,iconSize:[w,h],iconAnchor:[w/2,h-20]});
+}
 window.setStations=data=>{
  const keep=new Set(data.stations.map(s=>s.id));
  for(const [id,item] of markers){if(!keep.has(id)){item.marker.remove();markers.delete(id);}}
@@ -23,18 +34,13 @@ window.setStations=data=>{
   if(!item){const marker=L.marker([s.lat,s.lon],{title:s.name,keyboard:true}).on('click',()=>OpenFuelMap.selected(s.id));item={marker,key:null};markers.set(s.id,item);}
   item.marker.setLatLng([s.lat,s.lon]);
   if(item.key!==key){
-   const chip=document.createElement('div');chip.className='station-chip'+(s.best?' best':'');
-   if(known){const price=document.createElement('div');price.className='station-price';price.textContent=(s.price/10).toFixed(1);chip.append(price);}
-   const brand=document.createElement('div');brand.className='station-brand';brand.textContent=s.name.slice(0,1).toUpperCase()||'F';
-   if(logo){const img=document.createElement('img');img.alt='';img.src=logo;brand.replaceChildren(img);}
-   chip.append(brand);
-   const w=known?64:42,h=known?66:40;
-   // The brand centre is always the geographic anchor; adding a price grows upward.
-   item.marker.setIcon(L.divIcon({className:'station-pin',html:chip,iconSize:[w,h],iconAnchor:[w/2,h-20]}));
+   item.marker.setIcon(stationIcon(s,logo));
    item.marker.addTo(map);item.marker.getElement().setAttribute('aria-label',s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));item.key=key;
   }
  }
- if(data.location){const p=[data.location.lat,data.location.lon];if(locationDot)locationDot.setLatLng(p);else locationDot=L.circleMarker(p,{radius:8,color:'white',weight:3,fillColor:'#267bce',fillOpacity:1}).addTo(map);}
+};
+window.setLocation=location=>{
+ if(location){const p=[location.lat,location.lon];if(locationDot)locationDot.setLatLng(p);else locationDot=L.circleMarker(p,{radius:8,color:'white',weight:3,fillColor:'#267bce',fillOpacity:1}).addTo(map);}
  else if(locationDot){locationDot.remove();locationDot=null;}
 };
 new ResizeObserver(()=>map.invalidateSize({pan:false})).observe(document.getElementById('map'));

@@ -89,3 +89,10 @@ The integration test performs GET requests only. All report tests use intercepte
 local test responses; never send invented prices to real production stations.
 Historical `PrototypeAPI` and generated sample fixtures remain reference tests,
 but the active UI instantiates `LiveAPIClient` and never `SampleMapView`.
+
+
+The current source keeps the map viewport fixed behind the results panel, moves
+fuel selection and About/data-source details into Settings, and places Search
+this area near the top after a roughly 750-metre pan. Results use a native List
+with pull-to-refresh; the handle resizes the panel. These latest SwiftUI changes
+still require Apple SDK compilation and device verification on a Mac.

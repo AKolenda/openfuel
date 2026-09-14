@@ -32,9 +32,19 @@ provider or self-hosting before large-scale adoption. There are no paid map keys
 Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
 bundled or hosted by OpenFuel. The bundled map renderer anchors cached brand/price markers geographically and handles station taps. Camera movement reuses marker art within the same layer as the map tiles. Prices appear above the brand icon.
 
-The approved curved F is used in the launcher and header. Location, fuel grades and Saved
-share one opaque row. Drag the station sheet fully down to browse the whole map; **Show station list** restores it into List view. Recenter, information and **Search this area** are stacked in that
-order. Status-bar icons remain dark on the app's light surface even in Android dark mode.
+The approved curved F is used in the launcher and header. The map shows a small
+location selector and Saved control; fuel grades, About and data-source details
+live in Settings. The results heading names the selected fuel grade. Attribution
+is a small label at the screen's bottom-left edge. Search this area appears near
+the top after a pan of roughly 750 metres, and searches without resetting zoom.
+
+Drag the **handle** to expand or hide the station panel; **Show station list**
+restores it. Gestures inside the list only scroll the list. Pull down at the top
+to refresh, or use Refresh stations now in Settings. The map stays full-size
+behind the panel so expanding/collapsing it does not resize tiles. Cached logo
+encoding and station serialization run off the UI thread, and GPS updates move
+only the location dot. No device-independent frame-rate improvement is claimed.
+Status-bar icons remain dark on the light app surface even in Android dark mode.
 
 ## Build
 

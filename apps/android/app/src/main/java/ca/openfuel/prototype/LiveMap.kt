@@ -26,7 +26,8 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val select by rememberUpdatedState(onSelect)
     val moved by rememberUpdatedState(onMove)
-    val currentStations by rememberUpdatedState(stations.associateBy { it.id })
+    val stationIndex = remember(stations) { stations.associateBy { it.id } }
+    val currentStations by rememberUpdatedState(stationIndex)
     var ready by remember { mutableStateOf(false) }
     val view = remember {
         WebView(context).apply {
@@ -71,23 +72,37 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
         if (ready) view.evaluateJavascript("window.setArea(${center.latitude},${center.longitude},${center.source == SearchSource.OVERVIEW});", null)
     }
     var encodedLogos by remember { mutableStateOf(JSONObject()) }
-    LaunchedEffect(brandLogos) {
-        encodedLogos = withContext(Dispatchers.Default) {
-            JSONObject().apply { brandLogos.forEach { (url, bitmap) ->
-                val output = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-                put(url, "data:image/png;base64," + android.util.Base64.encodeToString(output.toByteArray(), android.util.Base64.NO_WRAP))
-            } }
+    var encodedCache by remember { mutableStateOf<Map<String, Pair<Bitmap, String>>>(emptyMap()) }
+    LaunchedEffect(brandLogos) { withContext(Dispatchers.Main.immediate) {
+        val previous = encodedCache
+        val next = withContext(Dispatchers.Default) {
+            brandLogos.mapValues { (url, bitmap) ->
+                previous[url]?.takeIf { it.first === bitmap } ?: run {
+                    val output = ByteArrayOutputStream()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                    bitmap to ("data:image/png;base64," + android.util.Base64.encodeToString(output.toByteArray(), android.util.Base64.NO_WRAP))
+                }
+            }
         }
-    }
-    LaunchedEffect(ready, stations, grade, bestId, encodedLogos, currentLocation) {
-        if (!ready) return@LaunchedEffect
-        val payload = JSONObject().put("logos", encodedLogos).put("stations", JSONArray().apply {
-            stations.forEach { station -> if (FuelCore.validStationPoint(station.latitude, station.longitude)) put(JSONObject()
-                .put("id", station.id).put("name", station.name).put("lat", station.latitude).put("lon", station.longitude)
-                .put("price", station.price(grade) ?: JSONObject.NULL).put("logo", station.brandLogoUrl ?: JSONObject.NULL).put("best", station.id == bestId)) }
-        }).put("location", currentLocation?.let { JSONObject().put("lat", it.latitude).put("lon", it.longitude) } ?: JSONObject.NULL)
+        encodedCache = next
+        encodedLogos = JSONObject().apply { next.forEach { (url, value) -> put(url, value.second) } }
+    } }
+    LaunchedEffect(ready, stations, grade, bestId, encodedLogos) { withContext(Dispatchers.Main.immediate) {
+        if (!ready) return@withContext
+        // Serializing the station snapshot never blocks a list-scroll frame.
+        val payload = withContext(Dispatchers.Default) {
+            JSONObject().put("logos", encodedLogos).put("stations", JSONArray().apply {
+                stations.forEach { station -> if (FuelCore.validStationPoint(station.latitude, station.longitude)) put(JSONObject()
+                    .put("id", station.id).put("name", station.name).put("lat", station.latitude).put("lon", station.longitude)
+                    .put("price", station.price(grade) ?: JSONObject.NULL).put("logo", station.brandLogoUrl ?: JSONObject.NULL).put("best", station.id == bestId)) }
+            }).toString()
+        }
         view.evaluateJavascript("window.setStations($payload);", null)
+    } }
+    // A GPS update moves only the location dot; it does not rebuild every station marker.
+    LaunchedEffect(ready, currentLocation) {
+        if (ready) view.evaluateJavascript("window.setLocation(" +
+            (currentLocation?.let { JSONObject().put("lat", it.latitude).put("lon", it.longitude) } ?: JSONObject.NULL) + ");", null)
     }
     AndroidView(factory = { view }, modifier = modifier)
 }

@@ -70,12 +70,53 @@ class NativeScreensTest {
             compose.onNodeWithTag("show-stations").assertIsDisplayed()
             // Test-only marker, never sent to the API: price is above the logo and the
             // logo centre stays anchored throughout an animated pan and zoom.
-            evaluate(scenario, """window.setStations({stations:[{id:'visual-test',name:'Test only',lat:map.getCenter().lat,lon:map.getCenter().lng,price:1499}],logos:{},location:null});true""")
-            assertEquals("true", evaluate(scenario, "document.querySelector('.station-price').getBoundingClientRect().bottom <= document.querySelector('.station-brand').getBoundingClientRect().top"))
-            evaluate(scenario, """window.maxDrift=0;window.trackAnchor=()=>{const item=markers.get('visual-test'),p=map.latLngToContainerPoint(item.marker.getLatLng()),r=document.querySelector('.station-brand').getBoundingClientRect(),m=map.getContainer().getBoundingClientRect();window.maxDrift=Math.max(window.maxDrift,Math.abs(r.x+r.width/2-m.x-p.x),Math.abs(r.y+r.height/2-m.y-p.y));};map.on('move',trackAnchor);map.panBy([100,50],{animate:true,duration:.4});true""")
+            evaluate(scenario, """window.probe=L.marker(map.getCenter(),{icon:stationIcon({name:'Test only',price:1499},null)}).addTo(map);true""")
+            assertEquals("true", evaluate(scenario, "window.probe.getElement().querySelector('.station-price').getBoundingClientRect().bottom <= window.probe.getElement().querySelector('.station-brand').getBoundingClientRect().top"))
+            evaluate(scenario, """window.maxDrift=0;window.trackAnchor=()=>{const p=map.latLngToContainerPoint(window.probe.getLatLng()),r=window.probe.getElement().querySelector('.station-brand').getBoundingClientRect(),m=map.getContainer().getBoundingClientRect();window.maxDrift=Math.max(window.maxDrift,Math.abs(r.x+r.width/2-m.x-p.x),Math.abs(r.y+r.height/2-m.y-p.y));};map.on('move',trackAnchor);map.panBy([100,50],{animate:true,duration:.4});true""")
             compose.waitUntil(5_000) { evaluate(scenario, "!map._panAnim._inProgress") == "true" }
             assertTrue("Marker follows the map frame", evaluate(scenario, "window.maxDrift").toDouble() <= 2.0)
             screenshot("android-pan-search-restorable-sheet")
+        }
+    }
+
+    @Test fun unclutteredControlsAndIndependentListRefresh() {
+        runBlocking { StationRepository(context).refresh(SearchPoint(51.0447, -114.0719, "Calgary · chosen city", SearchSource.CITY)) }
+        context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            compose.waitUntil(20_000) { evaluate(scenario, "typeof window.setStations") == "\"function\"" }
+            compose.waitUntil(40_000) { evaluate(scenario, "markers.size").toInt() > 0 }
+            compose.onNodeWithTag("fuel-regular").assertDoesNotExist()
+            compose.onNodeWithTag("map-info").assertDoesNotExist()
+            compose.onNodeWithTag("search-map-area").assertDoesNotExist()
+            compose.onNodeWithTag("refresh-prices").assertDoesNotExist()
+            compose.onNodeWithTag("open-settings").performTouchInput { click() }
+            compose.onNodeWithTag("fuel-diesel").assertIsDisplayed().performTouchInput { click() }
+            assertEquals("DIESEL", context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).getString("fuel-grade", null))
+            compose.onNodeWithTag("open-about").assertExists()
+            compose.onNodeWithTag("fuel-regular").performTouchInput { click() }
+            // The settings close action is the SheetTitle close control.
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("fuel-regular").fetchSemanticsNodes().isEmpty() }
+            val viewport = evaluate(scenario, "JSON.stringify(map.getSize())")
+            val camera = evaluate(scenario, "JSON.stringify(map.getCenter())")
+            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { click() }
+            compose.waitForIdle()
+            val handleBefore = compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
+            compose.onNodeWithTag("station-list").performTouchInput { swipeUp(durationMillis = 400) }
+            compose.waitForIdle()
+            val handleAfter = compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
+            assertEquals("Scrolling rows does not drag the sheet", handleBefore, handleAfter, 1f)
+            assertEquals("Expanding/scrolling never resizes map tiles", viewport, evaluate(scenario, "JSON.stringify(map.getSize())"))
+            assertEquals(camera, evaluate(scenario, "JSON.stringify(map.getCenter())"))
+            compose.onNodeWithTag("station-list").performScrollToIndex(0)
+            compose.waitUntil(40_000) { compose.onNodeWithTag("pull-refresh").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] == "Idle" }
+            val beforeRefresh = context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE).getLong("saved-at", 0)
+            // A successful GET refresh updates the saved snapshot; no test price is submitted.
+            compose.onNodeWithTag("station-list").performTouchInput { swipe(start = Offset(center.x, 30f), end = Offset(center.x, height*.7f), durationMillis = 500) }
+            compose.waitUntil(40_000) { context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE).getLong("saved-at", 0) > beforeRefresh }
+            compose.onNodeWithTag("show-stations").assertDoesNotExist()
+            assertEquals(camera, evaluate(scenario, "JSON.stringify(map.getCenter())"))
+            screenshot("android-uncluttered-list")
         }
     }
 

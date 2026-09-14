@@ -56,7 +56,12 @@ final class PreviewModel: ObservableObject {
     var visible: [PreviewStation] { PreviewRules.visible(stations, grade: grade, sort: sort, filters: preferences.filters, query: query, savedOnly: savedOnly, saved: preferences.saved) }
     var selected: PreviewStation? { stations.first { $0.id == selectedID } }
     var bestID: String? { visible.filter { $0.price(grade) != nil && $0.age(grade) <= 60 }.min { ($0.price(grade) ?? .max) < ($1.price(grade) ?? .max) }?.id }
-    var canSearchMap: Bool { guard let mapArea else { return false }; return area.map { !$0.matches(mapArea) } ?? true }
+    var canSearchMap: Bool {
+        guard let mapArea else { return false }; guard let area else { return true }
+        let dy = (area.latitude - mapArea.latitude) * 111_000
+        let dx = (area.longitude - mapArea.longitude) * 111_000 * cos(area.latitude * .pi / 180)
+        return hypot(dx, dy) > 750
+    }
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
         store = PreviewDiskStore(directory: base.appendingPathComponent("OpenFuel"))

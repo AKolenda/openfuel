@@ -10,10 +10,10 @@ struct MapHomeView: View {
     @State private var sheetHidden = false
     var body: some View {
         GeometryReader { geometry in
-            let bottom: CGFloat = sheetHidden ? 0 : expanded ? max(300, geometry.size.height - 142) : min(320, geometry.size.height * 0.42)
+            let bottom: CGFloat = sheetHidden ? 0 : expanded ? max(300, geometry.size.height - 142) : min(280, geometry.size.height * 0.36)
             ZStack(alignment: .top) {
                 if let area = model.area {
-                    LiveMapView(model: model, area: area).padding(.bottom, bottom)
+                    LiveMapView(model: model, area: area)
                 } else {
                     Color.fuelSoft
                     VStack(spacing: 14) {
@@ -25,24 +25,19 @@ struct MapHomeView: View {
                 }
                 VStack(spacing: 9) { search; compactControls }.padding(.horizontal, 14).padding(.top, 8)
                 if !sheetHidden { VStack { Spacer(); results(height: bottom) } }
-                VStack {
-                    Spacer().frame(height: 125)
-                    HStack {
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 8) {
-                            Button { model.requestLocation() } label: {
-                                Group { if model.isLocating { ProgressView() } else { Image(systemName: "location.fill") } }.frame(width: 44, height: 44)
-                            }.disabled(model.isLocating).background(.white, in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel(tr("use_location"))
-                            Button { model.menu = .about } label: { Image(systemName: "info.circle").frame(width: 44, height: 44) }
-                                .background(.white, in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel(tr("about")).accessibilityIdentifier("open-about")
-                            if model.canSearchMap {
-                                Button { model.searchMap() } label: { Label(tr("search_this_area"), systemImage: "magnifyingglass").font(.footnote.weight(.semibold)).padding(12) }
-                                    .background(.white, in: Capsule()).accessibilityIdentifier("search-this-area")
-                            }
-                        }
-                    }.padding(.trailing, 14)
-                    Spacer()
-                    if sheetHidden {
+                if !expanded {
+                    if model.canSearchMap {
+                        Button { model.searchMap() } label: { Text(tr("search_this_area")).font(.footnote.weight(.semibold)).padding(.horizontal, 18).frame(height: 44) }
+                            .foregroundStyle(.white).background(Color.fuelGreen, in: Capsule()).padding(.top, 125).accessibilityIdentifier("search-this-area")
+                    }
+                    VStack { Spacer(); HStack { Spacer()
+                        Button { model.requestLocation() } label: {
+                            Group { if model.isLocating { ProgressView() } else { Image(systemName: "location.fill") } }.frame(width: 44, height: 44)
+                        }.disabled(model.isLocating).background(.white, in: Circle()).accessibilityLabel(tr("use_location"))
+                    }.padding(.trailing, 14).padding(.bottom, bottom + 28) }
+                }
+                if sheetHidden {
+                    VStack { Spacer()
                         Button { withAnimation { sheetHidden = false; expanded = false; model.preferences.cards = false } } label: {
                             Label(tr("show_stations"), systemImage: "list.bullet").font(.callout.weight(.semibold)).padding(.horizontal, 18).frame(height: 48)
                         }.background(.white, in: Capsule()).padding(.bottom, 22).accessibilityIdentifier("show-stations")
@@ -90,10 +85,7 @@ struct MapHomeView: View {
                 HStack(spacing: 3) { Image(systemName: "mappin"); Text(model.areaLabel).lineLimit(1); Image(systemName: "chevron.down").font(.system(size: 8)) }
                     .font(.system(size: 11, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 42)
             }.accessibilityLabel(tr("choose_area")).accessibilityIdentifier("choose-area")
-            ForEach(PreviewGrade.allCases) { grade in
-                Button { model.grade = grade } label: { Text(tr(grade.rawValue)).font(.system(size: 10, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.85).padding(.horizontal, 7).frame(height: 36) }
-                    .foregroundStyle(model.grade == grade ? .white : Color.fuelInk).background(model.grade == grade ? Color.fuelGreen : Color.clear, in: Capsule()).accessibilityIdentifier("fuel-\(grade.rawValue)")
-            }
+            Spacer()
             Button { model.savedOnly.toggle() } label: { Image(systemName: model.savedOnly ? "bookmark.fill" : "bookmark").frame(width: 35, height: 42) }
                 .accessibilityLabel(tr("saved"))
         }.padding(.horizontal, 5).background(.white, in: Capsule())
@@ -108,7 +100,7 @@ struct MapHomeView: View {
                     }
                 })
             HStack {
-                Text(tr("fuel_nearby")).font(.system(size: 22, weight: .bold))
+                Text("\(tr(model.grade.rawValue)) nearby").font(.system(size: 22, weight: .bold))
                 Spacer()
                 Button { withAnimation { expanded.toggle() } } label: { Image(systemName: expanded ? "chevron.down" : "chevron.up").frame(width: 36, height: 36) }.accessibilityLabel(tr("expand_results"))
                 Button { withAnimation { sheetHidden = true; expanded = false } } label: { Image(systemName: "xmark").frame(width: 36, height: 36) }.accessibilityLabel(tr("hide_stations")).accessibilityIdentifier("hide-stations")
@@ -118,17 +110,17 @@ struct MapHomeView: View {
                 Spacer()
                 Button { model.menu = .sort } label: { Label(sortTitle(model.sort), systemImage: "arrow.up.arrow.down").font(.system(size: 11)) }.accessibilityIdentifier("open-sort")
             }.padding(.horizontal, 18).padding(.vertical, 6)
-            connectionStatus.padding(.horizontal, 18).padding(.bottom, 7)
-            ScrollView {
-                LazyVStack(spacing: 5) {
+            if model.connectionState == "offline" { Text("Offline · showing saved stations").font(.caption).foregroundStyle(Color.fuelMuted).padding(.horizontal, 18) }
+            List {
+                Group {
                     ForEach(model.visible) { station in
                         StationRowView(station: station, grade: model.grade, members: false, cards: model.preferences.cards, wide: model.preferences.wide, best: station.id == model.bestID,
                                        detail: { model.select(station) }, go: { model.requestMaps(station) })
                     }
                     if model.visible.isEmpty { Text(tr("empty_results")).font(.callout).foregroundStyle(Color.fuelMuted).padding(20) }
                     Button { model.selectedID = nil; model.menu = .proposal } label: { Label(tr("suggest_station"), systemImage: "plus").font(.footnote).frame(minHeight: 44) }
-                }.padding(.horizontal, 12).padding(.bottom, 20)
-            }.refreshable { await model.refresh() }.accessibilityIdentifier("station-list")
+                }.listRowInsets(EdgeInsets(top: 3, leading: 12, bottom: 3, trailing: 12)).listRowSeparator(.hidden)
+            }.listStyle(.plain).scrollContentBackground(.hidden).refreshable { await model.refresh() }.accessibilityIdentifier("station-list")
         }.frame(maxWidth: .infinity).frame(height: height).background(.white, in: UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25)).shadow(color: .black.opacity(0.07), radius: 12, y: -3)
     }
     private var connectionStatus: some View {
