@@ -7,6 +7,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import worker, {distanceMetres} from './worker.mjs';
+import {stationBrand, logoImageHosts} from '../../packages/brands/resolve.mjs';
 
 const temp = mkdtempSync(join(tmpdir(), 'openfuel-test-'));
 let seed;
@@ -52,6 +53,25 @@ test('real station geography is nearby, ordered and contains no invented prices'
   assert.equal(nearby.market_reference.kind, 'monthly_average');
   assert.match(nearby.market_reference.city, /Edmonton/);
   assert.equal(nearby.coverage.pump_prices_seeded, 0);
+});
+test('brand aliases return curated external URLs and reject lookalike names', () => {
+  for (const alias of ['PetroCanada', 'Petro-Canada', 'Petro Canada', 'Petro-Pass']) {
+    assert.equal(stationBrand({name: alias}).brandKey, 'petro-canada');
+  }
+  assert.equal(stationBrand({name: 'Calgary Co-op Gas Bar'}).brandKey, 'coop');
+  assert.equal(stationBrand({brand: 'Esso', name: 'Fuel stop'}).brandKey, 'esso');
+  assert.equal(stationBrand({name: 'Shellfish Market', brandLogoUrl: 'https://example.test/x.png'}).brandLogoUrl, null);
+  assert.equal(stationBrand({name: 'Cooper Service'}).brandKey, null);
+  assert.ok(nearby.stations.some(s => s.brandKey === 'shell'));
+  for (const station of nearby.stations) {
+    if (!station.brandKey) { assert.equal(station.brandLogoUrl, null); continue; }
+    const url = new URL(station.brandLogoUrl);
+    assert.equal(url.protocol, 'https:');
+    assert.ok(logoImageHosts.includes(url.hostname));
+    assert.equal(url.search, '');
+    assert.equal(url.username, '');
+    assert.match(station.brandLogoSourceUrl, /^https:\/\//);
+  }
 });
 test('location is required, never silently defaults to a fictional location', async () => {
   const response = await worker.fetch(get('/api/v1/stations'), firstEnv);

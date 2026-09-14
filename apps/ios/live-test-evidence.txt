@@ -1,16 +1,16 @@
 [0/1] Planning build
 Building for debugging...
 [0/2] Write swift-version--729B7DC81EC64C24.txt
-Build complete! (0.25s)
-Test Suite 'Selected tests' started at 2026-09-11 23:24:33.749
-Test Suite 'PrototypeLiveTests' started at 2026-09-11 23:24:33.751
-Test Case 'PrototypeLiveTests.testDeployedCloudflareReadReportRead' started at 2026-09-11 23:24:33.751
-Verified live Cloudflare GET → POST receipt → GET using the Swift prototype client (6 stations).
-Test Case 'PrototypeLiveTests.testDeployedCloudflareReadReportRead' passed (0.685 seconds)
-Test Suite 'PrototypeLiveTests' passed at 2026-09-11 23:24:34.436
-	 Executed 1 test, with 0 failures (0 unexpected) in 0.685 (0.685) seconds
-Test Suite 'Selected tests' passed at 2026-09-11 23:24:34.436
-	 Executed 1 test, with 0 failures (0 unexpected) in 0.685 (0.685) seconds
+Build complete! (0.28s)
+Test Suite 'Selected tests' started at 2026-09-12 00:32:39.764
+Test Suite 'LiveReadOnlyTests' started at 2026-09-12 00:32:39.766
+Test Case 'LiveReadOnlyTests.testRealCanadianStationsAndCitySearch' started at 2026-09-12 00:32:39.766
+Read-only live Swift check passed: 179 nearby real stations, 2 city matches; zero reports submitted.
+Test Case 'LiveReadOnlyTests.testRealCanadianStationsAndCitySearch' passed (0.669 seconds)
+Test Suite 'LiveReadOnlyTests' passed at 2026-09-12 00:32:40.435
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.669 (0.669) seconds
+Test Suite 'Selected tests' passed at 2026-09-12 00:32:40.435
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.669 (0.669) seconds
 ◇ Test run started.
 ↳ Testing Library Version: 6.0.3 (18c42c19cac3faf)
 ✔ Test run with 0 tests passed after 0.001 seconds.

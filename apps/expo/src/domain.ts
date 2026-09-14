@@ -6,6 +6,9 @@ export type Station = Coordinates & {
   name: string;
   brand: string;
   address: string;
+  brandKey?: string | null;
+  brandLogoUrl?: string | null;
+  brandLogoSourceUrl?: string | null;
   distanceMetres: number;
   prices: Record<Fuel, number | null>;
   observedAt: Partial<Record<Fuel, string>>;
@@ -71,4 +74,29 @@ export function sortedStations(stations: Station[], fuel: Fuel, sort: 'distance'
     }
     return (a.distanceMetres ?? Infinity) - (b.distanceMetres ?? Infinity);
   });
+}
+
+// Only catalog hosts may receive a station-logo request. No arbitrary station URL.
+export function safeLogoUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+      ['thumb.wikimedia.org', 'www.fuel.crs', 'www.shell.ca'].includes(url.hostname)
+      ? url.href : null;
+  } catch { return null; }
+}
+
+export function areaSnapshot(data: StationResponse, point: Coordinates, label: string, timestamp: string) {
+  const coarse = { latitude: Math.round(point.latitude * 100) / 100, longitude: Math.round(point.longitude * 100) / 100 };
+  const radians = (value: number) => value * Math.PI / 180;
+  const stations = data.stations.map(station => {
+    const a = Math.sin(radians(station.latitude - coarse.latitude) / 2) ** 2 +
+      Math.cos(radians(coarse.latitude)) * Math.cos(radians(station.latitude)) *
+      Math.sin(radians(station.longitude - coarse.longitude) / 2) ** 2;
+    return { ...station, distanceMetres: Math.round(6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, a)))) };
+  });
+  // Discard response.location and distances relative to a precise device fix.
+  return { data: { mode: 'live', is_demo: false, stations, coverage: data.coverage }, point: coarse,
+    label: label.includes('location') ? 'Nearby area' : label, timestamp };
 }

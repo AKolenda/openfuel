@@ -1,0 +1,103 @@
+{
+  "version_name": "0.3.0-live",
+  "version_code": 4,
+  "package": "ca.openfuel.prototype",
+  "built_at_utc": "2026-09-14T02:18:24.318796+00:00",
+  "artifact": {
+    "filename": "openfuel-0.3.0-live.apk",
+    "download_url": "https://openfuel.ca/downloads/openfuel-android.apk",
+    "bytes": 20128593,
+    "sha256": "8b686503b0e87cb6a61da99002f21eae87e6878cc16fc7b40d8fea3fa98d31c0",
+    "previous_bytes": 23634212,
+    "size_reduction_percent": 14.83
+  },
+  "platform": {
+    "min_android_api": 26,
+    "target_android_api": 35,
+    "architectures": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "x86",
+      "x86_64"
+    ],
+    "debuggable": true
+  },
+  "api": {
+    "base_url": "https://openfuel.ca/api/v1",
+    "cleartext_traffic": false,
+    "public_url_present_in_dex": true,
+    "emulator_url_absent_from_dex": true,
+    "production_test_writes": 0
+  },
+  "signing": {
+    "verified": true,
+    "scheme": "APK Signature Scheme v2",
+    "certificate_sha256": "be7334a1706de518819866752772c2536ce0b7f687c8673925a3c49dbea5be87",
+    "matches_previous_version": true,
+    "type": "Android debug certificate"
+  },
+  "automated_checks": {
+    "unit": {
+      "passed": 8,
+      "failed": 0
+    },
+    "instrumentation": {
+      "registered": 5,
+      "passed": 4,
+      "skipped": 1,
+      "failed": 0,
+      "skip_reason": "Report-writing test is restricted to the isolated local emulator API.",
+      "coverage": [
+        "Real station parser rejects sample geography and preserves unknown prices",
+        "Fresh install waits for permission or chosen city",
+        "Controlled foreground GPS,179 real nearby stations,details and persistent cache",
+        "Chosen Calgary city survives GPS refresh,2decimal stored area,coarse-derived distances,sheet fully hides and restores"
+      ]
+    },
+    "instrumentation_transcript": "release-0.3.0/public-instrumentation.txt"
+  },
+  "final_apk_smoke": {
+    "installed": true,
+    "cold_launch_ms": 1626,
+    "environment": "Android35 x86_64 emulator",
+    "controlled_coordinates": {
+      "latitude": 53.5461,
+      "longitude": -113.4938
+    },
+    "checked": [
+      "Real remote Shell,Esso and Petro-Canada logos in map;Esso in station list",
+      "Shell map marker tap opens Shell details",
+      "Sheet drags fully hidden and Show stations restores it",
+      "Recenter,information,Search this area vertical order after panning",
+      "Restore button and Search this area do not overlap",
+      "Opaque selected Saved control",
+      "Dark status icons visible with Android night mode enabled",
+      "Approved curvedF header and launcher vector",
+      "Final compact APK signature and HTTPS manifest verified"
+    ]
+  },
+  "screenshots": [
+    {
+      "path": "release-0.3.0/public-logos-list-map.png",
+      "description": "Exact compactAPK: controlled Edmonton GPS,live publicstations and directremote logos"
+    },
+    {
+      "path": "release-0.3.0/public-shell-marker-tap.png",
+      "description": "Exact compactAPK: Shell logo marker opens Shell details"
+    },
+    {
+      "path": "release-0.3.0/public-map-only-controls.png",
+      "description": "Exact compactAPK: full map after pan,ordered controls,nonoverlapping sheet restore"
+    },
+    {
+      "path": "release-0.3.0/public-dark-system-saved.png",
+      "description": "Exact compactAPK: Android darksystem mode,legible darkstatus icons and opaque selectedSaved"
+    }
+  ],
+  "build_command": "./gradlew :app:clean :app:assembleDebug -POPENFUEL_API_BASE_URL=https://openfuel.ca/api/v1",
+  "build_note": "Clean APK packaging removes empty ZIP padding retained when switching from unshrunk instrumentation to compact builds.",
+  "limitations": [
+    "Emulator validation; no physical-device certification or GooglePlay release signing.",
+    "Unknown/unmapped brand logos use initials; no invented station prices."
+  ]
+}

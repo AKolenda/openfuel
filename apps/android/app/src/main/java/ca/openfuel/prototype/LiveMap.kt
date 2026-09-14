@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.view.View
+import android.widget.FrameLayout
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,10 +21,8 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
 import org.maplibre.android.style.sources.GeoJsonSource
-import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.PropertyFactory.*
-import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
@@ -31,6 +31,8 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.module.http.HttpRequestUtil
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val OSM_STYLE = """{
  "version":8,
@@ -41,7 +43,7 @@ private const val OSM_STYLE = """{
 /** Native OpenGL MapLibre map. Cached on-demand tiles only; prefetch and offline downloads disabled. */
 @Suppress("DEPRECATION")
 @Composable
-fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, onMove: (SearchPoint) -> Unit,
+fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, brandLogos: Map<String, Bitmap>, onMove: (SearchPoint) -> Unit,
             modifier: Modifier = Modifier, onSelect: (Station) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -49,7 +51,10 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
     val moved by rememberUpdatedState(onMove)
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     var ready by remember { mutableStateOf(false) }
-    val currentStations by rememberUpdatedState(stations)
+    val stationsById = remember(stations) { stations.associateBy { it.id } }
+    val currentStations by rememberUpdatedState(stationsById)
+    val markerImages = remember { mutableMapOf<String, Bitmap>() }
+    val overlay = remember { StationMarkerOverlay(context) }
     val view = remember {
         MapLibre.getInstance(context.applicationContext)
         MapNetworking.configure(context.applicationContext)
@@ -62,20 +67,19 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
                 loaded.setPrefetchZoomDelta(0)
                 loaded.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(center.latitude, center.longitude), if (center == SearchPoint.CANADA_OVERVIEW) 2.6 else 12.5))
                 loaded.setStyle(Style.Builder().fromJson(OSM_STYLE)) { style ->
-                    style.addSource(GeoJsonSource("stations", FeatureCollection.fromFeatures(emptyArray<Feature>())))
-                    // Keep stations visible and tappable while price images enter the sprite atlas.
-                    style.addLayer(CircleLayer("station-dots", "stations").withProperties(circleRadius(9f), circleColor("#245745"), circleStrokeWidth(2f), circleStrokeColor("#FFFFFF")))
-                    style.addLayer(SymbolLayer("station-pins", "stations").withProperties(iconImage(get("icon")), iconAllowOverlap(true), iconIgnorePlacement(true)))
                     style.addSource(GeoJsonSource("location", FeatureCollection.fromFeatures(emptyArray<Feature>())))
                     style.addLayer(CircleLayer("your-location", "location").withProperties(circleRadius(8f), circleColor("#267BCE"), circleStrokeWidth(3f), circleStrokeColor("#FFFFFF")))
                     ready = true
                 }
+                overlay.map = loaded
+                loaded.addOnCameraMoveListener { overlay.postInvalidateOnAnimation() }
                 loaded.addOnCameraIdleListener {
-                    loaded.cameraPosition.target?.let { moved(SearchPoint(it.latitude,it.longitude,"Map area")) }
+                    overlay.postInvalidateOnAnimation()
+                    loaded.cameraPosition.target?.wrap()?.let { moved(SearchPoint(it.latitude,it.longitude,"Map area", SearchSource.MAP)) }
                 }
                 loaded.addOnMapClickListener { coordinate ->
-                    val feature = loaded.queryRenderedFeatures(loaded.projection.toScreenLocation(coordinate), "station-pins", "station-dots").firstOrNull()
-                    val station = feature?.getStringProperty("station_id")?.let { id -> currentStations.find { it.id == id } }
+                    val stationId = overlay.stationAt(loaded.projection.toScreenLocation(coordinate))
+                    val station = stationId?.let { currentStations[it] }
                     station?.let(select)
                     station != null
                 }
@@ -98,42 +102,120 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); view.onPause(); view.onStop(); view.onDestroy() }
     }
-    LaunchedEffect(map, ready, center, centerRequest) {
+    LaunchedEffect(map, ready, center.latitude, center.longitude, centerRequest) {
         if (ready) map?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(center.latitude, center.longitude), if (center == SearchPoint.CANADA_OVERVIEW) 2.6 else 12.5))
     }
-    LaunchedEffect(map, ready, stations, grade, bestId, currentLocation) {
-        val loaded = map ?: return@LaunchedEffect
-        if (!ready) return@LaunchedEffect
-        val style = loaded.style ?: return@LaunchedEffect
-        val features = mutableListOf<Feature>()
-        val registeredIcons = mutableSetOf<String>()
-        stations.forEach { station ->
-            val lat = station.latitude ?: return@forEach; val lon = station.longitude ?: return@forEach
-            val label = station.price(grade)?.let(FuelCore::priceText) ?: "?"
-            val density = context.resources.displayMetrics.density
-            val width = (if (label == "?") 38 else 76) * density
-            val height = 38 * density
-            val bitmap = Bitmap.createBitmap(width.toInt(), height.toInt(), Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val best = station.id == bestId
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (best) 0xFF245745.toInt() else android.graphics.Color.WHITE }
-            canvas.drawRoundRect(RectF(1f,1f,width-1,height-1), height/2,height/2,paint)
-            paint.style = Paint.Style.STROKE; paint.strokeWidth = density; paint.color = 0xFF6A8175.toInt()
-            canvas.drawRoundRect(RectF(1f,1f,width-1,height-1),height/2,height/2,paint)
-            paint.style = Paint.Style.FILL; paint.color = if (best) android.graphics.Color.WHITE else 0xFF245745.toInt()
-            paint.textSize = 16*density; paint.textAlign = Paint.Align.CENTER; paint.isFakeBoldText = true
-            canvas.drawText(label,width/2,(height-paint.ascent()-paint.descent())/2,paint)
-            val iconId = "price-${station.price(grade) ?: "unknown"}-$best"
-            if (registeredIcons.add(iconId)) style.addImage(iconId, bitmap)
-            features += Feature.fromGeometry(Point.fromLngLat(lon,lat)).apply {
-                addStringProperty("station_id", station.id); addStringProperty("icon", iconId)
-            }
+    val pins = remember(stations, grade, bestId, brandLogos.keys) {
+        stations.mapNotNull { station ->
+            val lat = station.latitude ?: return@mapNotNull null
+            val lon = station.longitude ?: return@mapNotNull null
+            val logoUrl = station.brandLogoUrl?.takeIf { brandLogos.containsKey(it) }
+            val marker = MarkerArt(station.brandKey, logoUrl, station.name.take(1).uppercase(), station.price(grade), station.id == bestId)
+            StationPin(station.id, lat, lon, marker)
         }
-        style.getSourceAs<GeoJsonSource>("stations")?.setGeoJson(FeatureCollection.fromFeatures(features))
-        val locationFeatures = currentLocation?.let { listOf(Feature.fromGeometry(Point.fromLngLat(it.longitude,it.latitude))) } ?: emptyList()
-        style.getSourceAs<GeoJsonSource>("location")?.setGeoJson(FeatureCollection.fromFeatures(locationFeatures))
     }
-    AndroidView(factory = { view }, modifier = modifier)
+    LaunchedEffect(map, ready, pins) { withContext(Dispatchers.Main.immediate) {
+        if (map == null) return@withContext
+        if (!ready) return@withContext
+        val needed = pins.map { it.art }.distinctBy { it.imageId }
+        val missing = needed.filter { it.imageId !in markerImages }
+        val images = withContext(Dispatchers.Default) {
+            missing.associate { art -> art.imageId to drawMarker(art, brandLogos[art.logoUrl]) }
+        }
+        markerImages.putAll(images)
+        markerImages.keys.retainAll(needed.map { it.imageId }.toSet())
+        overlay.update(pins, markerImages)
+    } }
+    // A new GPS fix only updates the blue dot; station marker art stays intact.
+    LaunchedEffect(map, ready, currentLocation?.latitude, currentLocation?.longitude) {
+        if (!ready) return@LaunchedEffect
+        val features = currentLocation?.let { listOf(Feature.fromGeometry(Point.fromLngLat(it.longitude,it.latitude))) } ?: emptyList()
+        map?.style?.getSourceAs<GeoJsonSource>("location")?.setGeoJson(FeatureCollection.fromFeatures(features))
+    }
+    AndroidView(factory = {
+        FrameLayout(context).apply {
+            addView(view, FrameLayout.LayoutParams(-1, -1))
+            addView(overlay, FrameLayout.LayoutParams(-1, -1))
+        }
+    }, modifier = modifier)
+}
+
+/** One lightweight Canvas keeps marker art independent of GPU sprite-atlas bugs.
+ * It consumes no gestures; the map underneath pans/zooms and supplies the hit-tested tap. */
+private class StationMarkerOverlay(context: android.content.Context) : View(context) {
+    var map: MapLibreMap? = null
+    private data class Target(val id: String, val coordinate: LatLng, val image: Bitmap, val bounds: RectF = RectF(), var visible: Boolean = false)
+    private var targets: List<Target> = emptyList()
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val scale = resources.displayMetrics.density / 2f
+    private val minimumTarget = 44 * resources.displayMetrics.density
+
+    fun update(value: List<StationPin>, art: Map<String, Bitmap>) {
+        targets = value.asReversed().mapNotNull { pin -> art[pin.art.imageId]?.let {
+            Target(pin.id, LatLng(pin.latitude, pin.longitude), it)
+        } }
+        postInvalidateOnAnimation()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val projection = map?.projection ?: return
+        // Draw higher-ranked stations last so their markers and taps win overlaps.
+        for (target in targets) {
+            val image = target.image
+            val position = projection.toScreenLocation(target.coordinate)
+            val halfWidth = image.width * scale / 2f
+            val halfHeight = image.height * scale / 2f
+            val bounds = target.bounds
+            bounds.set(position.x - halfWidth, position.y - halfHeight, position.x + halfWidth, position.y + halfHeight)
+            target.visible = bounds.right >= 0 && bounds.left <= width && bounds.bottom >= 0 && bounds.top <= height
+            if (!target.visible) continue
+            canvas.drawBitmap(image, null, bounds, paint)
+        }
+    }
+
+    fun stationAt(point: android.graphics.PointF): String? = targets.asReversed().firstOrNull {
+        // At least a 44dp target even for a small unknown-price marker.
+        val bounds = it.bounds
+        val halfWidth = maxOf(bounds.width(), minimumTarget) / 2
+        val halfHeight = maxOf(bounds.height(), minimumTarget) / 2
+        it.visible && kotlin.math.abs(point.x - bounds.centerX()) <= halfWidth && kotlin.math.abs(point.y - bounds.centerY()) <= halfHeight
+    }?.id
+}
+
+private data class StationPin(val id: String, val latitude: Double, val longitude: Double, val art: MarkerArt)
+private data class MarkerArt(val brandKey: String?, val logoUrl: String?, val initial: String, val price: Int?, val best: Boolean) {
+    val imageId: String = "pin-${brandKey ?: initial.firstOrNull()?.code}-${logoUrl?.hashCode() ?: 0}-${price ?: 0}-$best"
+}
+
+/** One small premultiplied bitmap per unique visible brand/price, rendered off the UI thread. */
+private fun drawMarker(art: MarkerArt, logo: Bitmap?): Bitmap {
+    val scale = 2f
+    val width = (if (art.price == null) 42 else 93) * scale
+    val height = 40 * scale
+    val bitmap = Bitmap.createBitmap(width.toInt(), height.toInt(), Bitmap.Config.ARGB_8888).apply { density = 320 }
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE }
+    val rect = RectF(1f, 1f, width - 1, height - 1)
+    canvas.drawRoundRect(rect, 13 * scale, 13 * scale, paint)
+    paint.style = Paint.Style.STROKE; paint.strokeWidth = (if (art.best) 2 else 1) * scale; paint.color = 0xFF245745.toInt()
+    canvas.drawRoundRect(rect, 13 * scale, 13 * scale, paint)
+    paint.style = Paint.Style.FILL
+    if (logo != null) {
+        val factor = minOf(29 * scale / logo.width, 29 * scale / logo.height)
+        val left = 21 * scale - logo.width * factor / 2
+        val top = height / 2 - logo.height * factor / 2
+        paint.isFilterBitmap = true
+        canvas.drawBitmap(logo, null, RectF(left, top, left + logo.width * factor, top + logo.height * factor), paint)
+    } else {
+        paint.textSize = 18 * scale; paint.textAlign = Paint.Align.CENTER; paint.isFakeBoldText = true
+        canvas.drawText(art.initial.ifBlank { "•" }, 21 * scale, (height - paint.ascent() - paint.descent()) / 2, paint)
+    }
+    art.price?.let { price ->
+        paint.textSize = 14 * scale; paint.textAlign = Paint.Align.CENTER; paint.isFakeBoldText = true
+        canvas.drawText(FuelCore.priceText(price), 65 * scale, (height - paint.ascent() - paint.descent()) / 2, paint)
+    }
+    return bitmap
 }
 
 private object MapNetworking {

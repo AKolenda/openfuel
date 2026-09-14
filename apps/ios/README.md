@@ -1,60 +1,91 @@
-# iOS · native SwiftUI prototype
+# OpenFuel for iOS
 
-OpenFuel retains the map-first native interface, rounded station cards, forest-green controls,
-grade filters, search, saved stations and map-app handoff. The app connects to the same Cloudflare
-Worker and D1 database as the website and Android app. This is a **shared prototype with fictional
-stations, map, distances and initial prices**, not a live fuel feed.
+The active SwiftUI client now uses the current real-station API at
+`https://openfuel.ca/api/v1`, native MapKit geography and foreground location.
+The source is kept current alongside Android and Expo while a Mac is unavailable.
+The header and app icon use the approved curved F from
+[`packages/design/brand`](../../packages/design/brand/README.md).
+**No Apple SDK build, simulator run or IPA is claimed.** See [verification](BUILD_EVIDENCE.md).
 
-At launch, the app loads the last saved station snapshot and refreshes `GET /api/v1/stations`.
-Pull down the station list or tap refresh to sync. It refreshes once a minute while foregrounded
-and on returning to the app. An offline launch uses saved prices, or bundled samples on a first
-launch. Saved report ages advance while offline. The connection banner states which data is shown.
+On startup the app restores its last successful real search area and cached
+stations, labelled as saved, before requesting foreground location. If no saved
+area exists, it asks the person to choose an area rather than displaying a guessed
+position or sample stations. Permission denial leaves Canadian city search and
+manual coordinates available. Panning the map exposes **Search this area** below
+the recenter and information controls. The station sheet can be expanded, dragged
+away entirely, and restored with **Show stations**. Location, fuel grades and
+Saved share one compact control row. The visible status bar uses the light scheme.
 
-Open a station, choose **Report price**, enter CAD cents per litre (for example `142.9`), and submit.
-The app calls `POST /api/v1/reports`. A matching server receipt is required before a success message
-or price change. A failed request keeps the form open; it is not silently queued. Each installation
-persists a random client UUID for the server's report limits. Favorites, preferences and station
-suggestion drafts stay on the device. Map handoff searches a sample brand in Canada because the
-illustrated station addresses are invented.
+Stations without reported prices remain on both map and list. Community prices
+show age and unverified status. Direction links use actual station coordinates.
+A price submission requires the person's confirmation that they observed today's
+standard pump price and a matching server receipt. Uncertain retries reuse the
+request ID in the current session; there is no background submission queue.
 
-Retrying an unchanged report reuses its request UUID so a lost server response does not create
-another report. Changing station, grade or amount starts a new request. Pending reports are held
-only for the current app session; there is no background upload queue.
+## Remote logos and local data
 
-## Build on macOS
+`brandLogoUrl` and `brandKey` are optional API fields. Logo requests accept only
+HTTPS image URLs at `thumb.wikimedia.org`, `www.fuel.crs` and `www.shell.ca`, with
+no URL credentials, fragments or alternate ports. Redirects remain inside that
+allowlist. The app downloads station logos directly from those hosts; no station logo image
+is committed to the repository or stored/proxied by OpenFuel's server. Missing, unsupported or
+failed images fall back to text initials.
 
-Requires macOS, Xcode with the iOS 17+ SDK, Xcode command-line tools, and XcodeGen. There is no shared
-WebView: the app uses SwiftUI, Foundation networking, a bundled map illustration and native controls.
+List rows and map annotations share coalesced requests, an 8 MB/64-entry memory
+cache, bounded URLSession caches, and decoded thumbnails limited to 128 pixels.
+A response over 2 MB is rejected while streaming. Cached network data and decoded
+images stay on the device. The saved starting area is rounded to two decimal places (roughly 1 km), with
+a generic label and distances recomputed from that broad centre; the exact device
+fix stays in memory. Saved stations, the report installation UUID and the latest
+station snapshot also remain on the device. Earlier precise snapshots are migrated
+to the coarse format on their first read. Cache reads are tied
+to the API origin and area; the old synthetic cache file is never loaded by the
+active app. Cached report ages continue advancing after a restart.
 
-From the repository root:
+Nearby API queries round coordinates to three decimal places, roughly 100 m.
+MapKit receives map requests; logo hosts receive their own image requests. There
+is no background location tracking or analytics SDK. Public reports contain the
+station ID, grade, price and random installation/request identifiers. Clearing
+local app data does not delete reports already accepted by the service.
+
+## Build when a Mac is available
+
+Use Xcode with iOS 17 or later and XcodeGen:
 
 ```sh
 brew install xcodegen
-python3 tools/generate_mobile.py --check
 swift test --package-path apps/ios/OpenFuelCore
 python3 tools/project.py ios-build
 open apps/ios/OpenFuel.xcodeproj
 ```
 
-The committed public endpoint, `https://openfuel-prototype.openfuel-monorepo.workers.dev/api/v1`,
-in `Config/Base.xcconfig` is used by default. To use your own deployment,
-copy `apps/ios/Config/Local.example.xcconfig` to `apps/ios/Config/Local.xcconfig` and set its HTTPS URL,
-including `/api/v1`. Xcode configuration uses `https:/$()/…` to avoid interpreting `//` as a comment.
-No account token or private API key belongs in the app. The new prototype client requires HTTPS.
+Select the OpenFuel scheme and an iPhone simulator, then Run. For a physical
+phone, set your development team under Signing & Capabilities. Distribution
+requires an Apple signing identity and a macOS archive/export step.
 
-In Xcode, select the OpenFuel scheme and an iPhone simulator, then Run. For a physical iPhone, choose
-your development team under Signing & Capabilities, select the connected device and Run. An IPA for
-distribution requires an Apple signing identity and a macOS archive/export step. The existing
-`.github/workflows/ios.yml` builds the simulator app on macOS when run in GitHub; the native review
-workflow captures real simulator screenshots. These workflows are source configuration, not evidence
-that a hosted workflow or Apple SDK build has run.
+The default public API is in `Config/Base.xcconfig`. To use your own HTTPS
+service, copy `Config/Local.example.xcconfig` to ignored `Config/Local.xcconfig`.
+Use `https:/$()/…` so XCConfig does not parse `//` as a comment. The active client
+requires HTTPS in Debug and Release; no account token or private API key belongs
+in the app. `Info.plist` and its debug counterpart request only when-in-use
+location access and retain normal App Transport Security.
 
-## Verification
+First Mac validation should cover location grant/denial/restricted states, warm
+launch on a saved area, city/manual search, MapKit marker selection, sheet hiding
+and restoration, logo failures, large text, French labels, offline age display,
+and keyboard/report validation against an isolated test API. The UI tests cover
+empty-state controls without injecting sample geography. `--ui-testing` disables
+automatic location prompting in Debug builds only; it never supplies fake stations.
 
-`OpenFuelCore` is a standalone Swift package and can be tested on Linux. Tests cover exact monetary
-units, filters, public URL rules, Cloudflare JSON adaptation (including null unavailable grades),
-report receipt validation, HTTP failure handling, offline cache aging and persistent client identity.
-`OpenFuelUITests` runs deterministic screenshot states using `--screenshots`; this debug-only mode
-uses bundled data and never submits reports.
+## Run portable checks
 
-See `BUILD_EVIDENCE.md` for the executed checks and the remaining Apple platform build gate.
+```sh
+swift test --package-path apps/ios/OpenFuelCore
+OPENFUEL_READ_ONLY_TEST_API_BASE_URL=https://openfuel.ca/api/v1 \
+  swift test --package-path apps/ios/OpenFuelCore --filter LiveReadOnlyTests
+```
+
+The integration test performs GET requests only. All report tests use intercepted
+local test responses; never send invented prices to real production stations.
+Historical `PrototypeAPI` and generated sample fixtures remain reference tests,
+but the active UI instantiates `LiveAPIClient` and never `SampleMapView`.

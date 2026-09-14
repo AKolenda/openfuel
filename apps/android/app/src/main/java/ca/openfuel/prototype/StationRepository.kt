@@ -13,11 +13,14 @@ import java.net.URL
 import java.time.Instant
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.round
 
 class PrototypeApiException(message: String) : IOException(message)
-data class SearchPoint(val latitude: Double, val longitude: Double, val label: String) {
+enum class SearchSource { OVERVIEW, CITY, MAP, DEVICE }
+data class SearchPoint(val latitude: Double, val longitude: Double, val label: String, val source: SearchSource = SearchSource.CITY) {
+    fun forStorage() = copy(latitude = round(latitude * 100) / 100, longitude = round(longitude * 100) / 100)
     companion object {
-        val CANADA_OVERVIEW = SearchPoint(55.0, -104.0, "Choose an area")
+        val CANADA_OVERVIEW = SearchPoint(55.0, -104.0, "Choose an area", SearchSource.OVERVIEW)
         val EDMONTON = SearchPoint(53.5461, -113.4938, "Edmonton · chosen city")
     }
 }
@@ -33,14 +36,36 @@ class StationRepository(context: Context) {
     data class Snapshot(val stations: List<Station>, val cached: Boolean, val point: SearchPoint = SearchPoint.CANADA_OVERVIEW)
 
     fun initial(): Snapshot = runCatching {
-        val body = prefs.getString("stations", null) ?: return Snapshot(emptyList(), false)
+        val storedLat = prefs.getString("latitude", null)?.toDoubleOrNull() ?: return Snapshot(emptyList(), false)
+        val storedLon = prefs.getString("longitude", null)?.toDoubleOrNull() ?: return Snapshot(emptyList(), false)
+        val source = runCatching { SearchSource.valueOf(prefs.getString("area-source", null) ?: "MAP") }.getOrDefault(SearchSource.MAP)
+        val savedLabel = prefs.getString("area-label", null)?.take(100) ?: "Saved search area"
+        val point = SearchPoint(storedLat, storedLon, if (source == SearchSource.DEVICE) "Last location area" else savedLabel, source).forStorage()
+        require(FuelCore.validStationPoint(point.latitude, point.longitude))
+        if (!prefs.contains("snapshot-latitude") && prefs.contains("stations")) prefs.edit()
+            .putString("snapshot-latitude", point.latitude.toString()).putString("snapshot-longitude", point.longitude.toString()).apply()
+        // Migrate old snapshots that retained an unnecessarily precise search coordinate.
+        rememberArea(point)
+        val body = prefs.getString("stations", null) ?: return Snapshot(emptyList(), false, point)
+        val cachedLat = prefs.getString("snapshot-latitude", null)?.toDoubleOrNull() ?: storedLat
+        val cachedLon = prefs.getString("snapshot-longitude", null)?.toDoubleOrNull() ?: storedLon
+        if (round(cachedLat * 100) / 100 != point.latitude || round(cachedLon * 100) / 100 != point.longitude) return Snapshot(emptyList(), false, point)
         val elapsed = ((System.currentTimeMillis() - prefs.getLong("saved-at", System.currentTimeMillis())) / 60_000)
             .coerceIn(0, 1_000_000).toInt()
-        val point = SearchPoint(prefs.getString("latitude", null)!!.toDouble(), prefs.getString("longitude", null)!!.toDouble(), "Saved search area")
-        Snapshot(parseStations(JSONObject(body)).map { station ->
+        val cached = parseStations(JSONObject(body)).map { station ->
             station.copy(ages = station.ages.mapValues { (_, age) -> (age.toLong() + elapsed).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() })
-        }, true, point)
+        }
+        // Migrate the whole snapshot, including distances that otherwise reveal a finer origin.
+        if (!prefs.getBoolean("coarse-snapshot-v3", false)) cache(cached, point)
+        Snapshot(cached.map { it.copy(distanceMetres = approximateDistanceMetres(point, it.latitude!!, it.longitude!!)) }, true, point)
     }.getOrElse { Snapshot(emptyList(), false) }
+
+    fun rememberArea(point: SearchPoint) {
+        val saved = point.forStorage()
+        prefs.edit().putString("latitude", saved.latitude.toString()).putString("longitude", saved.longitude.toString())
+            .putString("area-label", if (saved.source == SearchSource.DEVICE) "Last location area" else saved.label)
+            .putString("area-source", saved.source.name).apply()
+    }
 
     suspend fun searchCities(query: String): List<SearchPoint> = withContext(Dispatchers.IO) {
         val body = request("/geocode?q=" + java.net.URLEncoder.encode(query.take(100), "UTF-8"))
@@ -51,14 +76,14 @@ class StationRepository(context: Context) {
         }.filter { FuelCore.validStationPoint(it.latitude, it.longitude) }
     }
 
-    suspend fun refresh(point: SearchPoint = initial().point): List<Station> = withContext(Dispatchers.IO) {
+    suspend fun refresh(point: SearchPoint = initial().point, saveSnapshot: Boolean = true): List<Station> = withContext(Dispatchers.IO) {
         require(FuelCore.validStationPoint(point.latitude, point.longitude))
         val latitude = String.format(Locale.ROOT, "%.3f", point.latitude)
         val longitude = String.format(Locale.ROOT, "%.3f", point.longitude)
         val body = request("/stations?lat=$latitude&lon=$longitude&radius=10000")
         val stations = parseStations(body)
         coroutineContext.ensureActive()
-        cache(stations, point)
+        if (saveSnapshot) cache(stations, point)
         stations
     }
 
@@ -123,7 +148,8 @@ class StationRepository(context: Context) {
         } finally { connection.disconnect() }
     }
 
-    private fun cache(stations: List<Station>, point: SearchPoint) {
+    internal fun cache(stations: List<Station>, point: SearchPoint) {
+        val storedPoint = point.forStorage()
         val array = JSONArray()
         stations.forEach { s ->
             val prices = JSONObject(); val ages = JSONObject(); val sources = JSONObject()
@@ -131,12 +157,14 @@ class StationRepository(context: Context) {
             s.ages.forEach { (grade, age) -> ages.put(grade.name.lowercase(Locale.ROOT), age) }
             s.priceSources.forEach { (grade, source) -> sources.put(grade.name.lowercase(Locale.ROOT), source) }
             array.put(JSONObject().put("id", s.id).put("name", s.name).put("brand", s.brand).put("address", s.address)
-                .put("distanceMetres", s.distanceMetres).put("latitude", s.latitude).put("longitude", s.longitude)
+                .put("distanceMetres", approximateDistanceMetres(storedPoint, s.latitude!!, s.longitude!!)).put("latitude", s.latitude).put("longitude", s.longitude)
+                .put("brandKey", s.brandKey ?: JSONObject.NULL).put("brandLogoUrl", s.brandLogoUrl ?: JSONObject.NULL)
                 .put("open", s.open ?: JSONObject.NULL).put("prices", prices).put("ages", ages).put("priceSources", sources).put("synthetic", false))
         }
+        rememberArea(storedPoint)
         prefs.edit().putString("stations", JSONObject().put("is_demo", false).put("stations", array).toString())
-            .putString("latitude", point.latitude.toString()).putString("longitude", point.longitude.toString())
-            .putLong("saved-at", System.currentTimeMillis()).apply()
+            .putString("snapshot-latitude", storedPoint.latitude.toString()).putString("snapshot-longitude", storedPoint.longitude.toString())
+            .putBoolean("coarse-snapshot-v3", true).putLong("saved-at", System.currentTimeMillis()).apply()
     }
 
     internal fun parseStations(body: JSONObject): List<Station> {
@@ -162,7 +190,18 @@ class StationRepository(context: Context) {
             Station(s.getString("id"), s.getString("name"), s.optString("brand"), s.optString("address", "Address not listed"),
                 s.getInt("distanceMetres").coerceAtLeast(0), 0, 0f, 0f,
                 if (s.isNull("open") || !s.has("open")) null else s.getBoolean("open"), gradePrices, gradeAges,
-                latitude = lat, longitude = lon, priceSources = sources)
+                latitude = lat, longitude = lon, priceSources = sources,
+                brandKey = s.optString("brandKey").takeIf { !s.isNull("brandKey") && it.matches(Regex("[a-z0-9-]{1,64}")) },
+                brandLogoUrl = s.optString("brandLogoUrl").takeIf { it.startsWith("https://") && it.length <= 1024 })
         }
     }
+}
+
+internal fun approximateDistanceMetres(point: SearchPoint, latitude: Double, longitude: Double): Int {
+    val origin = point.forStorage()
+    val dLat = Math.toRadians(latitude - origin.latitude)
+    val dLon = Math.toRadians(longitude - origin.longitude)
+    val a = kotlin.math.sin(dLat / 2).let { it * it } + kotlin.math.cos(Math.toRadians(origin.latitude)) *
+        kotlin.math.cos(Math.toRadians(latitude)) * kotlin.math.sin(dLon / 2).let { it * it }
+    return (12_742_000 * kotlin.math.atan2(kotlin.math.sqrt(a.coerceIn(0.0, 1.0)), kotlin.math.sqrt((1 - a).coerceIn(0.0, 1.0)))).toInt()
 }

@@ -8,6 +8,7 @@ struct FuelMenuView:View {
     @Environment(\.openURL) private var openURL
     @State private var draftPrefs=PreviewPreferences()
     @State private var amount=""
+    @State private var observed=false
     @State private var proposalKind="addition"
     @State private var name="",latitude="",longitude="",note=""
     var body:some View {
@@ -19,9 +20,9 @@ struct FuelMenuView:View {
                     .padding(.horizontal,22).padding(.vertical,16).tint(Color.fuelGreen)
             }
         }.foregroundStyle(Color.fuelInk).background(.white).accessibilityIdentifier("sheet-\(menu.rawValue)")
-        .onAppear{draftPrefs=model.preferences;amount=model.selected?.price(model.grade).map(PreviewRules.cents) ?? "";proposalKind=model.selected==nil ? "addition":"correction";name=model.selected?.name ?? ""}
+        .onAppear{draftPrefs=model.preferences;amount="";observed=false;proposalKind=model.selected==nil ? "addition":"correction";name=model.selected?.name ?? ""}
     }
-    private var title:String{switch menu{case .settings:return tr("settings");case .sort:return tr("sort_stations");case .about:return tr("about");case .detail:return model.selected?.name ?? tr("station");case .report:return tr("report_price");case .proposal:return tr("suggest_station");case .maps:return tr("choose_maps")}}
+    private var title:String{switch menu{case .settings:return tr("settings");case .sort:return tr("sort_stations");case .about:return tr("about");case .detail:return model.selected?.name ?? tr("station");case .report:return tr("report_price");case .proposal:return tr("suggest_station");case .maps:return tr("choose_maps");case .location:return tr("choose_area")}}
     @ViewBuilder private var content:some View {
         switch menu {
         case .sort:
@@ -37,8 +38,6 @@ struct FuelMenuView:View {
                 Text(tr("distance")).font(.subheadline.weight(.semibold))
                 Picker(tr("distance"),selection:$draftPrefs.filters.radiusMetres){ForEach([2000,5000,10000],id:\.self){n in Text("\(n/1000) km").tag(n)}}.pickerStyle(.segmented)
                 Toggle(tr("recently_reported"),isOn:$draftPrefs.filters.fresh)
-                Toggle(tr("open_now"),isOn:$draftPrefs.filters.open)
-                Toggle(tr("member_prices"),isOn:$draftPrefs.filters.members)
                 Text(tr("sample_preferences")).font(.footnote).foregroundStyle(Color.fuelMuted)
                 
             }.tint(Color.fuelGreen)
@@ -49,6 +48,9 @@ struct FuelMenuView:View {
             if let synced=model.lastSyncedAt {Text("\(tr("last_sync")) \(synced.formatted(date:.abbreviated,time:.shortened))").font(.footnote).foregroundStyle(Color.fuelMuted)}
             Text(model.serverURL).font(.caption).textSelection(.enabled).foregroundStyle(Color.fuelMuted)
             Text("AGPL-3.0-only").font(.footnote)
+            Link("© OpenStreetMap contributors · ODbL",destination:URL(string:"https://www.openstreetmap.org/copyright")!).font(.footnote)
+            Link("GeoNames · CC BY 4.0",destination:URL(string:"https://www.geonames.org/")!).font(.footnote)
+            Text(tr("brand_notice")).font(.footnote).foregroundStyle(Color.fuelMuted)
             Text("\(model.drafts.count) \(tr("local_drafts"))").font(.headline)
             ForEach(model.drafts){d in Text("\(d.name) · \(d.kind)").font(.footnote)}
             Button(tr("delete_drafts")){model.deleteDrafts()}.buttonStyle(.bordered)
@@ -62,7 +64,7 @@ struct FuelMenuView:View {
             if let s=model.selected{
                 Text(s.address).foregroundStyle(Color.fuelMuted)
                 HStack(alignment:.firstTextBaseline){Text(s.price(model.grade,members:model.preferences.filters.members).map(PreviewRules.cents) ?? "—").font(.system(size:42,weight:.bold));Text("¢/L").font(.footnote)}
-                Text(ageTitle(s.age(model.grade))).font(.footnote).foregroundStyle(Color.fuelMuted)
+                Text(s.price(model.grade)==nil ? tr("price_unknown") : ageTitle(s.age(model.grade))+" · "+tr("unverified")).font(.footnote).foregroundStyle(Color.fuelMuted)
                 Button{model.requestMaps(s)}label:{Label(tr("open_maps"),systemImage:"location").frame(maxWidth:.infinity,minHeight:48)}.buttonStyle(.borderedProminent)
                 HStack{Button(tr("report_price")){model.reportError=nil;model.menu = .report}.accessibilityIdentifier("open-report");Spacer();Button(tr(model.preferences.saved.contains(s.id) ? "unsave":"save")){model.toggleSaved(s)}}.buttonStyle(.bordered)
                 Button(tr("suggest_correction")){model.menu = .proposal}
@@ -72,11 +74,26 @@ struct FuelMenuView:View {
             Text(tr("report_cloud_notice")).font(.callout).foregroundStyle(Color.fuelMuted)
             TextField("142.9",text:$amount).font(.system(size:32,weight:.semibold)).keyboardType(.decimalPad).textFieldStyle(.roundedBorder).disabled(model.isReporting).accessibilityIdentifier("report-amount")
             Text("CAD ¢/L · \(tr(model.grade.rawValue))").font(.footnote)
+            Toggle(tr("observed_today"),isOn:$observed).disabled(model.isReporting)
             if let error=model.reportError {Text(error).font(.callout).foregroundStyle(Color.red).accessibilityIdentifier("report-error")}
             if !model.canReport {Text(tr("report_unavailable")).font(.footnote).foregroundStyle(Color.fuelMuted)}
             Button {if let value=PreviewRules.parseCents(amount){Task{await model.report(amount:value)}}}label:{
                 HStack{if model.isReporting{ProgressView().tint(.white)};Text(tr(model.isReporting ? "submitting_price":"submit_price"))}
-            }.buttonStyle(.borderedProminent).disabled(PreviewRules.parseCents(amount)==nil || !model.canReport || model.isReporting || model.isLoading).accessibilityIdentifier("submit-price")
+            }.buttonStyle(.borderedProminent).disabled(!observed || PreviewRules.parseCents(amount)==nil || !model.canReport || model.isReporting || model.isLoading).accessibilityIdentifier("submit-price")
+        case .location:
+            Button { model.menu=nil;model.requestLocation() } label: { Label(tr("use_location"),systemImage:"location.fill").frame(maxWidth:.infinity,minHeight:44) }.buttonStyle(.borderedProminent)
+            Text(tr("location_choice_note")).font(.footnote).foregroundStyle(Color.fuelMuted)
+            TextField(tr("search_city"),text:$model.cityQuery).textFieldStyle(.roundedBorder).autocorrectionDisabled().accessibilityIdentifier("search-city")
+                .task(id:model.cityQuery) { await model.searchCities() }
+            ForEach(model.cities) { city in Button(city.name) { if let area=city.area { model.choose(area) } }.frame(minHeight:44) }
+            if let error=model.cityError { Text(error).font(.footnote).foregroundStyle(Color.fuelMuted) }
+            Divider()
+            Text(tr("enter_coordinates")).font(.headline)
+            TextField(tr("latitude"),text:$latitude).keyboardType(.numbersAndPunctuation).textFieldStyle(.roundedBorder)
+            TextField(tr("longitude"),text:$longitude).keyboardType(.numbersAndPunctuation).textFieldStyle(.roundedBorder)
+            Button(tr("use_coordinates")) {
+                if let lat=Double(latitude),let lon=Double(longitude),let area=try? SearchArea(latitude:lat,longitude:lon,label:tr("manual_area")) { model.choose(area) }
+            }.buttonStyle(.bordered).disabled(Double(latitude).flatMap { lat in Double(longitude).flatMap { lon in try? SearchArea(latitude:lat,longitude:lon,label:tr("manual_area")) } } == nil)
         case .proposal:
             Text(tr("proposal_local_notice")).font(.callout).foregroundStyle(Color.fuelMuted)
             if model.selected != nil {Picker(tr("change_type"),selection:$proposalKind){ForEach(["correction","temporary_closure","permanent_closure","reopening"],id:\.self){k in Text(tr(k)).tag(k)}}}

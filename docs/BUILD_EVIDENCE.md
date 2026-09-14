@@ -1,74 +1,66 @@
-# Live mobile verification — 12 September 2026
+# Live mobile verification — 13 September 2026
 
-These results apply to the real-station clients and the public `https://openfuel.ca/api/v1`
-API. Earlier prototype evidence in this repository may show sample stations; it does not
-describe the current mobile release.
+Current Android release evidence is in
+[`release-0.3.0.json`](../evidence/android-native/release-0.3.0.json).
+Tests use controlled emulator coordinates. No physical phone was modified and no
+invented pump price was submitted to production.
 
-## Downloadable native Android APK
+## Downloadable Android APK
 
 | Field | Verified value |
 | --- | --- |
-| Build | Kotlin / Jetpack Compose / MapLibre, debug signed |
-| Version | `0.2.0-live`, version code `3` |
+| Version | `0.3.0-live`, version code `4` |
 | Package | `ca.openfuel.prototype` |
-| Minimum Android | Android 8.0 / API 26 |
-| Tested Android | API 35 x86_64 emulator |
-| Supported CPU libraries | arm64-v8a, armeabi-v7a, x86, x86_64 |
+| Minimum Android | Android 8 / API 26 |
+| Tested device | API 35 x86_64 emulator |
+| CPU libraries | arm64-v8a, armeabi-v7a, x86, x86_64 |
 | API | `https://openfuel.ca/api/v1`, live mode |
-| Size | **23,634,212 bytes** |
-| SHA-256 | `215e588ba24e12ec0cbecfe0a5d7808c66d890203f270adbdcd6102fa3cb1234` |
-| Manifest | Cleartext network traffic disabled |
-| Signature | Android `apksigner verify` passed |
+| Size | **20,128,593 bytes**, about 15% smaller than the prior 23,634,212-byte APK |
+| SHA-256 | `8b686503b0e87cb6a61da99002f21eae87e6878cc16fc7b40d8fea3fa98d31c0` |
+| Network | Cleartext disabled |
+| Signature | Debug signed; certificate matches the previous APK for updates |
 
-The artifact is built at `apps/android/app/build/outputs/apk/debug/app-debug.apk` and
-distributed at `https://openfuel.ca/downloads/openfuel-android.apk`. Code/resource shrinking
-and compressed native libraries keep the universal APK under the website's 25 MiB file limit.
+The [APK download](https://openfuel.ca/downloads/openfuel-android.apk) runs without
+Metro. The approved curved F appears in the launcher/header. Status icons remain
+dark on the light app surface. Location, grades and Saved share one opaque row.
+The results sheet hides completely with a downward swipe and restores through a
+small Show stations control. Search this area sits below recenter and information.
 
-**Automated checks:** five Kotlin unit tests passed. Four instrumentation tests passed
-against the seeded, isolated local D1 API. Those checks cover fresh arrival and explicit
-area selection, foreground GPS, real nearby station parsing, rejecting sample responses,
-keeping unknown prices visible, station details, persistent caching, and a native report
-submitted to the local database and recovered after reloading.
+Brand logos load directly from curated public hosts and appear in the list and map.
+A native Canvas overlay draws cached marker bitmaps over MapLibre, skips offscreen
+markers and handles station taps. This avoids the invisible sprite images observed
+with the previous renderer. The app restores a two-decimal saved area and cached
+stations before fresh requests finish; stored distances use that coarse area.
 
-The local report test wrote only to `http://10.0.2.2:8787/api/v1`. It did not submit a test
-price to production. Compose instrumentation runs with compact shrinking disabled because
-the test APK shares runtime classes that the shrinker can remove; the emulator-test flag
-does this automatically. See [Android build instructions](../apps/android/README.md).
+Eight JVM tests and four emulator checks passed; the local-report-writing check
+was skipped against the public API. The exact compact APK was separately installed
+and checked for real tiles, visible logos, location, marker-to-detail selection,
+map-only controls and restoration. Earlier isolated local report evidence remains
+historical; backend report validation and persistence also pass in-memory tests.
 
-**Exact final APK smoke check:** the compact APK with the hash above was installed on the
-emulator and connected to the public HTTPS API. Foreground location permission, a real
-OpenStreetMap map, the location dot, **179 nearby Edmonton stations**, and green tappable
-station markers were verified. Tapping the Hughes map marker opened that station's native
-details, including “No report yet,” directions and report controls. No test price was sent.
-The final public APK also passed the five unit tests after the map-marker change.
+Build a clean compact APK after instrumentation, since switching packaging modes
+can leave unused padding in an incremental APK. Code/resource shrinking, compressed
+native libraries and excluding debug UI tooling keep this universal build below
+Cloudflare's 25 MiB asset limit. This is a development sideload, not a store release.
+See [Android instructions](../apps/android/README.md).
 
-## Expo Go client
+## Expo and Swift
 
-Expo SDK 57: TypeScript checking, four domain tests, Android Hermes bundle export and
-all **21 Expo Doctor checks** passed. Expo Go ran on the same API 35 emulator and loaded
-179 stations from the public HTTPS API, with no invented prices. Real map tiles, station
-markers, the foreground location dot and native station details were inspected. A map
-marker opened the correct native station sheet; panning exposed **Search this area**.
+Current Expo source passes TypeScript checking, six domain tests, six exact embedded
+Leaflet browser regressions and Android Hermes export. Those checks cover bounded
+logo dimensions, marker names/taps/updates, price handling and coarse snapshots.
+The approved F assets are wired into the header and app icon. A final layout adjustment
+keeps Search this area above Show stations when the results sheet is hidden.
+Browser regressions intercept test data; they do not verify native Expo Go rendering.
+The earlier [Expo emulator screenshot](../evidence/expo/live-public-emulator-map.png)
+is from 12 September, before this branding/layout update. No new native Expo Go run,
+EAS APK or hosted Expo update is claimed. Metro is required for Expo Go.
 
-The map uses bundled Leaflet 1.9.4 through the Expo Go-supported WebView. A device test found
-that Expo Go's shared Google Maps credential failed authorization, so the client now uses
-the OpenStreetMap map without a map key. The remaining controls are native React Native.
-See [Expo Go setup](../apps/expo/README.md) for the Metro/QR workflow and map attribution.
+Swift source now uses the live station API, MapKit, foreground CoreLocation, coarse
+area caching and remote station logos, with the approved F and current controls.
+Thirty portable tests passed, with one opt-in live test skipped; source syntax,
+localization/plist and asset checks passed. Earlier read-only live API evidence is
+dated separately. **Apple SDK compilation, iPhone UI verification and an IPA still
+require macOS/Xcode.** See [iOS evidence](../apps/ios/BUILD_EVIDENCE.md).
 
-## Screenshot provenance and limits
-
-All coordinates shown below are **controlled emulator coordinates**, set to central
-Edmonton for testing. These are not a person's measured location. Screenshots show the
-public live API and unreported pump prices, not the locally submitted test price.
-
-- [Final native map](../evidence/android-native/live-public-emulator-map.png)
-- [Native station selected from its map marker](../evidence/android-native/live-public-emulator-station.png)
-- [Expo Go with the public live API](../evidence/expo/live-public-emulator-map.png)
-
-The freshly attached domain initially had a cached negative DNS response on this machine.
-Android Private DNS was temporarily pointed to `dns.google` to verify public HTTPS access,
-then restored to its previous setting. No production endpoint was substituted in the APK.
-
-No physical phone was modified or tested. The APK is a directly installable development
-build, not a Google Play release. Expo Go requires Metro; no EAS build or permanent hosted
-Expo update was published. iOS device behavior was not tested in this run.
+Historical sample-era logs and earlier native screenshots do not verify this release.

@@ -1,0 +1,8 @@
+
+ca.openfuel.prototype.NativeScreensTest:...
+ca.openfuel.prototype.PrototypeSyncTest:
+ca.openfuel.prototype.PrototypeSyncTest:.
+
+Time: 8.373
+
+OK (5 tests)

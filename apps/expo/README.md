@@ -5,6 +5,11 @@ asks for foreground location access and finds real nearby fuel stations. Prices 
 community reports: an unreported price stays blank and the station stays visible.
 The app has station search, Canadian city search, map-area search, three fuel grades,
 distance/price sorting, saved stations, directions, a report form and a local cache.
+Location, fuel grades and saved filtering share one compact row. Swipe the results
+grip down (or tap it) for the full map; **Show stations** restores the list. Recenter
+and information controls sit above **Search this area**. The approved curved F
+appears in the header and configured app icon; canonical assets are in
+[`packages/design/brand`](../../packages/design/brand/README.md).
 
 ## Run on your phone
 
@@ -58,9 +63,11 @@ when retrying an uncertain report submission from the same form.
 
 ## What is stored and sent
 
-The phone stores the most recent station response, search area, saved station IDs
-and a random installation ID in AsyncStorage. A network failure displays saved data
-only when it belongs to the searched area, with its saved age. Saved prices can be
+The phone stores the most recent station response, a search area rounded to two
+decimal places, saved station IDs and a random installation ID in AsyncStorage.
+Saved distances are recalculated from that approximate area, and a saved area is
+shown immediately while a new request runs. A network failure displays saved data
+only when it belongs to the searched area and configured API origin, with its saved age. Saved prices can be
 outdated. Map tiles themselves are not downloaded for offline use.
 
 Nearby searches send coordinates rounded to three decimal places (roughly 100 m)
@@ -69,6 +76,12 @@ fuel grade, price, random installation ID and request ID; no GPS coordinates.
 OpenStreetMap receives on-demand map tile requests. Station metadata comes from
 OpenStreetMap contributors under ODbL; attribution remains visible on the map.
 Opening directions hands the destination to Google Maps.
+
+Recognized station brands load their logos directly from the curated Wikimedia,
+Co-op and Shell hosts in [`packages/brands`](../../packages/brands/README.md).
+Logos appear in the list and map with initials as a fallback. No station logo
+binary is bundled in Expo or hosted by OpenFuel; ordinary device HTTP caching may
+reuse images. Those providers receive image requests and network metadata.
 
 ## Checks
 
@@ -83,6 +96,19 @@ npx expo-doctor
 Tests cover cents/millidollar conversion, missing-price visibility, rejection of
 sample data and invalid coordinates, and honest report-age labels. Bundle export
 checks Android JavaScript compilation; it is not an APK build or a device test.
+
+The exact bundled Leaflet document also has six browser regression checks for
+wide-logo sizing, safe station text and accessibility, marker selection, fuel
+changes, corrected coordinates, world wrapping and marker removal. From the
+repository root, with the repository Python development environment and a
+Playwright Chromium installed, run:
+
+```sh
+.venv/bin/python apps/expo/tests/map_browser.py
+```
+
+`CHROMIUM_PATH` can select an existing Chromium executable. Network requests in
+this test are intercepted locally; it does not test Expo Go or a native WebView.
 
 ## Map configuration
 

@@ -1,0 +1,25 @@
+{
+  "name": "OpenFuel",
+  "short_name": "OpenFuel",
+  "id": "/preview/",
+  "start_url": "/preview/",
+  "scope": "/preview/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "description": "Real nearby fuel stations and community pump prices.",
+  "icons": [
+    {
+      "src": "/brand/openfuel-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/openfuel-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

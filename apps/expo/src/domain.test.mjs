@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './domain.ts';
+import { areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './domain.ts';
 
 const station = (id, price, distanceMetres) => ({ id, name: 'Test station', latitude: 53, longitude: -113,
   distanceMetres, prices: { regular: price, premium: null, diesel: null }, synthetic: false });
@@ -33,4 +33,24 @@ test('unknown report timestamps are not described as fresh', () => {
   assert.equal(reportAge(undefined), 'Time unavailable');
   assert.equal(reportAge('invalid'), 'Time unavailable');
   assert.equal(reportAge('2026-09-10T12:00:00Z', Date.parse('2026-09-11T12:00:00Z')), '1 day ago');
+});
+
+test('remote logo requests are confined to curated HTTPS providers', () => {
+  assert.equal(safeLogoUrl('https://www.fuel.crs/logo.png'), 'https://www.fuel.crs/logo.png');
+  for (const url of ['http://www.fuel.crs/logo.png', 'https://www.fuel.crs.evil.test/logo.png',
+    'https://user@www.fuel.crs/logo.png', 'https://www.fuel.crs:444/logo.png', 'file:///logo.png', null]) {
+    assert.equal(safeLogoUrl(url), null);
+  }
+});
+
+test('warm snapshots discard precise query coordinates and device-relative distances', () => {
+  const point = {latitude: 53.546129, longitude: -113.493876};
+  const data = {mode: 'live', is_demo: false, location: point, stations: [station('one', null, 17)]};
+  const cached = areaSnapshot(data, point, 'Near your location', '2026-09-12T12:00:00Z');
+  assert.deepEqual(cached.point, {latitude: 53.55, longitude: -113.49});
+  assert.equal(cached.label, 'Nearby area');
+  assert.equal(cached.data.location, undefined);
+  assert.notEqual(cached.data.stations[0].distanceMetres, 17);
+  assert.equal(data.stations[0].distanceMetres, 17);
+  assert.equal(validateResponse(cached.data).stations[0].prices.regular, null);
 });

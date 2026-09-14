@@ -25,6 +25,14 @@ longitude, available address/amenity metadata, `source`, `source_url`,
 amenities may be missing or outdated. Imported records do not prove a station
 is currently operating.
 
+Recognized brands also have nullable `brandKey`, `brandLogoUrl` and
+`brandLogoSourceUrl` fields. The catalog in `packages/brands` matches known brand
+aliases and supplies fixed HTTPS image URLs; arbitrary imported website URLs are
+never used as image sources. Clients fetch logos directly from Wikimedia Commons,
+Co-op or Shell and show initials if no match or image is available. OpenFuel does
+not host or bundle station logo files. These fields identify a station brand;
+they do not imply a partnership or verify the station's current operator.
+
 `prices` contains nullable `regular`, `premium` and `diesel` values. A price is
 an integer in thousandths of CAD per litre: `1499` means $1.499/L or 149.9 ¢/L.
 This is a unit example, not a real observation. A null means no community price

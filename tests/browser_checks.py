@@ -35,6 +35,7 @@ MODE='http'
 BROWSER_ERRORS=[]
 EXTERNAL=[]
 MAP_TILES=[]
+BRAND_REQUESTS=[]
 API_STATES={}
 # Two public OSM records from the Canadian import. Any prices submitted below are
 # isolated test observations: intercepted in this browser, never sent to OpenFuel.
@@ -44,6 +45,8 @@ STATIONS=[
 ]
 for station in STATIONS:
     station.update(address='Address not recorded in OpenStreetMap',synthetic=False,prices={'regular':None,'premium':None,'diesel':None},ages={},observedAt={})
+STATIONS[0].update(brandKey='tempo',brandLogoUrl='https://thumb.wikimedia.org/openfuel-test-brand.png',distanceMetres=497)
+STATIONS[1].update(brandKey='hughes',brandLogoUrl='https://thumb.wikimedia.org/openfuel-test-missing.png',distanceMetres=845)
 TILE=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jD1kAAAAASUVORK5CYII=')
 
 def check(name,truth=True):
@@ -107,7 +110,7 @@ def main():
     threading.Thread(target=server.serve_forever,daemon=True).start()
     origin=f'http://127.0.0.1:{server.server_port}'
     try:
-        for path in ['/','/docs/','/docs/pages.js','/preview/','/shared/contracts/openapi.json','/designs/variant-b/','/repo-test/','/repo-test/docs/','/repo-test/preview/']:
+        for path in ['/','/docs/','/docs/pages.js','/preview/','/shared/contracts/openapi.json','/designs/variant-b/','/repo-test/','/repo-test/docs/','/repo-test/preview/','/favicon.svg','/brand/openfuel-wordmark-light.svg','/brand/openfuel-icon-192.png','/brand/openfuel-icon-512.png','/preview/manifest.webmanifest']:
             connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
             connection.request('GET',path);r=connection.getresponse();body=r.read()
             check('HTTP route '+path,r.status==200 and len(body)>0);connection.close()
@@ -163,6 +166,10 @@ def main():
                     elif parsed.hostname=='tile.openstreetmap.org':
                         MAP_TILES.append(url)
                         route.fulfill(status=200,content_type='image/png',body=TILE)
+                    elif parsed.hostname=='thumb.wikimedia.org':
+                        BRAND_REQUESTS.append(url)
+                        if 'missing' in parsed.path:route.abort()
+                        else:route.fulfill(status=200,content_type='image/png',body=TILE)
                     elif url.startswith(origin+'/'):route.continue_()
                     elif url.startswith(('data:','blob:','about:')):route.continue_()
                     else:EXTERNAL.append(url);route.abort()
@@ -186,6 +193,7 @@ def main():
                 context,page=new_page(width,height)
                 prefix=f'{width}px '
                 load(page,'/')
+                check(prefix+'approved wordmark is used on landing',page.locator('.site-header .wordmark img').get_attribute('src')=='brand/openfuel-wordmark-light.svg')
                 check(prefix+'website no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
                 check(prefix+'website source and docs routes',page.locator('a[href="docs/"]').count()>=1 and page.locator('a[href="downloads/openfuel-source.zip"]').count()>=1)
                 page.locator('#language').click();check(prefix+'French toggle',page.locator('html').get_attribute('lang')=='fr')
@@ -216,7 +224,7 @@ def main():
                     page.evaluate('(hash)=>location.hash=hash',doc_id);page.wait_for_timeout(25)
                     check(prefix+'docs route '+doc_id,len(page.locator('#article').inner_text())>100)
                 page.evaluate('location.hash="ios"');page.wait_for_timeout(30)
-                check(prefix+'iOS limitation is truthful','not a pre-generated project' in page.locator('#article').inner_text())
+                check(prefix+'iOS limitation is truthful','Apple SDK compilation' in page.locator('#article').inner_text() and 'these have not been verified' in page.locator('#article').inner_text())
                 page.evaluate('location.hash="testing"');page.wait_for_timeout(35)
                 check(prefix+'evidence table exists',page.locator('#evidence-table').count()==1)
                 if page.locator('[data-log]').count():
@@ -228,10 +236,24 @@ def main():
                 check(prefix+'docs use real map with location permission fallback',frame.locator('#map').count()==1 and frame.locator('.station-card').count()==0)
                 page.locator('#reference-dialog [data-close]').last.click()
                 load(page,'/preview/')
+                check(prefix+'approved wordmark is used in the app header',page.locator('.search-header .wordmark img').get_attribute('src')=='/brand/openfuel-wordmark-light.svg')
+                check(prefix+'app offers an installable web manifest',page.locator('link[rel=manifest]').get_attribute('href')=='manifest.webmanifest')
                 check(prefix+'real map has attribution',page.get_by_role('link',name='OpenStreetMap contributors').count()==1)
                 check(prefix+'no fictional station fallback',page.locator('.station-card').count()==0)
-                check(prefix+'no remote brand artwork',page.locator('img[data-brand]').count()==0)
+                check(prefix+'no station branding appears without station records',page.locator('img[data-brand-logo]').count()==0)
                 check(prefix+'manual search remains available',page.get_by_role('searchbox',name='Search Canadian city or coordinates').count()==1)
+                check(prefix+'save icon is an opaque vector control',page.locator('#saved-button svg').count()==1 and page.locator('#saved-button').evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(255, 255, 255)')
+                if width<=760:check(prefix+'mobile header blocks map bleed-through',page.locator('.search-header').evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(255, 255, 255)')
+                controls=[page.locator(selector).bounding_box() for selector in ['#area-selector','[data-fuel=regular]','[data-fuel=premium]','[data-fuel=diesel]','#saved-button']]
+                check(prefix+'location fuels and saved fit one compact row',all(box and abs(box['y']-controls[0]['y'])<2 for box in controls) and controls[0]['x']>=0 and controls[-1]['x']+controls[-1]['width']<=width)
+                page.locator('#area-selector').click()
+                check(prefix+'area selector offers city device and map choices',page.locator('[data-area-action]').count()==3 and page.locator('#area-selector').get_attribute('aria-expanded')=='true')
+                page.get_by_role('button',name='Search a Canadian city or coordinates',exact=True).click()
+                check(prefix+'area selector focuses the available city search',page.locator('#place-search').evaluate('(e)=>e===document.activeElement') and page.locator('#area-selector').get_attribute('aria-expanded')=='false')
+                page.locator('#map').focus();page.keyboard.press('ArrowRight')
+                page.locator('#search-area').wait_for(state='visible')
+                controls=[page.locator(selector).bounding_box() for selector in ['#locate-button','#about-button','#search-area']]
+                check(prefix+'map controls stack recenter then info then area search',all(controls[i]['y']+controls[i]['height']<=controls[i+1]['y'] for i in range(2)))
                 page.get_by_role('button',name='Premium',exact=True).click()
                 check(prefix+'fuel selection works',page.get_by_role('button',name='Premium',exact=True).get_attribute('aria-pressed')=='true')
                 page.locator('#about-button').click();page.wait_for_timeout(300)
@@ -246,9 +268,14 @@ def main():
                     page.get_by_role('button',name='Search places',exact=True).click()
                     page.get_by_role('button',name='Edmonton, Alberta, Canada',exact=True).click()
                     page.locator('.station-card').first.wait_for()
+                    check(prefix+'location selector reflects the selected city',page.locator('#area-label').inner_text()=='Edmonton')
                     check(prefix+'city search loads actual station-shaped API records',page.locator('.station-card').count()==2)
                     check(prefix+'missing pump prices remain blank',page.locator('.station-price .missing').count()==2)
                     check(prefix+'map pins identify their station',page.get_by_role('button',name='Tempo: no reported price',exact=True).count()==1)
+                    page.locator('.station-card .logo-loaded').first.wait_for()
+                    check(prefix+'station logos load from the remote provider',page.locator('.station-card .logo-loaded img').first.get_attribute('src')==STATIONS[0]['brandLogoUrl'])
+                    check(prefix+'map logos use the same remote provider',page.locator('.marker-brand img').count()>=1)
+                    check(prefix+'failed logo keeps station initials visible',page.locator('.station-card').nth(1).locator('.brand-fallback').inner_text()=='HU')
                     page.get_by_role('button',name='View Tempo, Address not recorded in OpenStreetMap',exact=True).click()
                     destination=page.get_by_role('link',name='Google Maps',exact=True).get_attribute('href')
                     check(prefix+'directions use the real station coordinates','destination=53.5485522%2C-113.475735' in destination)
@@ -272,6 +299,23 @@ def main():
                     page.get_by_role('button',name='Refresh',exact=True).click()
                     page.locator('#connection-status.offline').wait_for()
                     check(prefix+'offline failure preserves cached station and report',page.locator('.station-card').count()==1 and '149.9' in page.locator('.station-card').inner_text())
+                    location_cache=page.evaluate('JSON.parse(localStorage.getItem("openfuel-live-v1:last-area"))')
+                    areas_cache=page.evaluate('JSON.parse(localStorage.getItem("openfuel-live-v1:areas-v2"))')
+                    check(prefix+'remembered area is rounded to hundredths of a degree',location_cache['lat']==53.55 and location_cache['lon']==-113.47)
+                    check(prefix+'cache omits precise device-derived station distances',all('distanceMetres' not in s for area in areas_cache for s in area['stations']))
+                    load(page,'/preview/')
+                    page.locator('.station-card').first.wait_for()
+                    check(prefix+'warm offline start immediately restores the last station area',page.locator('.station-card').count()==2 and 'saved area' in page.locator('#location-status').inner_text())
+                    check(prefix+'saved area never impersonates a fresh GPS fix',page.locator('.user-location').count()==0 and 'Your location · accurate' not in page.locator('#location-status').inner_text())
+                    page.get_by_role('button',name='Hide stations and show full map',exact=True).click()
+                    check(prefix+'station sheet can fully hide for map-only browsing',not page.locator('.results-panel').is_visible() and page.get_by_role('button',name='Show stations',exact=True).is_visible())
+                    page.get_by_role('button',name='Show stations',exact=True).click()
+                    check(prefix+'map-only restore button brings stations back',page.locator('.results-panel').is_visible())
+                    if width<=760:
+                        grip=page.locator('#sheet-toggle').bounding_box()
+                        page.mouse.move(grip['x']+grip['width']/2,grip['y']+grip['height']/2);page.mouse.down();page.mouse.move(grip['x']+grip['width']/2,grip['y']+grip['height']/2+70,steps=8);page.mouse.up()
+                        check(prefix+'swiping the sheet grip down shows the full map',page.get_by_role('button',name='Show stations',exact=True).is_visible())
+                        page.get_by_role('button',name='Show stations',exact=True).click()
                 if width==390:page.screenshot(path=str(OUT/'map-390.png'))
                 check(prefix+'map no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
                 context.close()
@@ -304,9 +348,10 @@ def main():
                 check('Browser relative routes work beneath repository prefix','/repo-test/docs/' in page.url)
             context.close();browser.close()
         check('No JavaScript exceptions',not BROWSER_ERRORS)
-        check('No external network calls; OSM tiles fulfilled by test transport',not EXTERNAL and len(MAP_TILES)>0)
+        check('No external network calls; maps and logos fulfilled by test transport',not EXTERNAL and len(MAP_TILES)>0 and len(BRAND_REQUESTS)>0)
         report={'mode':MODE,'passed':len(CHECKS),'checks':CHECKS,'javascript_errors':BROWSER_ERRORS,'external_requests':EXTERNAL,
           'mock_map_tile_requests':len(MAP_TILES),
+          'mock_brand_logo_requests':len(BRAND_REQUESTS),
           'scope':'Built UI at desktop/mobile widths, with denied/granted/pending location, intercepted city/station/report API and map tile transport, reporting validation, favorites and offline cache. Test prices never reach a real backend. Live backend integration and genuine map screenshots are recorded separately. Not native app screenshots.'}
         (ROOT/'evidence/browser-results.json').write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps(report,indent=2))

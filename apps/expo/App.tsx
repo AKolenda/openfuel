@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, KeyboardAvoidingView, Linking, Modal, Platform,
+  ActivityIndicator, Animated, FlatList, Image, PanResponder, KeyboardAvoidingView, Linking, Modal, Platform,
   Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { OpenMap, type OpenMapHandle, type Region } from './src/OpenMap';
@@ -10,11 +10,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import * as Crypto from 'expo-crypto';
-import { fetchStations, searchCities, submitReport } from './src/api';
-import { type Coordinates, type Fuel, type Station, fuels, parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './src/domain';
+import { API_URL, fetchStations, searchCities, submitReport } from './src/api';
+import { type Coordinates, type Fuel, type Station, fuels, areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './src/domain';
 
 const C = { green: '#245A43', pale: '#F0F5EA', muted: '#647366', ink: '#183328', white: '#FFFFFF', border: '#DCE5DB', red: '#C64032' };
-const KEYS = { cache: 'openfuel.live.stations.v1', favorites: 'openfuel.favorites.v1', client: 'openfuel.installation.v1' };
+const KEYS = { cache: `openfuel.live.stations.v2:${API_URL}`, favorites: 'openfuel.favorites.v1', client: 'openfuel.installation.v1' };
 const CITIES = [
   { name: 'Edmonton', latitude: 53.5461, longitude: -113.4938 },
   { name: 'Calgary', latitude: 51.0447, longitude: -114.0719 },
@@ -40,6 +40,15 @@ function Action({ label, icon, onPress, primary, disabled }: { label: string; ic
   </Pressable>;
 }
 
+function BrandLogo({ station }: { station: Station }) {
+  const url = safeLogoUrl(station.brandLogoUrl);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  return <View style={styles.brandLogo}>{url && !failed
+    ? <Image accessibilityLabel={`${station.brand || station.name} logo`} source={{ uri: url }} resizeMode="contain" style={styles.brandImage} onError={() => setFailed(true)} />
+    : <Text style={styles.brandInitials}>{(station.brand || station.name).replace(/[^a-z0-9 ]/gi, '').split(/\s+/).map(word => word[0]).join('').slice(0, 2).toUpperCase() || 'F'}</Text>}</View>;
+}
+
 function Sheet({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: React.ReactNode }) {
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <KeyboardAvoidingView style={styles.modal} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -58,6 +67,20 @@ function Sheet({ visible, onClose, children }: { visible: boolean; onClose: () =
 function OpenFuel() {
   const map = useRef<OpenMapHandle>(null);
   const loadSequence = useRef(0);
+  const areaIntent = useRef(0);
+  const locationSequence = useRef(0);
+  const [stationsHidden, setStationsHidden] = useState(false);
+  const panelDrag = useRef(new Animated.Value(0)).current;
+  const hideStations = () => { setStationsHidden(true); panelDrag.setValue(0); };
+  const panelGesture = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onPanResponderMove: (_, gesture) => panelDrag.setValue(Math.max(0, gesture.dy)),
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dy > 70 || (gesture.dy > 15 && gesture.vy > 0.6)) hideStations();
+      else Animated.spring(panelDrag, { toValue: 0, useNativeDriver: true }).start();
+    },
+    onPanResponderTerminate: () => Animated.spring(panelDrag, { toValue: 0, useNativeDriver: true }).start(),
+  }), [panelDrag]);
   const clientId = useRef('');
   const currentArea = useRef<{ point: Coordinates; label: string } | null>(null);
   const requestIdentity = useRef<{ key: string; id: string } | null>(null);
@@ -92,8 +115,9 @@ function OpenFuel() {
   const [reportError, setReportError] = useState('');
 
   const loadArea = useCallback(async (point: Coordinates, label: string, animate = true) => {
+    ++areaIntent.current;
     const sequence = ++loadSequence.current;
-    setLoading(true); setError(''); setCoverage(''); setMapMoved(false);
+    setLoading(true); setLocating(false); setError(''); setCoverage(''); setMapMoved(false);
     const previous = currentArea.current?.point;
     if (!previous || Math.abs(previous.latitude - point.latitude) > 0.01 || Math.abs(previous.longitude - point.longitude) > 0.01) {
       setStations([]); setSavedAt(null); setSelected(null);
@@ -107,7 +131,7 @@ function OpenFuel() {
       const timestamp = new Date().toISOString();
       setStations(data.stations); setOffline(false); setSavedAt(timestamp);
       setCoverage(typeof data.coverage?.message === 'string' ? data.coverage.message : '');
-      AsyncStorage.setItem(KEYS.cache, JSON.stringify({ data, point, label, timestamp })).catch(() => setNotice('Stations loaded, but offline storage is unavailable.'));
+      AsyncStorage.setItem(KEYS.cache, JSON.stringify(areaSnapshot(data, point, label, timestamp))).catch(() => setNotice('Stations loaded, but offline storage is unavailable.'));
     } catch (cause) {
       if (sequence !== loadSequence.current) return;
       setOffline(true); setError(failure(cause));
@@ -126,16 +150,22 @@ function OpenFuel() {
   }, []);
 
   const locate = useCallback(async () => {
+    const intent = ++areaIntent.current;
+    const sequence = ++locationSequence.current;
+    const isCurrent = () => intent === areaIntent.current && sequence === locationSequence.current;
     setLocating(true); setError(''); setNotice('');
     try {
       const result = await Location.requestForegroundPermissionsAsync();
+      if (!isCurrent()) return;
       setPermission(result.granted);
       if (!result.granted) setDeviceLocation(null);
       if (!result.granted) {
         setNotice('Location is off. Choose a city or move the map to find stations. You can enable location in Settings.');
         return;
       }
-      if (!await Location.hasServicesEnabledAsync()) {
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!isCurrent()) return;
+      if (!servicesEnabled) {
         setNotice('Turn on your phone’s location service, or choose an area on the map.');
         return;
       }
@@ -144,35 +174,44 @@ function OpenFuel() {
         Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Could not get a GPS fix. Try outside or choose a city.')), 20_000); }),
       ]).finally(() => clearTimeout(timer));
+      if (!isCurrent()) return;
       setDeviceLocation(position.coords);
       await loadArea(position.coords, 'Near your location');
-    } catch (cause) { setNotice(failure(cause)); }
-    finally { setLocating(false); }
+    } catch (cause) { if (isCurrent()) setNotice(failure(cause)); }
+    finally { if (sequence === locationSequence.current) setLocating(false); }
   }, [loadArea]);
 
   useEffect(() => {
     let disposed = false;
+    const startupIntent = areaIntent.current;
     (async () => {
       try {
+        await AsyncStorage.multiRemove(['openfuel.live.stations.v1', 'openfuel.live.stations.v2']);
         const values = await AsyncStorage.multiGet([KEYS.client, KEYS.favorites, KEYS.cache]);
         if (disposed) return;
         clientId.current = values[0][1] || Crypto.randomUUID();
         if (!values[0][1]) await AsyncStorage.setItem(KEYS.client, clientId.current);
+        if (disposed) return;
         const saved: unknown = JSON.parse(values[1][1] || '[]');
         setFavorites(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : []);
-        if (values[2][1]) {
+        if (values[2][1] && startupIntent === areaIntent.current) {
           const cache = JSON.parse(values[2][1]);
+          if (!Number.isFinite(cache.point?.latitude) || Math.abs(cache.point.latitude) > 90 || !Number.isFinite(cache.point?.longitude) || Math.abs(cache.point.longitude) > 180) throw new Error('Invalid saved area');
           const data = validateResponse(cache.data);
           setStations(data.stations); setAreaLabel(`Last area: ${cache.label}`); setSavedAt(cache.timestamp); setOffline(true);
           currentArea.current = { point: cache.point, label: cache.label };
           setRegion(closeRegion(cache.point));
           map.current?.animateToRegion(closeRegion(cache.point), 1);
+          // Refresh below only while startup still owns the area choice.
         }
       } catch { clientId.current ||= Crypto.randomUUID(); }
-      if (!disposed) void locate();
+      if (!disposed && startupIntent === areaIntent.current) {
+        if (currentArea.current) void loadArea(currentArea.current.point, currentArea.current.label, false);
+        void locate();
+      }
     })();
-    return () => { disposed = true; };
-  }, [locate]);
+    return () => { disposed = true; ++areaIntent.current; ++loadSequence.current; ++locationSequence.current; };
+  }, [locate, loadArea]);
 
   useEffect(() => {
     let active = true;
@@ -219,39 +258,44 @@ function OpenFuel() {
   return <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
     <StatusBar style="dark" />
     <View style={styles.header}>
-      <View><Text style={styles.wordmark}>openfuel</Text><Pressable accessibilityRole="button" onPress={() => setShowCities(true)}><Text numberOfLines={1} style={styles.area}>{areaLabel} <Ionicons name="chevron-down" size={12} /></Text></Pressable></View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Use my location" onPress={() => void locate()} disabled={locating} style={styles.locationButton}>
-        {locating ? <ActivityIndicator color={C.green} size="small" /> : <Ionicons name="locate" color={C.green} size={23} />}
-      </Pressable>
+      <View style={styles.brandHeader} accessible accessibilityLabel="OpenFuel"><Image source={require('./assets/openfuel-mark.png')} style={styles.appMark} resizeMode="contain" /><Text style={styles.wordmark}>openfuel</Text></View>
+      <View style={styles.search}><Ionicons name="search" color={C.muted} size={17} /><TextInput value={query} onChangeText={setQuery} placeholder="Search a station" placeholderTextColor={C.muted} style={styles.searchInput} accessibilityLabel="Search nearby stations" /></View>
     </View>
-    <View style={styles.fuels}>{fuels.map(item => <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: fuel === item }} onPress={() => setFuel(item)} style={[styles.fuel, item === fuel && styles.fuelActive]}><Text style={[styles.fuelText, item === fuel && styles.fuelTextActive]}>{title(item)}</Text></Pressable>)}<Text style={styles.unit}>¢ / L</Text></View>
+    <View style={styles.controlRow}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Choose area, ${areaLabel}`} onPress={() => setShowCities(true)} style={styles.areaControl}><Ionicons name="location" color={C.green} size={16} /><Text numberOfLines={1} style={styles.area}>{areaLabel}</Text><Ionicons name="chevron-down" color={C.green} size={11} /></Pressable>
+      {fuels.map(item => <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: fuel === item }} onPress={() => setFuel(item)} style={[styles.compactFuel, item === fuel && styles.fuelActive]}><Text style={[styles.fuelText, item === fuel && styles.fuelTextActive]}>{title(item)}</Text></Pressable>)}
+      <Pressable accessibilityRole="button" accessibilityLabel={onlySaved ? 'Show all stations' : 'Show saved stations'} accessibilityState={{ selected: onlySaved }} onPress={() => setOnlySaved(!onlySaved)} style={[styles.favoriteFilter, onlySaved && { backgroundColor: C.pale }]}><Ionicons name={onlySaved ? 'bookmark' : 'bookmark-outline'} color={C.green} size={20} /></Pressable>
+    </View>
 
     <View style={styles.mapContainer}>
       <OpenMap ref={map} initialRegion={region} stations={visibleStations} fuel={fuel} location={deviceLocation}
-        onSelect={setSelected} onRegionChangeComplete={setRegion} onPanDrag={() => setMapMoved(true)} />
-      {mapMoved && <View style={styles.searchArea}><Action label="Search this area" icon="search" onPress={() => void loadArea(region, 'Map area', false)} primary /></View>}
+        onSelect={setSelected} onRegionChangeComplete={setRegion} onPanDrag={() => { ++areaIntent.current; setLocating(false); setMapMoved(true); }} />
+      <View style={[styles.mapControls, stationsHidden && { bottom: 88 }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Use my location" onPress={() => void locate()} disabled={locating} style={styles.locationButton}>{locating ? <ActivityIndicator color={C.green} size="small" /> : <Ionicons name="locate" color={C.green} size={23} />}</Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="About OpenFuel" onPress={() => void Linking.openURL('https://openfuel.ca/docs/').catch(() => setNotice('Could not open the guide on this device.'))} style={styles.locationButton}><Ionicons name="information-circle" color={C.green} size={23} /></Pressable>
+        {mapMoved && <Action label="Search this area" onPress={() => void loadArea(region, 'Map area', false)} primary />}
+      </View>
+      {stationsHidden && <View style={styles.showStations}><Action label="Show stations" icon="chevron-up" onPress={() => setStationsHidden(false)} /></View>}
       {!currentArea.current && !locating && <View style={styles.mapIntro}><Text style={styles.introTitle}>Find fuel around you.</Text><Text style={styles.body}>Use your location or choose a city to load real stations.</Text><Action label="Choose a city" icon="map-outline" onPress={() => setShowCities(true)} primary /></View>}
       {loading && <View style={styles.loadingMap}><ActivityIndicator size="small" color={C.green} /><Text style={styles.body}>Finding stations…</Text></View>}
     </View>
 
-    <View style={styles.stationPanel}>
-      {(notice || error || offline) ? <View style={styles.notice}><Text style={styles.noticeText} accessibilityLiveRegion="polite">{error || notice || 'Showing saved stations.'}{offline && savedAt ? ` Saved ${reportAge(savedAt).toLowerCase()}.` : ''}</Text>{!permission && !!notice && <Pressable accessibilityRole="button" onPress={() => void Linking.openSettings()}><Text style={styles.textLink}>Settings</Text></Pressable>}</View> : null}
-      <View style={styles.searchRow}>
-        <View style={styles.search}><Ionicons name="search" color={C.muted} size={17} /><TextInput value={query} onChangeText={setQuery} placeholder="Search nearby stations" placeholderTextColor={C.muted} style={styles.searchInput} accessibilityLabel="Search nearby stations" /></View>
-        <Pressable accessibilityRole="button" accessibilityLabel={onlySaved ? 'Show all stations' : 'Show saved stations'} accessibilityState={{ selected: onlySaved }} onPress={() => setOnlySaved(!onlySaved)} style={[styles.favoriteFilter, onlySaved && { backgroundColor: C.pale }]}><Ionicons name={onlySaved ? 'heart' : 'heart-outline'} color={C.green} size={23} /></Pressable>
-      </View>
+    {!stationsHidden && <Animated.View style={[styles.stationPanel, { transform: [{ translateY: panelDrag }] }]}>
+      <View {...panelGesture.panHandlers}><Pressable accessibilityRole="button" accessibilityLabel="Hide stations to show full map" onPress={hideStations} style={styles.panelGrip}><View style={styles.gripLine} /><Ionicons name="chevron-down" size={17} color={C.muted} /></Pressable></View>
+      {(notice || error || offline) ? <View style={styles.notice}><Text style={styles.noticeText} accessibilityLiveRegion="polite">{error || notice || 'Showing saved stations.'}{offline && savedAt ? ` Saved ${reportAge(savedAt).toLowerCase()}.` : ''}</Text>{!permission && !!notice && <Pressable accessibilityRole="button" onPress={() => void Linking.openSettings().catch(() => setNotice('Open your device Settings to change location access.'))}><Text style={styles.textLink}>Settings</Text></Pressable>}</View> : null}
       <View style={styles.listHeading}><Text style={styles.listTitle}>{visibleStations.length} {onlySaved ? 'saved' : 'nearby'} stations</Text><Pressable accessibilityRole="button" onPress={() => setSort(sort === 'distance' ? 'price' : 'distance')}><Text style={styles.sort}>{sort === 'distance' ? 'Nearest first' : 'Lowest price'} <Ionicons name="swap-vertical" size={13} /></Text></Pressable></View>
-      <FlatList data={visibleStations} keyExtractor={item => item.id} keyboardShouldPersistTaps="handled" refreshing={loading}
+      <FlatList initialNumToRender={8} maxToRenderPerBatch={8} windowSize={5} data={visibleStations} keyExtractor={item => item.id} keyboardShouldPersistTaps="handled" refreshing={loading}
         onRefresh={() => { if (currentArea.current) void loadArea(currentArea.current.point, currentArea.current.label, false); else void locate(); }}
         contentContainerStyle={visibleStations.length ? undefined : { flexGrow: 1 }}
         ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyTitle}>{loading ? 'Looking nearby…' : onlySaved ? 'Save your usual stops.' : query ? 'No matching stations.' : currentArea.current ? 'No stations loaded here.' : 'Your next fill starts here.'}</Text><Text style={styles.body}>{loading ? 'The first visit to an area can take a moment.' : onlySaved ? 'Tap the heart on a station to keep it handy.' : coverage || (error ? 'Pull down to retry, or choose another area.' : 'Choose a city or search another area on the map.')}</Text></View>}
         renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}, ${item.prices[fuel] === null ? 'no price reported' : priceLabel(item.prices[fuel]) + ' cents per litre'}`} onPress={() => setSelected(item)} style={styles.stationRow}>
+          <BrandLogo station={item} />
           <View style={styles.stationInfo}><Text style={styles.stationName} numberOfLines={1}>{item.name}</Text><Text style={styles.address} numberOfLines={1}>{distance(item.distanceMetres)}{item.address ? ` · ${item.address}` : ''}</Text><Text style={styles.age}>{item.prices[fuel] === null ? 'Be the first to report' : `${reportAge(item.observedAt?.[fuel])} · Unverified`}</Text></View>
           <View style={styles.priceColumn}><Text style={[styles.price, item.prices[fuel] === null && styles.noPrice]}>{priceLabel(item.prices[fuel])}</Text><Text style={styles.priceCaption}>{item.prices[fuel] === null ? 'No report' : '¢ / L'}</Text></View>
           <Pressable accessibilityRole="button" accessibilityLabel={favorites.includes(item.id) ? `Unsave ${item.name}` : `Save ${item.name}`} onPress={() => toggleFavorite(item)} style={styles.heart}><Ionicons name={favorites.includes(item.id) ? 'heart' : 'heart-outline'} color={C.green} size={22} /></Pressable>
         </Pressable>} />
       <Text style={styles.footer}>Real stations. Prices come from people like you.</Text>
-    </View>
+    </Animated.View>}
 
     <Sheet visible={showCities} onClose={() => setShowCities(false)}>
       <Text style={styles.sheetTitle}>Where are you filling up?</Text><Text style={styles.body}>Choose a starting area, then move the map anywhere in Canada.</Text>
@@ -263,6 +307,7 @@ function OpenFuel() {
     </Sheet>
 
     <Sheet visible={selected !== null} onClose={() => setSelected(null)}>{selected && <>
+      <BrandLogo station={selected} />
       <Text style={styles.sheetTitle}>{selected.name}</Text><Text style={styles.body}>{selected.address || 'Address not listed'}{distance(selected.distanceMetres) ? ` · ${distance(selected.distanceMetres)} from search centre` : ''}</Text>
       <View style={styles.detailPrice}><Text style={styles.detailNumber}>{priceLabel(selected.prices[fuel])}</Text><View><Text style={styles.detailUnit}>{title(fuel)} · ¢ / L</Text><Text style={styles.body}>{selected.prices[fuel] === null ? 'No price reported yet' : reportAge(selected.observedAt?.[fuel])}</Text></View></View>
       <Text style={styles.body}>{selected.prices[fuel] === null ? 'Seen the price at the pump? Share it with the next driver.' : 'Community report, unverified. Confirm the price at the pump.'}</Text>
@@ -288,25 +333,33 @@ export default function App() { return <SafeAreaProvider><OpenFuel /></SafeAreaP
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.white },
-  header: { paddingHorizontal: 20, paddingTop: 9, paddingBottom: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  header: { gap: 14, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brandHeader: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  appMark: { width: 34, height: 34 },
   wordmark: { color: C.green, fontSize: 29, fontWeight: '800', letterSpacing: -1.3 },
-  area: { color: C.muted, fontSize: 12, marginTop: 2, maxWidth: 270 },
-  locationButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.pale, alignItems: 'center', justifyContent: 'center' },
+  area: { color: C.ink, fontSize: 11, flexShrink: 1 },
+  controlRow: { flexDirection: 'row', gap: 4, paddingHorizontal: 10, paddingBottom: 10, alignItems: 'center' },
+  areaControl: { flex: 1, minWidth: 45, flexDirection: 'row', gap: 3, height: 40, alignItems: 'center', backgroundColor: C.white, borderRadius: 14, paddingHorizontal: 5, borderWidth: 1, borderColor: C.border },
+  compactFuel: { backgroundColor: C.white, paddingHorizontal: 8, height: 40, justifyContent: 'center', borderRadius: 20, borderWidth: 1, borderColor: C.border },
+  locationButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   fuels: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingBottom: 12, alignItems: 'center' },
   fuel: { borderRadius: 18, paddingHorizontal: 17, paddingVertical: 9, backgroundColor: C.pale },
-  fuelActive: { backgroundColor: C.green }, fuelText: { color: C.green, fontSize: 13, fontWeight: '600' }, fuelTextActive: { color: C.white },
+  fuelActive: { backgroundColor: C.green }, fuelText: { color: C.green, fontSize: 12, fontWeight: '600' }, fuelTextActive: { color: C.white },
   unit: { marginLeft: 'auto', fontSize: 12, color: C.muted },
   mapContainer: { flex: 1, minHeight: 175, backgroundColor: C.pale },
   mapPin: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderColor: C.white, borderWidth: 2, backgroundColor: C.green, elevation: 3 },
   unknownPin: { backgroundColor: C.white, borderColor: C.green }, mapPrice: { color: C.white, fontSize: 13, fontWeight: '800' },
-  searchArea: { position: 'absolute', top: 14, alignSelf: 'center' },
+  mapControls: { position: 'absolute', right: 12, bottom: 44, alignItems: 'flex-end', gap: 8 },
+  showStations: { position: 'absolute', bottom: 24, alignSelf: 'center' },
   mapIntro: { position: 'absolute', alignSelf: 'center', top: '15%', marginHorizontal: 30, padding: 20, gap: 12, backgroundColor: C.white, borderRadius: 18, elevation: 3, maxWidth: 360 },
   introTitle: { fontSize: 24, color: C.ink, fontWeight: '700', letterSpacing: -0.6 },
   loadingMap: { position: 'absolute', top: 14, alignSelf: 'center', flexDirection: 'row', gap: 8, borderRadius: 24, paddingHorizontal: 18, paddingVertical: 11, backgroundColor: C.white },
   mapCredit: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', paddingVertical: 2, backgroundColor: '#FFFFFFDD' }, credit: { color: C.muted, fontSize: 9 },
-  stationPanel: { flex: 0.95, minHeight: 225, backgroundColor: C.white },
+  stationPanel: { flex: 0.95, minHeight: 225, backgroundColor: C.white, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
+  panelGrip: { height: 32, alignItems: 'center', justifyContent: 'center' }, gripLine: { width: 36, height: 4, borderRadius: 2, backgroundColor: C.border },
+  brandLogo: { width: 38, height: 38, backgroundColor: C.white, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, brandImage: { width: 32, height: 30 }, brandInitials: { color: C.green, fontSize: 14, fontWeight: '700' },
   searchRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 13, gap: 8 }, search: { flexDirection: 'row', alignItems: 'center', flex: 1, backgroundColor: C.pale, paddingHorizontal: 12, borderRadius: 12, gap: 8 },
-  searchInput: { flex: 1, height: 42, color: C.ink, fontSize: 13 }, favoriteFilter: { alignItems: 'center', justifyContent: 'center', width: 42, borderRadius: 12 },
+  searchInput: { flex: 1, height: 42, color: C.ink, fontSize: 13 }, favoriteFilter: { alignItems: 'center', justifyContent: 'center', width: 36, height: 40, borderRadius: 14, backgroundColor: C.white, borderWidth: 1, borderColor: C.border },
   listHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 20, marginVertical: 12 }, listTitle: { fontSize: 14, fontWeight: '700', color: C.ink }, sort: { fontSize: 12, color: C.green, fontWeight: '500' },
   stationRow: { flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 12, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderColor: C.border, gap: 10 },
   stationInfo: { flex: 1 }, stationName: { color: C.ink, fontSize: 15, fontWeight: '700' }, address: { color: C.muted, fontSize: 11, marginTop: 4 }, age: { color: C.muted, fontSize: 10, marginTop: 6 },

@@ -13,8 +13,9 @@ settings:
     CODE_SIGN_STYLE: Automatic
     PRODUCT_BUNDLE_IDENTIFIER: ca.openfuel.prototype
     GENERATE_INFOPLIST_FILE: false
-    MARKETING_VERSION: 0.1.0
-    CURRENT_PROJECT_VERSION: '1'
+    MARKETING_VERSION: 0.4.0
+    CURRENT_PROJECT_VERSION: '4'
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
   configs:
     Debug:
       INFOPLIST_FILE: OpenFuel/Info-Debug.plist

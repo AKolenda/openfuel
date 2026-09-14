@@ -3,28 +3,20 @@ import Foundation
 import XCTest
 @testable import OpenFuelCore
 
-/// Explicit opt-in: posts a test price to the shared prototype database.
-final class PrototypeLiveTests: XCTestCase {
-    func testDeployedCloudflareReadReportRead() async throws {
-        guard let base = ProcessInfo.processInfo.environment["OPENFUEL_LIVE_TEST_API_BASE_URL"] else {
-            throw XCTSkip("Set OPENFUEL_LIVE_TEST_API_BASE_URL to explicitly test a deployed prototype.")
+/// Read-only opt-in; never writes made-up prices into public station records.
+final class LiveReadOnlyTests: XCTestCase {
+    func testRealCanadianStationsAndCitySearch() async throws {
+        guard let base = ProcessInfo.processInfo.environment["OPENFUEL_READ_ONLY_TEST_API_BASE_URL"] else {
+            throw XCTSkip("Set OPENFUEL_READ_ONLY_TEST_API_BASE_URL for read-only current API verification.")
         }
-        let client = try PrototypeAPIClient(server: base)
-        let stations = try await client.stations()
-        XCTAssertEqual(stations.count, 6)
-        let parkside = try XCTUnwrap(stations.first { $0.id == "parkside" })
-        let price = try XCTUnwrap(parkside.price(.regular))
-        let report = try PrototypePriceReport(stationID: parkside.id, fuelType: .regular,
-                                             priceMilli: price, clientID: UUID())
-        let receipt = try await client.report(report)
-        XCTAssertEqual(receipt.report.stationID, parkside.id)
-        XCTAssertEqual(receipt.report.priceMilli, price)
-        let retried = try await client.report(report)
-        XCTAssertEqual(retried.report.id, receipt.report.id, "An unchanged retry must reuse the original report")
-        let refreshed = try await client.stations()
-        let saved = try XCTUnwrap(refreshed.first { $0.id == parkside.id })
-        XCTAssertEqual(saved.price(.regular), price)
-        XCTAssertEqual(saved.age(.regular), 0)
-        print("Verified live Cloudflare GET → POST receipt → GET using the Swift prototype client (\(stations.count) stations).")
+        let client = try LiveAPIClient(server: base)
+        let area = try SearchArea(latitude: 53.5461, longitude: -113.4938, label: "Edmonton test area")
+        let stations = try await client.stations(near: area)
+        XCTAssertGreaterThan(stations.count, 10)
+        XCTAssertTrue(stations.allSatisfy { $0.latitude != nil && $0.longitude != nil && $0.id.hasPrefix("osm-") })
+        XCTAssertTrue(stations.allSatisfy { $0.distanceMetres <= 10000 })
+        let cities = try await client.cities(matching: "Montréal")
+        XCTAssertTrue(cities.contains { $0.name.hasPrefix("Montréal") })
+        print("Read-only live Swift check passed: \(stations.count) nearby real stations, \(cities.count) city matches; zero reports submitted.")
     }
 }

@@ -1,4 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-OPENFUEL_API_BASE_URL = https:/$()/openfuel-prototype.openfuel-monorepo.workers.dev/api/v1
-OPENFUEL_DATA_MODE = prototype
+OPENFUEL_API_BASE_URL = https:/$()/openfuel.ca/api/v1
+OPENFUEL_DATA_MODE = live
 #include? "Local.xcconfig"

@@ -115,7 +115,8 @@ def test_handbook_internal_routes_unique_and_real():
     for page in pages:
         for href in re.findall(r'href="#([^"]+)"',page['body']):
             assert href.split('/')[0] in ids,(page['id'],href)
-    assert 'pre-generated project' in next(p for p in pages if p['id']=='ios')['body']
+    ios=next(p for p in pages if p['id']=='ios')['body']
+    assert 'XcodeGen' in ios and 'apps/ios/project.yml' in ios
     ios_page = next(p for p in pages if p['id'] == 'ios')['body'].lower()
     assert 'xcode' in ios_page and 'source' in ios_page
 
@@ -173,9 +174,13 @@ def test_generated_handbook_payload_matches_editable_source():
     value=raw.split('window.OPENFUEL_PAGES=',1)[1].rsplit(';',1)[0]
     assert json.loads(value)==json.loads((ROOT/'apps/docs/pages.json').read_text())
 
-def test_live_map_has_no_remote_brand_artwork():
+def test_live_map_uses_curated_remote_brand_metadata_without_bundled_images():
     source=(ROOT/'apps/web/preview/app.js').read_text()
-    assert 'thumb.wikimedia.org' not in source and 'freebiesupply.com' not in source
+    catalog=json.loads((ROOT/'packages/brands/catalog.json').read_text())
+    assert set(catalog['imageHosts']) == {'thumb.wikimedia.org','www.fuel.crs','www.shell.ca'}
+    assert all(host in source for host in catalog['imageHosts'])
+    assert 'freebiesupply.com' not in source
+    assert not any(p.suffix.lower() in {'.png','.jpg','.webp','.svg'} for p in (ROOT/'packages/brands').rglob('*'))
     page=(ROOT/'apps/web/preview/index.html').read_text()
     assert 'vendor/leaflet.js' in page
     assert 'https://tile.openstreetmap.org' in page

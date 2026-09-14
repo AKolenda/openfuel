@@ -3,126 +3,186 @@ import SwiftUI
 import OpenFuelCore
 
 struct MapHomeView: View {
-    @StateObject private var model=PreviewModel()
+    @StateObject private var model = PreviewModel()
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
-    @State private var expanded=false
-    @State private var collapsed=false
+    @State private var expanded = false
+    @State private var sheetHidden = false
     var body: some View {
-        GeometryReader { g in
-            let bottom=CGFloat(collapsed ? 82 : expanded ? max(300,g.size.height-145) : min(336,g.size.height*0.43))
-            ZStack(alignment:.top) {
-                SampleMapView(stations:model.visible,grade:model.grade,members:model.preferences.filters.members,bestID:model.bestID,sheetHeight:bottom) {model.select($0)}
-                VStack(spacing:10) {
-                    search
-                    HStack(spacing:7) {
-                        ForEach(PreviewGrade.allCases){grade in
-                            Button {model.grade=grade} label:{Text(tr(grade.rawValue)).font(.system(size:12,weight:.semibold)).padding(.horizontal,17).frame(height:35)}
-                                .foregroundStyle(model.grade==grade ? .white : Color.fuelInk).background(model.grade==grade ? Color.fuelGreen : .white,in:Capsule()).accessibilityIdentifier("fuel-\(grade.rawValue)")
-                        }
-                        Button {model.savedOnly.toggle()} label:{Image(systemName:model.savedOnly ? "bookmark.fill":"bookmark").font(.system(size:17)).frame(width:38,height:38)}.background(.white,in:Circle()).accessibilityLabel(tr("saved"))
-                        Spacer(minLength:0)
-                    }
-                }.padding(.horizontal,16).padding(.top,14)
-                VStack {Spacer();results(height:bottom)}
-                VStack {Spacer();HStack {Spacer();Button {model.menu = .about}label:{Image(systemName:"info.circle").font(.system(size:18)).frame(width:44,height:44)}.background(.white,in:RoundedRectangle(cornerRadius:12)).accessibilityLabel(tr("about")).accessibilityIdentifier("open-about")}.padding(.trailing,17).padding(.bottom,bottom+14)}
-                if let notice=model.notice {
-                    VStack{Spacer();Text(notice).font(.footnote).padding(13).foregroundStyle(.white).background(Color.fuelGreen,in:RoundedRectangle(cornerRadius:12)).padding(.horizontal,18).onTapGesture{model.notice=nil}.accessibilityAddTraits(.isStaticText);Spacer().frame(height:bottom+65)}
+        GeometryReader { geometry in
+            let bottom: CGFloat = sheetHidden ? 0 : expanded ? max(300, geometry.size.height - 142) : min(320, geometry.size.height * 0.42)
+            ZStack(alignment: .top) {
+                if let area = model.area {
+                    LiveMapView(model: model, area: area).padding(.bottom, bottom)
+                } else {
+                    Color.fuelSoft
+                    VStack(spacing: 14) {
+                        Image(systemName: "location.magnifyingglass").font(.system(size: 36)).foregroundStyle(Color.fuelGreen)
+                        Text(tr("choose_area")).font(.title3.bold())
+                        Text(tr("location_choice_note")).font(.callout).multilineTextAlignment(.center).foregroundStyle(Color.fuelMuted)
+                        Button(tr("choose_area")) { model.menu = .location }.buttonStyle(.borderedProminent)
+                    }.padding(28).padding(.top, 154)
                 }
-            }.foregroundStyle(Color.fuelInk).background(Color.fuelSoft)
-            .sheet(item:$model.menu){menu in
-                FuelMenuView(model:model,menu:menu)
-                    .presentationDetents(menu.detents)
-                    .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(CGFloat(PreviewTokens.sheetRadius))
-                    .interactiveDismissDisabled(model.isReporting)
+                VStack(spacing: 9) { search; compactControls }.padding(.horizontal, 14).padding(.top, 8)
+                if !sheetHidden { VStack { Spacer(); results(height: bottom) } }
+                VStack {
+                    Spacer().frame(height: 125)
+                    HStack {
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 8) {
+                            Button { model.requestLocation() } label: {
+                                Group { if model.isLocating { ProgressView() } else { Image(systemName: "location.fill") } }.frame(width: 44, height: 44)
+                            }.disabled(model.isLocating).background(.white, in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel(tr("use_location"))
+                            Button { model.menu = .about } label: { Image(systemName: "info.circle").frame(width: 44, height: 44) }
+                                .background(.white, in: RoundedRectangle(cornerRadius: 12)).accessibilityLabel(tr("about")).accessibilityIdentifier("open-about")
+                            if model.canSearchMap {
+                                Button { model.searchMap() } label: { Label(tr("search_this_area"), systemImage: "magnifyingglass").font(.footnote.weight(.semibold)).padding(12) }
+                                    .background(.white, in: Capsule()).accessibilityIdentifier("search-this-area")
+                            }
+                        }
+                    }.padding(.trailing, 14)
+                    Spacer()
+                    if sheetHidden {
+                        Button { withAnimation { sheetHidden = false; expanded = false } } label: {
+                            Label(tr("show_stations"), systemImage: "list.bullet").font(.callout.weight(.semibold)).padding(.horizontal, 18).frame(height: 48)
+                        }.background(.white, in: Capsule()).padding(.bottom, 22).accessibilityIdentifier("show-stations")
+                    }
+                }
+                if let notice = model.notice {
+                    VStack { Spacer(); Text(notice).font(.footnote).padding(12).foregroundStyle(.white).background(Color.fuelGreen, in: RoundedRectangle(cornerRadius: 12)).padding(.horizontal, 18).onTapGesture { model.notice = nil }; Spacer().frame(height: bottom + 66) }
+                        .allowsHitTesting(true)
+                }
+            }
+            .foregroundStyle(Color.fuelInk).background(Color.fuelSoft)
+            .sheet(item: $model.menu) { menu in
+                FuelMenuView(model: model, menu: menu).presentationDetents(menu.detents).presentationDragIndicator(.visible)
+                    .presentationCornerRadius(24).interactiveDismissDisabled(model.isReporting)
             }
         }
-        .preferredColorScheme(.light)
+        // Keep the status bar visible and legible, with controls below the safe area.
+        .preferredColorScheme(.light).tint(Color.fuelGreen)
         .task {
             while !Task.isCancelled {
-                do {try await Task.sleep(for:.seconds(60))} catch {break}
-                if scenePhase == .active {await model.refresh()}
+                do { try await Task.sleep(for: .seconds(60)) } catch { break }
+                if scenePhase == .active { await model.refresh() }
             }
         }
-        .onChange(of:scenePhase){_,phase in if phase == .active {Task{await model.refresh()}}}
-        .onChange(of:model.navigationURL){_,url in
-            guard let url else{return};model.navigationURL=nil
-            openURL(url){accepted in if !accepted{model.notice=tr("maps_unavailable")}}
+        .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.refresh() } } }
+        .onChange(of: model.navigationURL) { _, url in
+            guard let url else { return }; model.navigationURL = nil
+            openURL(url) { accepted in if !accepted { model.notice = tr("maps_unavailable") } }
         }
     }
-    private var search:some View {
-        HStack(spacing:12) {
-            Text("openfuel").font(.system(size:23,weight:.bold)).tracking(-1.1).fixedSize()
-            Rectangle().fill(Color.fuelRule).frame(width:1,height:24)
-            TextField(tr("search"),text:$model.query).font(.system(size:13)).autocorrectionDisabled().textInputAutocapitalization(.never).accessibilityIdentifier("search-stations")
-            Button {model.menu = .settings}label:{Image(systemName:"slider.horizontal.3").font(.system(size:20)).frame(width:38,height:44)}.accessibilityLabel(tr("settings")).accessibilityIdentifier("open-settings")
-        }.padding(.leading,17).padding(.trailing,6).frame(height:CGFloat(PreviewTokens.searchHeight)).background(.white,in:RoundedRectangle(cornerRadius:CGFloat(PreviewTokens.searchRadius))).shadow(color:.black.opacity(0.06),radius:14,y:3)
+    private var search: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 3) {
+                Image("OpenFuelMark").resizable().scaledToFit().frame(width: 27, height: 27)
+                Text("openfuel").font(.system(size: 22, weight: .bold)).tracking(-1).fixedSize()
+            }.accessibilityElement(children: .ignore).accessibilityLabel("OpenFuel")
+            Rectangle().fill(Color.fuelRule).frame(width: 1, height: 22)
+            TextField(tr("search"), text: $model.query).font(.system(size: 13)).autocorrectionDisabled().textInputAutocapitalization(.never).accessibilityIdentifier("search-stations")
+            Button { model.menu = .settings } label: { Image(systemName: "slider.horizontal.3").font(.system(size: 20)).frame(width: 36, height: 44) }.accessibilityLabel(tr("settings")).accessibilityIdentifier("open-settings")
+        }.padding(.leading, 14).padding(.trailing, 5).frame(height: 56).background(.white, in: RoundedRectangle(cornerRadius: 18)).shadow(color: .black.opacity(0.05), radius: 8, y: 2)
     }
-    private func results(height:CGFloat)->some View {
-        VStack(spacing:0) {
-            Button {withAnimation(.easeInOut(duration:0.22)){expanded.toggle();collapsed=false}}label:{Capsule().fill(Color.fuelRule).frame(width:39,height:5).frame(maxWidth:.infinity).frame(height:23)}.accessibilityLabel(tr("expand_results"))
-                .gesture(DragGesture(minimumDistance:20).onEnded{v in withAnimation(.easeInOut(duration:0.22)){if v.translation.height < -25 {expanded=true;collapsed=false}else if v.translation.height>25{if expanded{expanded=false}else{collapsed=true}}}})
+    private var compactControls: some View {
+        HStack(spacing: 3) {
+            Button { model.menu = .location } label: {
+                HStack(spacing: 3) { Image(systemName: "mappin"); Text(model.areaLabel).lineLimit(1); Image(systemName: "chevron.down").font(.system(size: 8)) }
+                    .font(.system(size: 11, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 42)
+            }.accessibilityLabel(tr("choose_area")).accessibilityIdentifier("choose-area")
+            ForEach(PreviewGrade.allCases) { grade in
+                Button { model.grade = grade } label: { Text(tr(grade.rawValue)).font(.system(size: 10, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.85).padding(.horizontal, 7).frame(height: 36) }
+                    .foregroundStyle(model.grade == grade ? .white : Color.fuelInk).background(model.grade == grade ? Color.fuelGreen : Color.clear, in: Capsule()).accessibilityIdentifier("fuel-\(grade.rawValue)")
+            }
+            Button { model.savedOnly.toggle() } label: { Image(systemName: model.savedOnly ? "bookmark.fill" : "bookmark").frame(width: 35, height: 42) }
+                .accessibilityLabel(tr("saved"))
+        }.padding(.horizontal, 5).background(.white, in: Capsule())
+    }
+    private func results(height: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            Capsule().fill(Color.fuelRule).frame(width: 39, height: 5).frame(maxWidth: .infinity).frame(height: 26).contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 15).onEnded { value in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        if value.translation.height > 35 { if expanded { expanded = false } else { sheetHidden = true } }
+                        else if value.translation.height < -25 { expanded = true }
+                    }
+                })
             HStack {
-                Button {withAnimation{collapsed.toggle();expanded=false}}label:{HStack(spacing:7){Text(tr("fuel_nearby")).font(.system(size:23,weight:.bold));Image(systemName:collapsed ? "chevron.up":"chevron.down").font(.system(size:11)).foregroundStyle(Color.fuelMuted)}}
+                Text(tr("fuel_nearby")).font(.system(size: 22, weight: .bold))
                 Spacer()
-                if !collapsed{layoutSwitch}
-            }.padding(.horizontal,18)
-            if !collapsed {
-                HStack{Text("\(model.visible.count) \(tr("demo_stations")) · CAD ¢/L").font(.system(size:11)).foregroundStyle(Color.fuelMuted);Spacer();Button{model.menu = .sort}label:{HStack(spacing:5){Text(sortTitle(model.sort));Image(systemName:"chevron.down").font(.system(size:10))}.font(.system(size:11))}.accessibilityIdentifier("open-sort")}.padding(.horizontal,18).padding(.top,10).padding(.bottom,8)
-                connectionStatus.padding(.horizontal,18).padding(.bottom,8)
-                ScrollView {
-                    LazyVStack(spacing:model.preferences.cards ? 9 : 4){
-                        ForEach(model.visible){s in
-                            StationRowView(station:s,grade:model.grade,members:model.preferences.filters.members,cards:model.preferences.cards,wide:model.preferences.wide,best:s.id==model.bestID,detail:{model.select(s)},go:{model.requestMaps(s)})
-                        }
-                        if model.visible.isEmpty {Text(tr("empty_results")).font(.callout).foregroundStyle(Color.fuelMuted).padding(20)}
-                        Button {model.selectedID=nil;model.menu = .proposal}label:{Label(tr("suggest_station"),systemImage:"plus").font(.footnote).frame(minHeight:44)}
-                    }.padding(.horizontal,12).padding(.bottom,26)
-                }.refreshable{await model.refresh()}.accessibilityIdentifier("station-list")
-            }
-            Spacer(minLength:0)
-        }.frame(maxWidth:.infinity).frame(height:height).background(.white,in:UnevenRoundedRectangle(topLeadingRadius:26,topTrailingRadius:26)).shadow(color:.black.opacity(0.07),radius:16,y:-3)
+                Button { withAnimation { expanded.toggle() } } label: { Image(systemName: expanded ? "chevron.down" : "chevron.up").frame(width: 36, height: 36) }.accessibilityLabel(tr("expand_results"))
+                Button { withAnimation { sheetHidden = true; expanded = false } } label: { Image(systemName: "xmark").frame(width: 36, height: 36) }.accessibilityLabel(tr("hide_stations")).accessibilityIdentifier("hide-stations")
+            }.padding(.horizontal, 16)
+            HStack {
+                Text("\(model.visible.count) \(tr("demo_stations")) · CAD ¢/L").font(.system(size: 11)).foregroundStyle(Color.fuelMuted)
+                Spacer()
+                Button { model.menu = .sort } label: { Label(sortTitle(model.sort), systemImage: "arrow.up.arrow.down").font(.system(size: 11)) }.accessibilityIdentifier("open-sort")
+            }.padding(.horizontal, 18).padding(.vertical, 6)
+            connectionStatus.padding(.horizontal, 18).padding(.bottom, 7)
+            ScrollView {
+                LazyVStack(spacing: 5) {
+                    ForEach(model.visible) { station in
+                        StationRowView(station: station, grade: model.grade, members: false, cards: model.preferences.cards, wide: model.preferences.wide, best: station.id == model.bestID,
+                                       detail: { model.select(station) }, go: { model.requestMaps(station) })
+                    }
+                    if model.visible.isEmpty { Text(tr("empty_results")).font(.callout).foregroundStyle(Color.fuelMuted).padding(20) }
+                    Button { model.selectedID = nil; model.menu = .proposal } label: { Label(tr("suggest_station"), systemImage: "plus").font(.footnote).frame(minHeight: 44) }
+                }.padding(.horizontal, 12).padding(.bottom, 20)
+            }.refreshable { await model.refresh() }.accessibilityIdentifier("station-list")
+        }.frame(maxWidth: .infinity).frame(height: height).background(.white, in: UnevenRoundedRectangle(topLeadingRadius: 25, topTrailingRadius: 25)).shadow(color: .black.opacity(0.07), radius: 12, y: -3)
     }
-    private var connectionStatus:some View {
-        HStack(spacing:6){
-            if model.isLoading {ProgressView().controlSize(.mini)}
-            else {Circle().fill(model.connectionState=="connected" ? Color.fuelGreen : Color(hex:0x9b835b)).frame(width:6,height:6)}
-            Text(tr(model.isLoading ? "loading_prices":"status_"+model.connectionState)).font(.system(size:10)).lineLimit(2)
-            Spacer(minLength:0)
-            Button{Task{await model.refresh()}}label:{Image(systemName:"arrow.clockwise").font(.system(size:12)).frame(width:30,height:24)}
-                .disabled(model.isLoading || model.isReporting).accessibilityLabel(tr("refresh_prices")).accessibilityIdentifier("refresh-prices")
+    private var connectionStatus: some View {
+        HStack(spacing: 6) {
+            if model.isLoading { ProgressView().controlSize(.mini) }
+            else { Circle().fill(model.connectionState == "connected" ? Color.fuelGreen : Color(hex: 0x9b835b)).frame(width: 6, height: 6) }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(tr(model.isLoading ? "loading_prices" : "status_" + model.connectionState)).font(.system(size: 10))
+                if model.connectionState != "connected", let saved = model.lastSyncedAt { Text(saved, style: .relative).font(.system(size: 10)) }
+            }
+            Spacer()
+            Button { Task { await model.refresh() } } label: { Image(systemName: "arrow.clockwise").frame(width: 32, height: 28) }.disabled(model.isLoading || model.isReporting || model.area == nil).accessibilityLabel(tr("refresh_prices")).accessibilityIdentifier("refresh-prices")
         }.foregroundStyle(Color.fuelMuted).accessibilityIdentifier("connection-status")
     }
-    private var layoutSwitch:some View {
-        HStack(spacing:2){ForEach([true,false],id:\.self){cards in
-            Button{model.preferences.cards=cards;model.persist()}label:{HStack(spacing:4){Image(systemName:cards ? "rectangle.split.1x2":"list.bullet").font(.system(size:12));Text(tr(cards ? "cards":"list")).font(.system(size:11,weight:.semibold))}.padding(.horizontal,9).frame(height:30)}.background(model.preferences.cards==cards ? .white : Color.clear,in:RoundedRectangle(cornerRadius:8)).accessibilityIdentifier(cards ? "layout-cards":"layout-list")
-        }}.padding(3).background(Color.fuelSoft,in:RoundedRectangle(cornerRadius:11))
-    }
 }
-func sortTitle(_ mode:PreviewSort)->String{tr(mode == .best ? "best_price" : mode == .price ? "lowest_price":"nearest")}
+func sortTitle(_ mode: PreviewSort) -> String { tr(mode == .best ? "best_price" : mode == .price ? "lowest_price" : "nearest") }
 
-struct StationRowView:View {
-    let station:PreviewStation;let grade:PreviewGrade;let members:Bool;let cards:Bool;let wide:Bool;let best:Bool;let detail:()->Void;let go:()->Void
-    var body:some View {
-        VStack(spacing:0){
-            HStack(spacing:10){
-                Button(action:detail){
-                    HStack(spacing:10){
-                        Text(station.initials).font(.system(size:13,weight:.bold)).foregroundStyle(Color.fuelGreen).frame(width:34,height:34).background(Color.fuelSoft,in:RoundedRectangle(cornerRadius:10))
-                        VStack(alignment:.leading,spacing:4){Text(station.name).font(.system(size:14,weight:.semibold)).lineLimit(1);Text(String(format:"%.1f km",Double(station.distanceMetres)/1000)+" · \(station.address)").font(.system(size:11)).foregroundStyle(Color.fuelMuted).lineLimit(cards ? 2 : 1)}.frame(maxWidth:.infinity,alignment:.leading)
-                        if !cards{priceBlock(size:24)}
+struct StationRowView: View {
+    let station: PreviewStation; let grade: PreviewGrade; let members: Bool; let cards: Bool; let wide: Bool; let best: Bool; let detail: () -> Void; let go: () -> Void
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Button(action: detail) {
+                    HStack(spacing: 10) {
+                        BrandLogoView(station: station)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(station.name).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                            Text(String(format: "%.1f km", Double(station.distanceMetres) / 1000) + " · \(station.address)").font(.system(size: 11)).foregroundStyle(Color.fuelMuted).lineLimit(cards ? 2 : 1)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                        if !cards { priceBlock(size: 23) }
                     }.contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityIdentifier("station-\(station.id)")
-                if !wide && !cards{goButton}
+                if !wide && !cards { goButton }
             }.padding(12)
-            if cards{HStack{priceBlock(size:36);Spacer();if !wide{goButton}}.padding(.horizontal,12).padding(.bottom,13)}
-            if wide{Button(action:go){Label(tr("open_maps"),systemImage:"location").font(.system(size:12,weight:.semibold)).frame(maxWidth:.infinity,minHeight:48)}.overlay(alignment:.top){Rectangle().fill(Color.fuelRule).frame(height:1)}.accessibilityIdentifier("go-\(station.id)")}
-        }.background(best ? Color.fuelBest:.white,in:RoundedRectangle(cornerRadius:CGFloat(PreviewTokens.rowRadius))).overlay{RoundedRectangle(cornerRadius:CGFloat(PreviewTokens.rowRadius)).stroke(Color.fuelRule,lineWidth:1)}
+            if cards { HStack { priceBlock(size: 34); Spacer(); if !wide { goButton } }.padding(.horizontal, 12).padding(.bottom, 12) }
+            if wide { Button(action: go) { Label(tr("open_maps"), systemImage: "location").font(.system(size: 12, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 48) }.accessibilityIdentifier("go-\(station.id)") }
+        }.background(best ? Color.fuelBest : .white, in: RoundedRectangle(cornerRadius: 15)).overlay(RoundedRectangle(cornerRadius: 15).stroke(Color.fuelRule, lineWidth: 1))
     }
-    private func priceBlock(size:CGFloat)->some View {
-        VStack(alignment:.trailing,spacing:5){HStack(alignment:.firstTextBaseline,spacing:2){Text(station.price(grade,members:members).map(PreviewRules.cents) ?? "—").font(.system(size:size,weight:.bold)).tracking(-0.8).monospacedDigit();Text("¢/L").font(.system(size:8)).foregroundStyle(Color.fuelMuted)};Text(ageTitle(station.age(grade))).font(.system(size:9)).foregroundStyle(station.age(grade)>60 ? Color(hex:0x9b835b):Color.fuelMuted).lineLimit(1)}
+    private func priceBlock(size: CGFloat) -> some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(station.price(grade).map(PreviewRules.cents) ?? "—").font(.system(size: size, weight: .bold)).monospacedDigit()
+            Text(station.price(grade) == nil ? tr("price_unknown") : "¢/L · \(ageTitle(station.age(grade)))").font(.system(size: 9)).foregroundStyle(Color.fuelMuted).lineLimit(1)
+            if station.price(grade) != nil { Text(tr("unverified")).font(.system(size: 9)).foregroundStyle(Color.fuelMuted) }
+        }
     }
-    private var goButton:some View {Button(action:go){VStack(spacing:3){Image(systemName:"location").font(.system(size:20));Text(tr("go")).font(.system(size:10,weight:.bold))}.frame(width:48,height:48)}.foregroundStyle(best ? .white:Color.fuelGreen).background(best ? Color.fuelGreen:Color.fuelSoft,in:RoundedRectangle(cornerRadius:14)).accessibilityLabel("\(tr("open_maps")) · \(station.name)").accessibilityIdentifier("go-\(station.id)")}
+    private var goButton: some View {
+        Button(action: go) { VStack(spacing: 3) { Image(systemName: "location"); Text(tr("go")).font(.system(size: 10, weight: .bold)) }.frame(width: 44, height: 48) }
+            .foregroundStyle(Color.fuelGreen).background(Color.fuelSoft, in: RoundedRectangle(cornerRadius: 13)).accessibilityLabel("\(tr("open_maps")) · \(station.name)").accessibilityIdentifier("go-\(station.id)")
+    }
 }
-func ageTitle(_ age:Int)->String {if age==0{return tr("reported_now")};return age<60 ? String(format:tr("reported_minutes"),age):String(format:tr("reported_hours"),age/60)}
+func ageTitle(_ age: Int) -> String {
+    if age == .max || age >= 1_051_200 { return tr("time_unavailable") }
+    if age == 0 { return tr("reported_now") }
+    if age < 60 { return String(format: tr("reported_minutes"), age) }
+    if age < 1440 { return String(format: tr("reported_hours"), age / 60) }
+    return String(format: tr("reported_days"), age / 1440)
+}

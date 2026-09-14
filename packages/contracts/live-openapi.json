@@ -93,7 +93,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Stations sorted by distance, source attribution, coverage and separate dated regional monthly average",
+            "description": "Stations sorted by distance, source attribution, coverage and separate dated regional monthly average. Recognized stations include nullable brandKey, brandLogoUrl and brandLogoSourceUrl from a curated external-logo catalog; clients fetch images directly and use initials on failure.",
             "content": {
               "application/json": {
                 "schema": {

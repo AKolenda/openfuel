@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Real Canadian station discovery with public, unverified community pump reports.
+import {stationBrand} from '../../packages/brands/resolve.mjs';
 const grades = new Set(['regular', 'premium', 'diesel']);
 const headers = {
   'content-type': 'application/json; charset=utf-8',
@@ -115,7 +116,7 @@ async function nearby(db, query) {
       station.priceSources[price.fuel_type]=price.source;
       station.stale[price.fuel_type]=station.ages[price.fuel_type]>1440;
     }
-    return station;
+    return {...station, ...stationBrand(station)};
   }).filter(s=>s.distanceMetres<=radius).sort((a,b)=>a.distanceMetres-b.distanceMetres);
   const regional=averages.results.filter(r=>r.city!=='Canada').map(r=>({...r,distance:distanceMetres(lat,lon,r.latitude,r.longitude)})).sort((a,b)=>a.distance-b.distance)[0];
   const reference=regional?.distance<=100000?regional:averages.results.find(r=>r.city==='Canada');

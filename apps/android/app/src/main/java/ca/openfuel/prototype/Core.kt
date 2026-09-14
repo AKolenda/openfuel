@@ -15,7 +15,9 @@ data class Station(
     val open: Boolean?, val prices: Map<Grade, Int>, val ages: Map<Grade, Int>,
     val memberDiscount: Int = 0,
     val latitude: Double? = null, val longitude: Double? = null,
-    val priceSources: Map<Grade, String> = emptyMap()
+    val priceSources: Map<Grade, String> = emptyMap(),
+    val brandKey: String? = null,
+    val brandLogoUrl: String? = null
 ) {
     fun price(grade: Grade, members: Boolean = false): Int? = prices[grade]?.minus(if (members) memberDiscount else 0)
     fun age(grade: Grade): Int = ages[grade] ?: Int.MAX_VALUE

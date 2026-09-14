@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.*
+import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -25,6 +26,29 @@ class NativeScreensTest {
     @get:Rule val compose = createEmptyComposeRule()
     @get:Rule val permission = GrantPermissionRule.grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
+
+    @Test fun chosenCityRestoresAndStationSheetCanFullyHide() {
+        val city = SearchPoint(51.0447, -114.0719, "Calgary · chosen city", SearchSource.CITY)
+        val repository = StationRepository(context)
+        runBlocking { repository.refresh(city) }
+        context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
+            compose.onNodeWithText("Calgary").assertExists()
+            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Calgary").assertExists()
+            screenshot("android-map-only")
+            compose.onNodeWithTag("show-stations").performClick()
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isEmpty() }
+            assertEquals(SearchSource.CITY, repository.initial().point.source)
+            assertEquals("Calgary · chosen city", repository.initial().point.label)
+            assertEquals(51.04, repository.initial().point.latitude, 0.0)
+            assertEquals(-114.07, repository.initial().point.longitude, 0.0)
+            assertTrue(repository.initial().stations.all { station ->
+                station.distanceMetres == approximateDistanceMetres(repository.initial().point, station.latitude!!, station.longitude!!)
+            })
+        }
+    }
 
     @Test fun firstArrivalWaitsForLocationOrChosenArea() {
         context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().commit()
@@ -43,6 +67,7 @@ class NativeScreensTest {
 
     @Test fun actualLocationRealStationsAndNativeMap() {
         context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
+        context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE).edit().clear().commit()
         var stationCount = 0
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
             // Android grants foreground location only while the activity is visible.

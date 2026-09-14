@@ -3,12 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#285b43">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="color-scheme" content="light">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://thumb.wikimedia.org https://www.fuel.crs https://www.shell.ca; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="description" content="Find real fuel stations near you on OpenStreetMap and share pump prices with the OpenFuel community.">
   <title>OpenFuel — Fuel near you</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/brand/openfuel-icon-180.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="vendor/leaflet.css">
   <link rel="stylesheet" href="styles.css">
   <script src="vendor/leaflet.js" defer></script>
@@ -20,33 +23,34 @@
     <div id="map" aria-label="Interactive fuel station map"></div>
     <header class="search-header">
       <div class="search-bar">
-        <a class="wordmark" href="/" aria-label="OpenFuel home">openfuel<span></span></a>
+        <a class="wordmark" href="/" aria-label="OpenFuel home"><img src="/brand/openfuel-wordmark-light.svg" alt="OpenFuel" width="125" height="36"></a>
         <form id="search-form" role="search">
           <label class="sr-only" for="place-search">Search Canadian city or coordinates</label>
           <input id="place-search" type="search" placeholder="City or coordinates" autocomplete="off" maxlength="160">
           <button class="search-button" type="submit" aria-label="Search places">⌕</button>
         </form>
-        <button class="icon-button" id="about-button" aria-label="About OpenFuel">i</button>
       </div>
       <div id="search-results" class="search-results" hidden aria-label="Place search results"></div>
-      <div class="filter-row" aria-label="Fuel and station filters">
+      <div class="filter-row" aria-label="Location, fuel and station filters">
+        <button id="area-selector" class="area-selector" aria-label="Choose location" aria-expanded="false" aria-controls="search-results"><span id="area-label">Location</span><span aria-hidden="true">⌄</span></button>
         <div class="fuel-tabs" aria-label="Fuel type">
           <button data-fuel="regular" aria-pressed="true">Regular</button>
           <button data-fuel="premium" aria-pressed="false">Premium</button>
           <button data-fuel="diesel" aria-pressed="false">Diesel</button>
         </div>
-        <button class="saved-button" id="saved-button" aria-label="Show saved stations" aria-pressed="false">♡</button>
+        <button class="saved-button" id="saved-button" aria-label="Show saved stations" aria-pressed="false" title="Saved stations"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20.4 5.6a5.1 5.1 0 0 0-7.2 0L12 6.8l-1.2-1.2a5.1 5.1 0 0 0-7.2 7.2L12 21l8.4-8.2a5.1 5.1 0 0 0 0-7.2Z"/></svg></button>
       </div>
     </header>
     <div class="map-actions">
-      <button id="search-area" class="area-button" hidden>Search this area</button>
       <button id="locate-button" class="locate-button" aria-label="Use my location" title="Use my location">◎</button>
+      <button class="icon-button about-map-button" id="about-button" aria-label="About OpenFuel" title="About OpenFuel">i</button>
+      <button id="search-area" class="area-button" hidden>Search this area</button>
     </div>
     <p id="tile-warning" class="map-warning" hidden>Map tiles unavailable. You can still use the station list.</p>
     <section class="results-panel" aria-label="Nearby stations">
       <button id="sheet-toggle" class="sheet-grip" aria-label="Expand station list" aria-expanded="false"><span></span></button>
       <div class="results-heading">
-        <div class="results-title-row"><h1 id="results-title">Fuel near you</h1><button id="refresh-button" class="text-button" disabled>Refresh</button></div>
+        <div class="results-title-row"><h1 id="results-title">Fuel near you</h1><div class="list-actions"><button id="refresh-button" class="text-button" disabled>Refresh</button><button id="hide-stations" class="text-button" aria-label="Hide stations and show full map">Hide</button></div></div>
         <p id="location-status" role="status">Allow location to find fuel nearby, or search a place.</p>
         <div class="list-controls">
           <label><span class="sr-only">Search radius</span><select id="radius"><option value="5000">Within 5 km</option><option value="10000" selected>Within 10 km</option><option value="25000">Within 25 km</option><option value="50000">Within 50 km</option></select></label>
@@ -59,6 +63,7 @@
       </div>
       <footer class="panel-footer"><a href="/downloads/openfuel-android.apk" download>Android APK</a><span>·</span><a href="/docs/">About the project</a><span>·</span><button id="privacy-button">Privacy</button></footer>
     </section>
+    <button id="show-stations" class="show-stations" hidden>Show stations</button>
   </main>
   <dialog id="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
   <dialog id="report-dialog" aria-labelledby="report-title">
@@ -75,7 +80,7 @@
   </dialog>
   <dialog id="about-dialog" aria-labelledby="about-title">
     <div class="dialog-head"><h2 id="about-title">An open road ahead.</h2><button class="close-button" data-close aria-label="Close about OpenFuel">×</button></div>
-    <div class="dialog-body prose"><p>OpenFuel is a community fuel map for Canada. Station locations come from OpenStreetMap. Pump prices come from people checking the station, and are marked unverified.</p><h3>What you see</h3><p>A dash means there is no reported price. Distances are straight-line measurements, not driving distances. Station details may be incomplete; check the price at the pump.</p><h3>Your location</h3><p>Your browser asks before sharing your device location. Coordinates are sent to OpenFuel to find nearby stations. We do not track your journey or request background location. You can search a place instead.</p><p>The last few searched areas, station snapshots, saved stations and an anonymous report identifier are stored in this browser. Network operators receive normal request metadata. OpenStreetMap receives map tile requests; city searches use the GeoNames Canadian place index through our server.</p><p>Directions open Google Maps or Apple Maps with the station’s actual coordinates. The map app handles your route and any origin-location permission.</p><p>Saved station details remain available when the connection drops. Maps need a network connection; there is no offline tile download.</p><div class="about-links"><a href="/docs/">Project documentation</a><a href="/downloads/openfuel-source.zip" download>Download source</a><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap data licence</a><a href="https://www.geonames.org/" target="_blank" rel="noopener">Place search: GeoNames (CC BY 4.0)</a><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Report a map issue</a></div><button id="clear-local" class="secondary-button full-width">Clear this browser’s saved data</button></div>
+    <div class="dialog-body prose"><p>OpenFuel is a community fuel map for Canada. Station locations come from OpenStreetMap. Pump prices come from people checking the station, and are marked unverified.</p><h3>What you see</h3><p>A dash means there is no reported price. Distances are straight-line measurements, not driving distances. Station details may be incomplete; check the price at the pump.</p><h3>Your location</h3><p>Your browser asks before sharing your device location. Coordinates are sent to OpenFuel to find nearby stations. We do not track your journey or request background location. You can search a place instead.</p><p>Your last area is saved approximately, rounded to about a kilometre, so its station details can appear as soon as you return. The last few station snapshots, saved stations and an anonymous report identifier stay in this browser. A saved area is not a current device location.</p><p>Network operators receive normal request metadata. OpenStreetMap receives map tile requests; brand logos load directly from remote image providers. City searches use the GeoNames Canadian place index through our server.</p><p>Directions open Google Maps or Apple Maps with the station’s actual coordinates. The map app handles your route and any origin-location permission.</p><p>Saved station details remain available when the connection drops. Maps need a network connection; there is no offline tile download.</p><div class="about-links"><a href="/docs/">Project documentation</a><a href="/downloads/openfuel-source.zip" download>Download source</a><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap data licence</a><a href="https://www.geonames.org/" target="_blank" rel="noopener">Place search: GeoNames (CC BY 4.0)</a><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Report a map issue</a></div><button id="clear-local" class="secondary-button full-width">Clear this browser’s saved data</button></div>
   </dialog>
   <div id="toast" class="toast" role="status"></div>
   <noscript><p class="noscript">Enable JavaScript to use the map and find stations.</p></noscript>

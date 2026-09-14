@@ -1,0 +1,24 @@
+{
+  "harness_checks": 206,
+  "harness_result": "pass, zero JavaScript exceptions",
+  "real_ui_url": "http://localhost:8787/preview/",
+  "real_brand_providers": [
+    "thumb.wikimedia.org",
+    "www.fuel.crs",
+    "www.shell.ca"
+  ],
+  "real_brand_examples_rendered": [
+    "Petro-Canada",
+    "Esso",
+    "Shell",
+    "Co-op"
+  ],
+  "station_data": "Current local D1 Canadian station directory; 174 stations around the chosen public Petro-Canada station in Edmonton. No production writes were made. Local D1 contains development report data from independent native tests.",
+  "warm_start": "Reload with station API requests deliberately aborted restored the last cached area and cards. The stored centre was 53.57,-113.49, rounded from a manually selected public station coordinate, and the UI explicitly labelled it a saved area rather than current location.",
+  "controls": "Mobile header and saved icon have opaque white surfaces. Map-only hides the entire sheet and restores via Show stations; downward grip swipe is covered by the harness.",
+  "screenshots": [
+    "evidence/browser/remote-brand-logos-mobile.png",
+    "evidence/browser/map-only-remote-logos.png"
+  ],
+  "logo_storage": "Remote URLs and normal browser caching only; no station-logo binary files or service-worker cache entries were added."
+}

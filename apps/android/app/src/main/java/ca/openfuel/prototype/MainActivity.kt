@@ -13,6 +13,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import android.graphics.Bitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -52,10 +56,13 @@ private enum class Menu { LOCATION, SETTINGS, SORT, ABOUT, DETAIL, PRICE, NEW_ST
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app has a light surface even when Android's system theme is dark.
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.WHITE, android.graphics.Color.WHITE))
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Forest, onPrimary = Color.White,
-                background = Color(0xFFEDF1EA), surface = Color.White, onSurface = Ink, outlineVariant = Rule)) {
+                background = Color.White, surface = Color.White, onSurface = Ink, outlineVariant = Rule,
+                secondary = Forest, onSecondary = Color.White, secondaryContainer = Pale, onSecondaryContainer = Forest)) {
                 OpenFuelApp()
             }
         }
@@ -71,7 +78,7 @@ private fun OpenFuelApp() {
     val initial = remember { repository.initial() }
     var stations by remember { mutableStateOf(initial.stations) }
     var syncState by remember { mutableStateOf(if (initial.cached) "cached" else "choose-area") }
-    var hasSearchArea by remember { mutableStateOf(initial.cached) }
+    var hasSearchArea by remember { mutableStateOf(initial.point.source != SearchSource.OVERVIEW) }
     var point by remember { mutableStateOf(initial.point) }
     var browsePoint by remember { mutableStateOf<SearchPoint?>(null) }
     var centerRequest by remember { mutableIntStateOf(0) }
@@ -80,6 +87,10 @@ private fun OpenFuelApp() {
     var locationMessage by remember { mutableStateOf<String?>(null) }
     var locationIntro by remember { mutableStateOf(!prefs.getBoolean("location-intro-seen", false)) }
     var refreshJob by remember { mutableStateOf<Job?>(null) }
+    var locationJob by remember { mutableStateOf<Job?>(null) }
+    var selectionVersion by remember { mutableIntStateOf(0) }
+    var refreshVersion by remember { mutableIntStateOf(0) }
+    var locationVersion by remember { mutableIntStateOf(0) }
     var syncing by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
     var reportError by remember { mutableStateOf<String?>(null) }
@@ -97,40 +108,59 @@ private fun OpenFuelApp() {
     val draftStore = remember { LocalDraftStore(context) }
     val loadedDrafts = remember { runCatching { draftStore.load() } }
     val drafts = remember { mutableStateListOf<StationProposal>().apply { addAll(loadedDrafts.getOrDefault(emptyList())) } }
-    val visible = FuelCore.visible(stations, grade, sort, filters, query, savedOnly, favorites)
+    val visible = remember(stations, grade, sort, filters, query, savedOnly, favorites) { FuelCore.visible(stations, grade, sort, filters, query, savedOnly, favorites) }
+    val brandLogos = rememberBrandLogos(visible)
     val bestId = visible.filter { it.price(grade) != null && it.age(grade) <= 60 }.minByOrNull { it.price(grade, filters.members)!! }?.id
     val selected = stations.find { it.id == selectedId }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val unavailable = stringResource(R.string.maps_unavailable)
     LaunchedEffect(Unit) { if (loadedDrafts.isFailure) snackbar.showSnackbar(context.getString(R.string.local_storage_error)) }
-    fun refresh(next: SearchPoint = point) {
+    fun refresh(next: SearchPoint = point, explicit: Boolean = true) {
+        if (explicit) selectionVersion++
+        val version = ++refreshVersion
         hasSearchArea = true
         refreshJob?.cancel()
-        val changedArea = next.latitude != point.latitude || next.longitude != point.longitude
+        val changedArea = next.forStorage().latitude != point.forStorage().latitude || next.forStorage().longitude != point.forStorage().longitude
         point = next
+        repository.rememberArea(next)
         browsePoint = null
-        centerRequest++
+        if (changedArea || explicit) centerRequest++
         if (changedArea) stations = emptyList()
         refreshJob = scope.launch {
             syncing = true
             try {
-                stations = repository.refresh(next)
+                val loaded = repository.refresh(next, saveSnapshot = false)
+                if (version != refreshVersion) return@launch
+                repository.cache(loaded, next)
+                stations = loaded
                 syncState = "connected"
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: Exception) {
-                syncState = "offline"
-            } finally { syncing = false }
+                if (version == refreshVersion) syncState = "offline"
+            } finally { if (version == refreshVersion) syncing = false }
         }
     }
-    fun locate() {
-        if (locating) return
-        scope.launch {
+    fun locate(recenter: Boolean = true, silent: Boolean = false) {
+        if (locating && silent) return
+        locationJob?.cancel()
+        val version = ++locationVersion
+        val selectedWhenStarted = selectionVersion
+        locationJob = scope.launch {
             locating = true
-            val fix = runCatching { currentSearchPoint(context) }.getOrNull()
-            locating = false
-            if (fix != null) { devicePoint = fix; locationMessage = null; refresh(fix) }
-            else { locationMessage = "Location unavailable. Turn on device location or choose a city."; menu = Menu.LOCATION }
+            try {
+                val fix = currentSearchPoint(context)
+                if (version != locationVersion) return@launch
+                if (fix != null) {
+                    devicePoint = fix; locationMessage = null
+                    if (recenter && selectionVersion == selectedWhenStarted) refresh(fix, explicit = false)
+                } else if (!silent && selectionVersion == selectedWhenStarted) {
+                    locationMessage = "Location unavailable. Turn on device location or choose a city."; menu = Menu.LOCATION
+                }
+            } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: Exception) {
+                if (!silent && selectionVersion == selectedWhenStarted) { locationMessage = "Location unavailable. Choose a city or try again."; menu = Menu.LOCATION }
+            } finally { if (version == locationVersion) locating = false }
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -138,14 +168,15 @@ private fun OpenFuelApp() {
         else { locationMessage = "Location permission was declined. Choose an area below."; menu = Menu.LOCATION }
     }
     fun requestLocation() {
+        selectionVersion++
         locationIntro = false
         prefs.edit().putBoolean("location-intro-seen", true).apply()
         if (hasLocationPermission(context)) locate()
         else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     LaunchedEffect(Unit) {
-        if (initial.cached) refresh()
-        if (!locationIntro && hasLocationPermission(context)) locate()
+        if (hasSearchArea) refresh(explicit = false)
+        if (!locationIntro && hasLocationPermission(context)) locate(recenter = point.source == SearchSource.DEVICE || !hasSearchArea, silent = hasSearchArea)
     }
     fun go(station: Station) {
         if (!openMaps(context, station, provider)) scope.launch { snackbar.showSnackbar(unavailable) }
@@ -154,15 +185,20 @@ private fun OpenFuelApp() {
         favorites = if (station.id in favorites) favorites - station.id else favorites + station.id
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
-    BoxWithConstraints(Modifier.fillMaxSize().statusBarsPadding().testTag("native-root")) {
+    val stationSheet = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = false)
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = stationSheet)
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().testTag("native-root")) {
         val contentHeight = (maxHeight - 170.dp).coerceAtLeast(280.dp)
         val peekHeight = minOf(336.dp, maxHeight * .43f)
+        val sheetHidden = stationSheet.currentValue == SheetValue.Hidden || stationSheet.targetValue == SheetValue.Hidden
+        val sheetInset = if (sheetHidden) 0.dp else peekHeight
         BottomSheetScaffold(
+            scaffoldState = scaffoldState,
             sheetPeekHeight = peekHeight,
             sheetContainerColor = Color.White,
             containerColor = Color(0xFFEDF1EA),
             sheetShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-            sheetDragHandle = { BottomSheetDefaults.DragHandle(color = Rule) },
+            sheetDragHandle = { BottomSheetDefaults.DragHandle(color = Rule, modifier = Modifier.testTag("station-sheet-handle")) },
             snackbarHost = { SnackbarHost(snackbar) },
             sheetContent = {
                 Column(Modifier.fillMaxWidth().height(contentHeight)) {
@@ -200,6 +236,7 @@ private fun OpenFuelApp() {
                         items(visible, key = { it.id }) { station ->
                             StationRow(station, grade, filters, cards, fullWidth,
                                 station.id == bestId,
+                                logo = brandLogos[station.brandLogoUrl],
                                 select = { selectedId = station.id; menu = Menu.DETAIL }, go = { go(station) })
                         }
                         item { TextButton(onClick = { selectedId = null; menu = Menu.NEW_STATION }, modifier = Modifier.fillMaxWidth()) {
@@ -210,13 +247,16 @@ private fun OpenFuelApp() {
             }
         ) {
             Box(Modifier.fillMaxSize()) {
-                LiveMap(visible, grade, bestId, point, devicePoint, centerRequest, onMove = { moved ->
-                    browsePoint = moved.takeIf { kotlin.math.abs(it.latitude - point.latitude) + kotlin.math.abs(it.longitude - point.longitude) > .004 }
-                }, modifier = Modifier.fillMaxSize().padding(bottom = peekHeight), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
+                LiveMap(visible, grade, bestId, point, devicePoint, centerRequest, brandLogos, onMove = { moved ->
+                    val area = moved.takeIf { kotlin.math.abs(it.latitude - point.latitude) + kotlin.math.abs(it.longitude - point.longitude) > .004 }
+                    if (area != null) selectionVersion++
+                    browsePoint = area
+                }, modifier = Modifier.fillMaxSize().padding(bottom = sheetInset), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
                 Column(Modifier.padding(16.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), shadowElevation = 5.dp) {
                         Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 15.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("openfuel", fontSize = 24.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
+                            Image(androidx.compose.ui.res.painterResource(R.drawable.openfuel_mark), null, Modifier.size(27.dp))
+                            Text("openfuel", fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
                             Spacer(Modifier.width(12.dp)); VerticalDivider(Modifier.height(24.dp))
                             androidx.compose.foundation.text.BasicTextField(query, { query = it }, singleLine = true,
                                 modifier = Modifier.weight(1f).padding(horizontal = 12.dp).semantics { contentDescription = context.getString(R.string.search) },
@@ -225,31 +265,48 @@ private fun OpenFuelApp() {
                             IconButton(onClick = { menu = Menu.SETTINGS }, modifier = Modifier.testTag("open-settings")) { Icon(Icons.Default.Tune, stringResource(R.string.settings), tint = Forest) }
                         }
                     }
-                    Surface(shape = RoundedCornerShape(12.dp), color = Color.White.copy(alpha = .96f), modifier = Modifier.padding(top = 8.dp).clickable { menu = Menu.LOCATION }.testTag("search-area")) {
-                        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), tint = Forest)
-                            Spacer(Modifier.width(5.dp)); Text(if (locating) "Finding your location…" else point.label, fontSize = 12.sp)
-                            Icon(Icons.Default.KeyboardArrowDown, "Choose city", Modifier.size(16.dp))
+                    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 2.dp,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("map-filter-row")) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { menu = Menu.LOCATION }, contentPadding = PaddingValues(horizontal = 3.dp),
+                                modifier = Modifier.weight(1.4f).height(48.dp).testTag("search-area")
+                                    .semantics { contentDescription = "Choose area: ${point.label}" }) {
+                                Text(point.label.substringBefore(" ·"), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(14.dp))
+                            }
+                            Grade.entries.forEach { fuel ->
+                                TextButton(onClick = { grade = fuel }, contentPadding = PaddingValues(horizontal = 3.dp),
+                                    modifier = Modifier.weight(1f).height(48.dp).testTag("fuel-${fuel.name.lowercase()}"),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.textButtonColors(containerColor = if (grade == fuel) Forest else Color.White,
+                                        contentColor = if (grade == fuel) Color.White else Forest)) {
+                                    Text(gradeLabel(fuel), fontSize = 11.sp, maxLines = 1)
+                                }
+                            }
+                            FilledIconToggleButton(checked = savedOnly, onCheckedChange = { savedOnly = it },
+                                modifier = Modifier.size(48.dp).testTag("saved-filter"),
+                                colors = IconButtonDefaults.filledIconToggleButtonColors(containerColor = Color.White, contentColor = Forest,
+                                    checkedContainerColor = Forest, checkedContentColor = Color.White)) {
+                                Icon(if (savedOnly) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, stringResource(R.string.saved), Modifier.size(20.dp))
+                            }
                         }
                     }
-                    Row(Modifier.padding(top = 4.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Grade.entries.forEach { fuel -> FilterChip(selected = grade == fuel, onClick = { grade = fuel }, label = { Text(gradeLabel(fuel)) },
-                            colors = FilterChipDefaults.filterChipColors(containerColor = Color.White, selectedContainerColor = Forest, selectedLabelColor = Color.White),
-                            shape = CircleShape) }
-                        FilterChip(selected = savedOnly, onClick = { savedOnly = !savedOnly }, label = { Icon(Icons.Default.BookmarkBorder, stringResource(R.string.saved), Modifier.size(18.dp)) }, shape = CircleShape)
-                    }
                 }
-                Column(Modifier.align(Alignment.BottomEnd).padding(end = 15.dp, bottom = peekHeight+16.dp), horizontalAlignment = Alignment.End) {
-                    browsePoint?.let { area ->
-                        Button(onClick = { refresh(area) }, modifier = Modifier.testTag("search-map-area")) { Text("Search this area") }
-                    }
-                    FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.testTag("use-location")) {
+                Column(Modifier.align(Alignment.BottomEnd).padding(end = 15.dp, bottom = sheetInset+16.dp), horizontalAlignment = Alignment.End) {
+                    FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.size(48.dp).testTag("use-location")) {
                         if (locating) CircularProgressIndicator(Modifier.size(20.dp)) else Icon(Icons.Default.MyLocation, "Use my location")
                     }
-                    FilledTonalIconButton(onClick = { menu = Menu.ABOUT }) { Icon(Icons.Default.Info, stringResource(R.string.about)) }
+                    FilledTonalIconButton(onClick = { menu = Menu.ABOUT }, modifier = Modifier.size(48.dp).testTag("map-info")) { Icon(Icons.Default.Info, stringResource(R.string.about)) }
+                    browsePoint?.let { area ->
+                        Button(onClick = { refresh(area) }, modifier = Modifier.heightIn(min = 48.dp).testTag("search-map-area")) { Text("Search this area") }
+                    }
+                }
+                if (sheetHidden) FilledTonalButton(onClick = { scope.launch { stationSheet.partialExpand() } },
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 15.dp, bottom = 24.dp).testTag("show-stations")) {
+                    Icon(Icons.Default.LocalGasStation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Show stations")
                 }
                 Text("© OpenStreetMap contributors", fontSize = 10.sp, color = Ink,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 15.dp, bottom = peekHeight+13.dp).background(Color.White.copy(alpha = .9f), RoundedCornerShape(5.dp)).clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(5.dp))
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 15.dp, bottom = sheetInset+80.dp).background(Color.White.copy(alpha = .9f), RoundedCornerShape(5.dp)).clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(5.dp))
             }
         }
     }
@@ -264,7 +321,7 @@ private fun OpenFuelApp() {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).navigationBarsPadding().padding(bottom = 24.dp)) {
                 when (menu) {
                     Menu.LOCATION -> LocationSearch(repository, locationMessage, dismiss = { menu = null }, useLocation = { menu = null; requestLocation() }) {
-                        devicePoint = null; locationMessage = null; menu = null; refresh(it)
+                        locationMessage = null; menu = null; refresh(it)
                     }
                     Menu.SORT -> {
                         SheetTitle(stringResource(R.string.sort_stations)) { menu = null }
@@ -331,13 +388,14 @@ private fun OpenFuelApp() {
 }
 
 @Composable
-private fun StationRow(s: Station, grade: Grade, filters: Filters, cards: Boolean, wide: Boolean, best: Boolean, select: () -> Unit, go: () -> Unit) {
+private fun StationRow(s: Station, grade: Grade, filters: Filters, cards: Boolean, wide: Boolean, best: Boolean, logo: Bitmap?, select: () -> Unit, go: () -> Unit) {
     Surface(onClick = select, modifier = Modifier.testTag("station-${s.id}"), shape = RoundedCornerShape(15.dp), color = if (best) Color(0xFFF6FAF0) else Color.White,
         border = BorderStroke(1.dp, if (best) Rule else Color(0xFFF1F3EC))) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(Modifier.size(34.dp).background(Pale, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                    Text(if (s.name == "Petro-Canada") "PC" else s.name.take(1), color = Forest, fontWeight = FontWeight.Bold)
+                Box(Modifier.size(36.dp).background(Color.White, RoundedCornerShape(10.dp)).border(1.dp, Pale, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                    if (logo != null) Image(logo.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(30.dp).testTag("brand-logo-${s.id}"))
+                    else Text(if (s.name == "Petro-Canada") "PC" else s.name.take(1), color = Forest, fontWeight = FontWeight.Bold)
                 }
                 Column(Modifier.weight(1f)) {
                     Text(s.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -25,6 +25,7 @@
       ],
       "expo-status-bar",
       "expo-font"
-    ]
+    ],
+    "icon": "./assets/openfuel-app-icon-1024.png"
   }
 }

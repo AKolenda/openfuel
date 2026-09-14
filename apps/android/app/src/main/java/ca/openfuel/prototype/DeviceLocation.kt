@@ -29,7 +29,7 @@ suspend fun currentSearchPoint(context: Context): SearchPoint? {
     val recent = providers.mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
         .filter { System.currentTimeMillis() - it.time in 0..120_000 && it.accuracy <= 3000 }
         .minByOrNull { it.accuracy }
-    fun Location.point() = SearchPoint(latitude, longitude, if (accuracy > 500) "Your approximate location" else "Your location")
+    fun Location.point() = SearchPoint(latitude, longitude, if (accuracy > 500) "Your approximate location" else "Your location", SearchSource.DEVICE)
     if (recent != null) return recent.point()
     return withTimeoutOrNull(18_000) {
         suspendCancellableCoroutine { continuation ->

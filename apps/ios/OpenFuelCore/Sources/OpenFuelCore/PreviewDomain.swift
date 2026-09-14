@@ -18,15 +18,18 @@ public struct PreviewStation: Identifiable, Codable, Equatable, Sendable {
     public let id: String
     public var name: String; public var brand: String; public var address: String
     public var distanceMetres: Int; public var minutes: Int; public var x: Double; public var y: Double
-    public var open: Bool; public var prices: [String:Int]; public var ages: [String:Int]; public var memberDiscount: Int
+    public var open: Bool?; public var prices: [String:Int]; public var ages: [String:Int]; public var memberDiscount: Int
+    public var latitude: Double? = nil; public var longitude: Double? = nil
+    public var brandKey: String? = nil; public var brandLogoUrl: String? = nil
+    public var observedAt: [String:String]? = nil; public var priceSources: [String:String]? = nil
     public func price(_ grade: PreviewGrade, members: Bool = false) -> Int? { prices[grade.rawValue].map { $0 - (members ? memberDiscount : 0) } }
     public func age(_ grade: PreviewGrade) -> Int { ages[grade.rawValue] ?? Int.max }
-    public var initials: String { brand == "Petro-Canada" ? "PC" : String(brand.prefix(1)) }
+    public var initials: String { brand == "Petro-Canada" ? "PC" : String((brand.isEmpty ? name : brand).prefix(2)).uppercased() }
 }
 public struct PreviewFilters: Codable, Equatable, Sendable {
-    public var radiusMetres = 5000
+    public var radiusMetres = 10000
     public var fresh = false; public var open = false; public var members = false
-    public init(radiusMetres: Int = 5000, fresh: Bool = false, open: Bool = false, members: Bool = false) {
+    public init(radiusMetres: Int = 10000, fresh: Bool = false, open: Bool = false, members: Bool = false) {
         self.radiusMetres=radiusMetres;self.fresh=fresh;self.open=open;self.members=members
     }
 }
@@ -66,7 +69,7 @@ public enum PreviewRules {
     public static func visible(_ stations: [PreviewStation], grade: PreviewGrade, sort: PreviewSort = .best, filters: PreviewFilters = PreviewFilters(), query: String = "", savedOnly: Bool = false, saved: Set<String> = []) -> [PreviewStation] {
         let q=query.trimmingCharacters(in:.whitespacesAndNewlines).lowercased()
         let values=stations.filter { s in
-            s.price(grade,members:filters.members) != nil && s.distanceMetres <= filters.radiusMetres && (!filters.fresh || s.age(grade)<=60) && (!filters.open || s.open) && (!savedOnly || saved.contains(s.id)) && (q.isEmpty || "\(s.name) \(s.address)".lowercased().contains(q))
+            s.distanceMetres <= filters.radiusMetres && (!filters.fresh || s.age(grade)<=60) && (!filters.open || s.open == true) && (!savedOnly || saved.contains(s.id)) && (q.isEmpty || "\(s.name) \(s.address)".lowercased().contains(q))
         }
         return values.sorted { a,b in
             if sort == .nearest {return a.distanceMetres==b.distanceMetres ? a.id<b.id : a.distanceMetres<b.distanceMetres}
@@ -124,6 +127,14 @@ public actor PreviewDiskStore {
     public func deleteDrafts() throws {try write([PreviewDraft](),"drafts.json")}
     public func stationCache() throws -> PrototypeStationCache? {try read("stations.json",default:Optional<PrototypeStationCache>.none)}
     public func saveStationCache(_ value: PrototypeStationCache) throws {try write(value,"stations.json")}
+    public func liveStationCache() throws -> LiveStationCache? {
+        guard let saved: LiveStationCache = try read("live-stations-v1.json",default:Optional<LiveStationCache>.none) else { return nil }
+        let coarse = saved.coarseSnapshot()
+        // Migrate any earlier source build's precise cache on its first read.
+        if saved.area != coarse.area || saved.stations != coarse.stations { try saveLiveStationCache(coarse) }
+        return coarse
+    }
+    public func saveLiveStationCache(_ value: LiveStationCache) throws {try write(value,"live-stations-v1.json")}
     public func clientID() throws -> UUID {
         if let existing: UUID = try read("client-id.json",default:Optional<UUID>.none) {return existing}
         let value=UUID();try write(value,"client-id.json");return value

@@ -1,8 +1,10 @@
 # OpenFuel
 
 OpenFuel is an open-source, Canada-first fuel-station map with a working web app,
-a native Kotlin Android app and a React Native project for Expo Go. One Cloudflare
-Worker and D1 database serve real station locations and public community price reports.
+a native Kotlin Android app, a React Native project for Expo Go, and current
+SwiftUI iOS source. One Cloudflare Worker and D1 database serve real station
+locations and public community price reports. The SwiftUI app still needs an
+Apple SDK build and simulator verification on a Mac.
 
 - [Public repository](https://github.com/AKolenda/openfuel)
 - [Website](https://openfuel.ca/) and [station map](https://openfuel.ca/preview/)
@@ -12,7 +14,15 @@ Worker and D1 database serve real station locations and public community price r
 Allow location when you enter the app to find nearby stations. If permission is
 unavailable, search a Canadian city or choose an area on the map. The app uses
 real geographic coordinates, shows stations with unknown prices, and keeps saved
-station information available when the connection fails.
+station information available when the connection fails. A remembered area,
+rounded to two decimal places, lets cached stations appear immediately on return
+while the app refreshes and requests current location. It is labelled as a saved
+area, not a fresh GPS fix. The station sheet can be hidden to use the full map.
+
+Station logos load directly from a small set of remote image providers; missing
+or unavailable logos fall back to initials. OpenFuel does not bundle or proxy
+station logo images. Ordinary browser/device caches can reuse those downloads.
+See the [brand URL catalog](packages/brands/README.md) and [privacy details](docs/PRIVACY.md).
 
 The included snapshot contains **12,543 OpenStreetMap fuel stations**. Station
 coverage and metadata may be incomplete. **No pump prices are invented or seeded.**
@@ -52,9 +62,13 @@ Scan Metro's QR code using a compatible Expo Go installation. Keep Metro running
 and the phone on the same network. [Expo instructions](apps/expo/README.md) cover
 SDK compatibility, emulator use, API configuration and its separate native map setup.
 
-SwiftUI iOS source remains in the repo as earlier prototype work; the real station
-flow has not been verified in the SwiftUI app. Building an iPhone app requires
-macOS, Xcode and signing. Expo offers a separate React Native iPhone development path.
+The current SwiftUI source uses the same live API, native MapKit, foreground
+location, remote station logos and coarse saved areas. Portable Swift core and
+read-only API checks are separate from Apple framework validation: **no Apple SDK
+build, simulator run or IPA is claimed**. Building and testing the iPhone app
+requires macOS and Xcode; device distribution also requires signing. See the
+[iOS instructions](apps/ios/README.md). Expo offers a separate React Native iPhone
+development path.
 
 ## Monorepo
 
@@ -64,11 +78,13 @@ macOS, Xcode and signing. Expo offers a separate React Native iPhone development
 | `apps/docs` | Searchable handbook |
 | `apps/android` | Kotlin/Jetpack Compose app and emulator checks |
 | `apps/expo` | React Native/Expo Go client |
-| `apps/ios` | Earlier SwiftUI app and independently testable Swift core |
+| `apps/ios` | Current SwiftUI/MapKit source and independently testable Swift core; Apple SDK validation pending |
 | `services/live` | Current Cloudflare API and D1 migrations |
 | `packages/data` | Attributed station, city and monthly-average snapshots |
+| `packages/brands` | Curated remote station-logo URLs and matching rules, without image binaries |
 | `packages/contracts` | Current and historical API contracts |
-| `packages/design`, `packages/mobile` | Design resources and historical test fixtures |
+| `packages/design` | Approved OpenFuel identity and design resources |
+| `packages/mobile` | Historical shared test fixtures |
 | `services/edge`, `services/api`, `services/registry`, `supabase` | Retained reference implementations and tests |
 
 ## Check and deploy

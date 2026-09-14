@@ -17,14 +17,28 @@ age. No invented starting prices or sample stations appear. Confirm prices at th
 Directions open the station's actual coordinates. Search, fuel grades, sorting, favorites,
 Cards/List layouts and report forms are native Compose controls, with no WebView.
 
-Last confirmed real stations and their search coordinates cache on the device. Offline states
-explicitly identify saved data. Failed or unacknowledged reports never change displayed prices;
+The last chosen city or area and its real stations appear immediately on reopening while the
+network and foreground location refresh. A later GPS fix cannot replace a newer city/map
+selection. Saved coordinates use two decimal places (about 1 km); cached distances are
+recomputed from that coarse area, and older snapshots are migrated. Precise GPS stays in memory.
+Offline states explicitly identify saved data. Failed or unacknowledged reports never change displayed prices;
 retry IDs prevent duplicate writes. Suggestions remain clearly labelled local drafts.
 
 Map tiles are fetched on demand from OpenStreetMap, with visible attribution, an app-specific
 User-Agent and HTTP caching. Tile prefetch and bulk/offline download are not enabled. This
 community tile service has usage limits and no availability guarantee; plan a supported tile
 provider or self-hosting before large-scale adoption. There are no paid map keys or analytics.
+
+Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell and
+Co-op, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
+bundled or hosted by OpenFuel. One native Canvas overlay draws cached brand/price markers,
+culls offscreen stations and hit-tests taps against at least 44 dp targets. Camera movement
+reuses marker art instead of rebuilding GeoJSON and a GPU sprite atlas.
+
+The approved curved F is used in the launcher and header. Location, fuel grades and Saved
+share one opaque row. Drag the station sheet fully down to browse the whole map; **Show
+stations** restores it. Recenter, information and **Search this area** are stacked in that
+order. Status-bar icons remain dark on the app's light surface even in Android dark mode.
 
 ## Build
 
@@ -33,17 +47,20 @@ wrapper downloads Gradle 8.11.1. No Cloudflare secrets belong in this app.
 
 ```sh
 # From apps/android:
-./gradlew :app:testDebugUnitTest :app:assembleDebug
+./gradlew :app:testDebugUnitTest
+./gradlew :app:clean :app:assembleDebug
 # Use your own HTTPS deployment:
 ./gradlew :app:assembleDebug -POPENFUEL_API_BASE_URL=https://your-worker.workers.dev/api/v1
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.2.0-live (code 3), Android 8+
+Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.0-live (code 4), Android 8+
 (API 26), signed with the local Android debug key. This is a directly installable development
 APK; publishing to Google Play still requires a release signing process and store review.
 The default download build shrinks unused code/resources and compresses native libraries,
 keeping all four CPU architectures under the website's 25 MiB asset limit.
+Always use `:app:clean :app:assembleDebug` for a download after instrumentation: incremental
+APK packaging can retain unused ZIP padding when switching from unshrunk to compact builds.
 
 ## Verification
 
@@ -68,6 +85,11 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
 The explicit emulator flag permits HTTP only for `10.0.2.2`, and rejects release tasks. The
 write test runs only against that local address. Never publish an emulator test build. Rebuild
 without either property for the public HTTPS APK; its manifest disables cleartext traffic.
+
+The 0.3.0 verification record and controlled-emulator screenshots are in
+[`release-0.3.0.json`](../../evidence/android-native/release-0.3.0.json). Eight unit tests passed;
+public HTTPS instrumentation ran five tests successfully, including the deliberately skipped
+local-only report test. The exact compact APK was installed and visually checked separately.
 
 Previous generated sample fixtures remain solely as isolated unit-test inputs and design
 reference assets. They are never selected by the app's startup or live repository.

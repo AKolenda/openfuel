@@ -13,7 +13,23 @@ const cents = value => value == null ? '—' : (value / 10).toFixed(1);
 const storage = {
   read(key, fallback) { try { return JSON.parse(localStorage.getItem(`openfuel-live-v1:${key}`)) ?? fallback; } catch { return fallback; } },
   write(key, value) { try { localStorage.setItem(`openfuel-live-v1:${key}`, JSON.stringify(value)); } catch { /* A private browser can still use the app. */ } },
+  remove(key) { try { localStorage.removeItem(`openfuel-live-v1:${key}`); } catch {} },
 };
+// Retire the old, finer-grained area keys. New saved centres are rounded to
+// hundredths of a degree (roughly a kilometre), never a saved GPS fix.
+storage.remove('areas');
+const logoHosts=new Set(['thumb.wikimedia.org','www.fuel.crs','www.shell.ca']);
+const failedLogos=new Set();
+function logoURL(value) {
+  try { const url=new URL(value);return url.protocol==='https:'&&logoHosts.has(url.hostname)&&!url.username&&!url.password ? url.href : null; } catch { return null; }
+}
+function brandBadge(station,marker=false) {
+  const url=logoURL(station.brandLogoUrl),fallback=esc(station.name.slice(0,2).toUpperCase());
+  if(marker&&!url)return '';
+  return `<span class="${marker?'marker-brand':'station-initial'} brand-badge" aria-hidden="true"><span class="brand-fallback">${fallback}</span>${url&&!failedLogos.has(url)?`<img data-brand-logo src="${esc(url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;
+}
+document.addEventListener('load',event=>{if(event.target.matches?.('img[data-brand-logo]'))event.target.parentElement.classList.add('logo-loaded');},true);
+document.addEventListener('error',event=>{if(event.target.matches?.('img[data-brand-logo]')){failedLogos.add(event.target.src);event.target.remove();}},true);
 const saved = storage.read('favorites', []);
 const favorites = new Set(Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : []);
 const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, center:null, user:null, source:null, label:'', stations:[], selected:null, loadedAt:0, connection:'idle', generation:0, reportVersion:0, coverage:null};
@@ -35,12 +51,23 @@ function mapFocusPoint() {
   const size=map.getSize(),panel=document.querySelector('.results-panel').getBoundingClientRect();
   if(matchMedia('(max-width:760px)').matches) {
     const top=document.querySelector('.search-header').getBoundingClientRect().bottom+18;
-    return L.point(size.x/2,Math.max(top+30,(top+panel.top)/2));
+    const bottom=document.querySelector('.app').classList.contains('sheet-hidden')?size.y-64:panel.top;
+    return L.point(size.x/2,Math.max(top+30,(top+bottom)/2));
   }
-  return L.point((panel.right+size.x)/2,size.y/2);
+  return L.point(document.querySelector('.app').classList.contains('sheet-hidden')?size.x/2:(panel.right+size.x)/2,size.y/2);
 }
 function visibleMapCenter() { return map.containerPointToLatLng(mapFocusPoint()); }
-map.on('dragend zoomend', () => {
+function hideStations(hidden) {
+  const center=visibleMapCenter();
+  document.querySelector('.app').classList.toggle('sheet-hidden',hidden);
+  document.querySelector('.results-panel').classList.remove('expanded');
+  $('sheet-toggle').setAttribute('aria-expanded','false');$('sheet-toggle').setAttribute('aria-label','Expand station list');
+  $('show-stations').hidden=!hidden;
+  map.panBy(map.latLngToContainerPoint(center).subtract(mapFocusPoint()),{animate:false});
+  if(hidden)$('show-stations').focus();
+  else $('station-list').focus({preventScroll:true});
+}
+map.on('moveend zoomend', () => {
   const c = visibleMapCenter();
   $('search-area').hidden = !!state.center && distance(c.lat,c.lng,state.center.lat,state.center.lon) < 150;
 });
@@ -85,18 +112,36 @@ async function api(path, options={}) {
     return body;
   } finally { clearTimeout(timer); }
 }
-function cacheKey(center=state.center) { return `${center.lat.toFixed(3)},${center.lon.toFixed(3)}:${state.radius}`; }
+function coarseCenter(center=state.center) { return {lat:Number(center.lat.toFixed(2)),lon:Number(center.lon.toFixed(2))}; }
+function cacheKey(center=state.center) { return `${center.lat.toFixed(2)},${center.lon.toFixed(2)}:${state.radius}`; }
+function rememberArea() {
+  if(!state.center)return;
+  const previous=storage.read('last-area',null);
+  const label=state.source==='search'?state.label:state.source==='previous'&&typeof previous?.label==='string'?previous.label:'Your last searched area';
+  storage.write('last-area',{...coarseCenter(),label,radius:state.radius,fuel:state.fuel});
+}
 function cacheCurrent() {
   if (!state.center) return;
-  const existing=storage.read('areas', []), areas=Array.isArray(existing) ? existing : [];
-  const item={key:cacheKey(),stations:state.stations,loadedAt:state.loadedAt,coverage:state.coverage};
-  storage.write('areas',[item,...areas.filter(a=>a.key!==item.key)].slice(0,4));
+  const existing=storage.read('areas-v2', []), areas=Array.isArray(existing) ? existing : [];
+  // Server distances could reconstruct a precise device position when combined
+  // with public station coordinates. Recalculate them from the chosen centre.
+  const stations=state.stations.map(({distanceMetres,...station})=>station);
+  const item={key:cacheKey(),stations,loadedAt:state.loadedAt,coverage:state.coverage};
+  storage.write('areas-v2',[item,...areas.filter(a=>a.key!==item.key)].slice(0,4));
 }
 function restoreArea() {
-  const existing=storage.read('areas', []);
+  const existing=storage.read('areas-v2', []);
   const area=Array.isArray(existing) && existing.find(a=>a.key===cacheKey());
   if (!area || !Number.isFinite(area.loadedAt)) return false;
   try { state.stations=normalize(area.stations);state.loadedAt=area.loadedAt;state.coverage=area.coverage;return true; } catch { return false; }
+}
+function restoreLastArea() {
+  const last=storage.read('last-area',null);
+  if(!last||!Number.isFinite(last.lat)||Math.abs(last.lat)>90||!Number.isFinite(last.lon)||Math.abs(last.lon)>180||![5000,10000,25000,50000].includes(last.radius))return;
+  state.radius=last.radius;state.fuel=grades.includes(last.fuel)?last.fuel:'regular';$('radius').value=String(state.radius);
+  const label=typeof last.label==='string'&&last.label.length<=160?last.label:'Your last searched area';
+  const center=coarseCenter(last);
+  chooseLocation(center.lat,center.lon,`${label} · saved area`,'previous',false);
 }
 function visibleStations() {
   return state.stations.filter(s => !state.saved || favorites.has(s.id)).sort((a,b) => {
@@ -115,7 +160,7 @@ function renderStatus() {
   const count=visibleStations().length;
   $('results-title').textContent=state.saved ? 'Saved stations' : 'Fuel near you';
   let text='Real stations. Community pump prices.';
-  if (state.connection==='loading') text='Finding real stations in this area…';
+  if (state.connection==='loading') text=state.loadedAt?'Saved station details · Refreshing…':'Finding real stations in this area…';
   if (state.connection==='online') text=`${count} station${count===1?'':'s'}${state.coverage?.truncated?' · Narrow the radius for all results':''} · Prices shown only when reported`;
   if (state.connection==='offline') text=state.loadedAt ? `Saved station details · Last updated ${new Date(state.loadedAt).toLocaleString()}` : 'Unable to load stations. Check your connection and refresh.';
   $('connection-status').textContent=text;
@@ -135,12 +180,13 @@ function render() {
   } else {
     $('station-list').innerHTML=list.map(s=>{
       const price=s.prices[state.fuel], age=reportAge(s);
-      return `<article class="station-card" data-station="${esc(s.id)}"><span class="station-initial" aria-hidden="true">${esc(s.name.slice(0,2).toUpperCase())}</span><button class="station-main" data-detail="${esc(s.id)}" aria-label="View ${esc(s.name)}, ${esc(s.address||distanceLabel(s))}"><span class="station-name">${esc(s.name)}</span><span class="station-address">${esc(s.address||'Address not listed')}</span><span class="station-distance">${esc(distanceLabel(s))} · straight-line</span></button><button class="station-price" data-${price==null?'report':'detail'}="${esc(s.id)}" aria-label="${price==null?'Report a price for':`${cents(price)} cents per litre at`} ${esc(s.name)}">${price==null?'<strong class="missing">No price yet</strong><span class="report-label">Report price</span>':`<strong>${cents(price)}</strong><small>¢/L · ${esc(ageLabel(age))}</small><small>Unverified${age>=1440?' · stale':''}</small>`}</button></article>`;
+      return `<article class="station-card" data-station="${esc(s.id)}">${brandBadge(s)}<button class="station-main" data-detail="${esc(s.id)}" aria-label="View ${esc(s.name)}, ${esc(s.address||distanceLabel(s))}"><span class="station-name">${esc(s.name)}</span><span class="station-address">${esc(s.address||'Address not listed')}</span><span class="station-distance">${esc(distanceLabel(s))} · straight-line</span></button><button class="station-price" data-${price==null?'report':'detail'}="${esc(s.id)}" aria-label="${price==null?'Report a price for':`${cents(price)} cents per litre at`} ${esc(s.name)}">${price==null?'<strong class="missing">No price yet</strong><span class="report-label">Report price</span>':`<strong>${cents(price)}</strong><small>¢/L · ${esc(ageLabel(age))}</small><small>Unverified${age>=1440?' · stale':''}</small>`}</button></article>`;
     }).join('');
   }
   for (const s of list) {
     const price=s.prices[state.fuel], title=`${s.name}: ${price==null ? 'no reported price' : `${cents(price)} cents per litre, unverified`}`;
-    const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${price==null?'Fuel':cents(price)}</span>`,iconSize:[58,34],iconAnchor:[29,38]})});
+    const badge=brandBadge(s,true),width=badge?86:58;
+    const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${badge}<span>${price==null?'Fuel':cents(price)}</span></span>`,iconSize:[width,36],iconAnchor:[width/2,40]})});
     marker.on('click',()=>openDetails(s.id));marker.addTo(markerLayer);
     marker.getElement()?.setAttribute('aria-label',title);
   }
@@ -161,15 +207,27 @@ async function refreshStations() {
     state.connection='offline';render();toast(error.name==='AbortError' ? 'The request timed out. Try Refresh.' : error.message);
   }
 }
-function chooseLocation(lat,lon,label,source='search') {
+function closePlaceChoices() {
+  $('search-results').hidden=true;$('area-selector').setAttribute('aria-expanded','false');
+}
+function showAreaChoices() {
+  if($('area-selector').getAttribute('aria-expanded')==='true'){closePlaceChoices();return;}
+  searchGeneration++;
+  $('search-results').innerHTML='<p class="search-message">Choose where to find fuel.</p><button class="search-result" data-area-action="city">Search a Canadian city or coordinates</button><button class="search-result" data-area-action="device">Use my device location</button><button class="search-result" data-area-action="map">Use the visible map area</button>';
+  $('search-results').hidden=false;$('area-selector').setAttribute('aria-expanded','true');
+}
+function chooseLocation(lat,lon,label,source='search',remember=true) {
   if (!Number.isFinite(lat)||Math.abs(lat)>90||!Number.isFinite(lon)||Math.abs(lon)>180) return;
   // A city or map choice wins over an earlier, still-pending device request.
   locationGeneration++;searchGeneration++;locatePending=false;$('locate-button').disabled=false;
   state.generation++;state.center={lat,lon};state.source=source;state.label=label;state.stations=[];state.loadedAt=0;state.selected=null;state.coverage=null;
   $('location-status').textContent=label;
-  $('search-results').hidden=true;
+  const shortLabel=source==='device'?'Nearby':source==='search'?label.split(',')[0]:source==='previous'?'Saved area':'Map area';
+  $('area-label').textContent=shortLabel;$('area-selector').setAttribute('aria-label',`Choose location, currently ${shortLabel}`);$('area-selector').title=label;
+  closePlaceChoices();
   map.setView([lat,lon],13,{animate:false});
   map.panBy(map.getSize().divideBy(2).subtract(mapFocusPoint()),{animate:false});$('search-area').hidden=true;
+  if(remember)rememberArea();
   restoreArea();refreshStations();
 }
 function locate() {
@@ -177,7 +235,7 @@ function locate() {
   if (!navigator.geolocation) { $('location-status').textContent='Location is unavailable in this browser. Search a city instead.';return; }
   const generation=++locationGeneration;
   locatePending=true;$('locate-button').disabled=true;
-  $('location-status').textContent='Your browser will ask for location. You can search a city instead.';
+  $('location-status').textContent=state.center?`${state.label} · Checking device location…`:'Your browser will ask for location. You can search a city instead.';
   navigator.geolocation.getCurrentPosition(position=>{
     if(generation!==locationGeneration)return;
     locatePending=false;$('locate-button').disabled=false;
@@ -191,16 +249,16 @@ function locate() {
     if(generation!==locationGeneration)return;
     locatePending=false;$('locate-button').disabled=false;
     const reason=error.code===1?'Location permission is off. Search a city, or enable location in your browser.':error.code===3?'Location took too long. Try again or search a city.':'Could not find your device location. Try again or search a city.';
-    $('location-status').textContent=state.center ? `${state.label}. ${reason}` : reason;
+    $('location-status').textContent=state.center ? `${state.label} · ${error.code===1?'Device location off':'Device location unavailable'}` : reason;
   },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 }
 async function searchPlaces(event) {
   event.preventDefault();const query=$('place-search').value.trim(), generation=++searchGeneration;
-  if (!query) { $('search-results').hidden=true;$('place-search').focus();return; }
+  if (!query) { closePlaceChoices();$('place-search').focus();return; }
   const coordinateMatch=/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(query);
   if (coordinateMatch) {
     const lat=Number(coordinateMatch[1]),lon=Number(coordinateMatch[2]);
-    if (Math.abs(lat)<=90 && Math.abs(lon)<=180) { chooseLocation(lat,lon,`Searched coordinates · ${lat.toFixed(4)}, ${lon.toFixed(4)}`);return; }
+    if (Math.abs(lat)<=90 && Math.abs(lon)<=180) { chooseLocation(lat,lon,`Searched coordinates · ${lat.toFixed(4)}, ${lon.toFixed(4)}`,'coordinates');return; }
   }
   $('search-results').hidden=false;$('search-results').innerHTML='<p class="search-message" role="status">Searching Canadian places…</p>';
   try {
@@ -253,25 +311,51 @@ function toast(message) {clearTimeout(toastTimer);$('toast').textContent=message
 document.addEventListener('click',event=>{
   const target=event.target.closest('button');if(!target)return;
   if(target.hasAttribute('data-close')){target.closest('dialog').close();return;}
-  if(target.dataset.fuel){state.fuel=target.dataset.fuel;render();return;}
+  if(target.dataset.fuel){state.fuel=target.dataset.fuel;rememberArea();render();return;}
   if(target.dataset.detail){openDetails(target.dataset.detail);return;}
   if(target.dataset.report){openReport(target.dataset.report);return;}
   if(target.dataset.save){const id=target.dataset.save;if(favorites.has(id))favorites.delete(id);else favorites.add(id);storage.write('favorites',[...favorites]);openDetails(id);render();}
 });
+$('area-selector').addEventListener('click',showAreaChoices);
+$('search-results').addEventListener('click',event=>{
+  const action=event.target.closest('[data-area-action]')?.dataset.areaAction;if(!action)return;
+  closePlaceChoices();
+  if(action==='city'){$('place-search').focus();$('place-search').select();}
+  if(action==='device')locate();
+  if(action==='map'){$('search-area').click();}
+});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('search-results').hidden){const wasMenu=$('area-selector').getAttribute('aria-expanded')==='true';closePlaceChoices();if(wasMenu)$('area-selector').focus();}});
+document.addEventListener('click',event=>{if(!event.target.closest('.search-header'))closePlaceChoices();});
 $('search-form').addEventListener('submit',searchPlaces);
-$('place-search').addEventListener('input',()=>{searchGeneration++;$('search-results').hidden=true;});
-$('place-search').addEventListener('keydown',event=>{if(event.key==='Escape')$('search-results').hidden=true;});
+$('place-search').addEventListener('input',()=>{searchGeneration++;closePlaceChoices();});
+$('place-search').addEventListener('keydown',event=>{if(event.key==='Escape')closePlaceChoices();});
 $('locate-button').addEventListener('click',locate);$('empty-locate').addEventListener('click',locate);
 $('search-area').addEventListener('click',()=>{const center=visibleMapCenter();chooseLocation(center.lat,center.lng,`Map area · ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)}`,'map');});
 $('refresh-button').addEventListener('click',refreshStations);
-$('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){state.stations=[];state.loadedAt=0;restoreArea();refreshStations();}});
+$('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();refreshStations();}});
 $('sort').addEventListener('change',event=>{state.sort=event.target.value;render();});
 $('saved-button').addEventListener('click',()=>{state.saved=!state.saved;render();});
 $('report-form').addEventListener('submit',submitReport);
 for(const id of ['about-button','privacy-button'])$(id).addEventListener('click',()=>$('about-dialog').showModal());
 $('sheet-toggle').addEventListener('click',()=>{const expanded=document.querySelector('.results-panel').classList.toggle('expanded');$('sheet-toggle').setAttribute('aria-expanded',String(expanded));$('sheet-toggle').setAttribute('aria-label',expanded?'Collapse station list':'Expand station list');});
+$('hide-stations').addEventListener('click',()=>hideStations(true));
+$('show-stations').addEventListener('click',()=>hideStations(false));
+let sheetPointer=null,suppressSheetClick=false;
+$('sheet-toggle').addEventListener('pointerdown',event=>{sheetPointer={id:event.pointerId,y:event.clientY};$('sheet-toggle').setPointerCapture(event.pointerId);});
+$('sheet-toggle').addEventListener('pointerup',event=>{
+  if(!sheetPointer||sheetPointer.id!==event.pointerId)return;
+  const delta=event.clientY-sheetPointer.y;sheetPointer=null;
+  if(Math.abs(delta)<35)return;
+  suppressSheetClick=true;
+  if(delta>0)hideStations(true);
+  else {document.querySelector('.results-panel').classList.add('expanded');$('sheet-toggle').setAttribute('aria-expanded','true');$('sheet-toggle').setAttribute('aria-label','Collapse station list');}
+});
+$('sheet-toggle').addEventListener('pointercancel',()=>{sheetPointer=null;});
+$('sheet-toggle').addEventListener('click',event=>{if(suppressSheetClick){event.stopImmediatePropagation();suppressSheetClick=false;}},true);
 $('clear-local').addEventListener('click',()=>{
   try{Object.keys(localStorage).filter(key=>key.startsWith('openfuel-')).forEach(key=>localStorage.removeItem(key));}catch{}
+  state.generation++;locationGeneration++;locatePending=false;$('locate-button').disabled=false;
+  if(state.connection==='loading')state.connection='idle';
   favorites.clear();pendingReport=null;clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
 });
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}}));
@@ -281,5 +365,6 @@ setInterval(()=>{if(!document.hidden&&state.center)render();},60000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 // A one-shot request on entry lets the browser own the permission decision.
 // Denial never substitutes a fictional location or a bundled sample station.
+restoreLastArea();
 requestAnimationFrame(()=>locate());
 })();

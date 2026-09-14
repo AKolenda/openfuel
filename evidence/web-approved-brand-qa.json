@@ -1,0 +1,34 @@
+{
+  "tested_at": "2026-09-14T02:15:41.013972+00:00",
+  "environment": "Playwriter headless Chromium on localhost:8787, real local D1 station import and direct remote map/logo transport",
+  "selected_areas": {
+    "Calgary": 169,
+    "Edmonton": 178
+  },
+  "location": "City choices only; operator GPS never read",
+  "reports": "No report writes in this smoke. Displayed Premium with unknown pump prices.",
+  "manual_checks": [
+    "Approved F mark/wordmark and 1024px opaque app-icon export inspected",
+    "Calgary 390px and 320px responsive single location/fuel/saved row",
+    "Shell, Petro-Canada, Esso and Chevron direct remote artwork visible after load; text fallback while loading",
+    "Edmonton genuine landing screenshot refreshed with approved identity",
+    "Keyboard map pan exposes Search this area below recenter and info",
+    "Map-only sheet hiding and Show stations restoration available"
+  ],
+  "browser_regression": {
+    "passed": 235,
+    "javascript_errors": 0,
+    "transport": "API, OSM tiles and logos mocked only within browser regression harness; real network smoke is separate"
+  },
+  "evidence": [
+    "browser/approved-brand-mobile.png",
+    "browser/approved-brand-320.png",
+    "browser/approved-brand-landing.png",
+    "browser/approved-brand-map-only.png",
+    "browser-results.json"
+  ],
+  "limitations": [
+    "No native runtime conclusions from these browser checks",
+    "Service worker shell branding list reviewed in source; browser regression blocks service workers"
+  ]
+}
