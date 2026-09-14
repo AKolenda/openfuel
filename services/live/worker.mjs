@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Real Canadian station discovery with public, unverified community pump reports.
+import {correctedStation} from '../../packages/data/corrections.mjs';
 import {stationBrand} from '../../packages/brands/resolve.mjs';
 const grades = new Set(['regular', 'premium', 'diesel']);
 const headers = {
@@ -108,7 +109,7 @@ async function nearby(db, query) {
   const prices=new Map();
   for(const row of priceRows.results) { if(!prices.has(row.station_id)) prices.set(row.station_id,[]); prices.get(row.station_id).push(row); }
   const stations=stationRows.results.map(row=>{
-    const station={...JSON.parse(row.data),distanceMetres:distanceMetres(lat,lon,row.latitude,row.longitude),prices:{regular:null,premium:null,diesel:null},ages:{},observedAt:{},priceSources:{},stale:{},synthetic:false};
+    const station={...correctedStation(JSON.parse(row.data)),distanceMetres:distanceMetres(lat,lon,row.latitude,row.longitude),prices:{regular:null,premium:null,diesel:null},ages:{},observedAt:{},priceSources:{},stale:{},synthetic:false};
     for(const price of prices.get(row.id)||[]) {
       station.prices[price.fuel_type]=price.price_milli;
       station.ages[price.fuel_type]=Math.max(0,Math.floor((now-Date.parse(price.observed_at))/60000));

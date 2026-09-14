@@ -10,7 +10,7 @@ copy them into its source archive. Browsers may use their normal HTTP cache;
 native clients use bounded, disposable device caches to avoid fetching the same
 brand again for every station. The web service worker does not cache logos.
 
-The first catalog covers 14 common brands. The Co-op and Shell images are their
+The catalog covers 15 common brands, including Tempo added from its official site on 2026-09-14. The initial 14-brand catalog was checked on 2026-09-12. The Co-op and Shell images are their
 official site's PNG icons; other entries link to the identified logo's Wikimedia
 Commons source page. All catalog images were checked as PNG responses on
 2026-09-12. Links can change or fail, and they are not a hosted-service guarantee.

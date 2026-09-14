@@ -35,7 +35,7 @@ public enum RemoteBrandLogo {
     public static func validatedURL(_ text: String?) -> URL? {
         guard let text, let c = URLComponents(string: text), c.scheme == "https",
               c.user == nil, c.password == nil, c.fragment == nil,
-              let host = c.host?.lowercased(), ["thumb.wikimedia.org", "www.fuel.crs", "www.shell.ca"].contains(host),
+              let host = c.host?.lowercased(), ["thumb.wikimedia.org", "www.fuel.crs", "www.shell.ca", "www.tempo.crs"].contains(host),
               c.port == nil || c.port == 443, let url = c.url else { return nil }
         return url
     }

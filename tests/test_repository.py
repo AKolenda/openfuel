@@ -70,7 +70,13 @@ def test_android_source_privacy_boundary():
     assert 'emulatorTest && parsedApi.scheme == "http" && parsedApi.host == "10.0.2.2"' in build
     assert manifest.find('application').get(ns+'allowBackup')=='false'
     source='\n'.join(p.read_text() for p in (ROOT/'apps/android/app/src/main').rglob('*.kt'))
-    assert not re.search(r'import (android\.webkit|com\.facebook\.react)',source)
+    map_source=(ROOT/'apps/android/app/src/main/java/ca/openfuel/prototype/LiveMap.kt').read_text()
+    assert 'settings.allowFileAccess = false' in map_source
+    assert 'settings.allowContentAccess = false' in map_source
+    assert 'settings.setGeolocationEnabled(false)' in map_source
+    assert 'MIXED_CONTENT_NEVER_ALLOW' in map_source
+    assert 'override fun shouldOverrideUrlLoading' in map_source
+    assert 'uri.host == "tile.openstreetmap.org"' in map_source
     assert 'ModalBottomSheet(' in source
 
 def test_ios_configuration_uses_real_generator():
@@ -177,7 +183,7 @@ def test_generated_handbook_payload_matches_editable_source():
 def test_live_map_uses_curated_remote_brand_metadata_without_bundled_images():
     source=(ROOT/'apps/web/preview/app.js').read_text()
     catalog=json.loads((ROOT/'packages/brands/catalog.json').read_text())
-    assert set(catalog['imageHosts']) == {'thumb.wikimedia.org','www.fuel.crs','www.shell.ca'}
+    assert set(catalog['imageHosts']) == {'thumb.wikimedia.org','www.fuel.crs','www.shell.ca','www.tempo.crs'}
     assert all(host in source for host in catalog['imageHosts'])
     assert 'freebiesupply.com' not in source
     assert not any(p.suffix.lower() in {'.png','.jpg','.webp','.svg'} for p in (ROOT/'packages/brands').rglob('*'))

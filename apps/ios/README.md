@@ -25,7 +25,7 @@ request ID in the current session; there is no background submission queue.
 ## Remote logos and local data
 
 `brandLogoUrl` and `brandKey` are optional API fields. Logo requests accept only
-HTTPS image URLs at `thumb.wikimedia.org`, `www.fuel.crs` and `www.shell.ca`, with
+HTTPS image URLs at `thumb.wikimedia.org`, `www.fuel.crs`, `www.shell.ca` and `www.tempo.crs`, with
 no URL credentials, fragments or alternate ports. Redirects remain inside that
 allowlist. The app downloads station logos directly from those hosts; no station logo image
 is committed to the repository or stored/proxied by OpenFuel's server. Missing, unsupported or

@@ -20,13 +20,12 @@ struct LiveMapView: View {
                 if let lat = station.latitude, let lon = station.longitude {
                     Annotation(station.name, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon), anchor: .bottom) {
                         Button { model.select(station) } label: {
-                            HStack(spacing: 5) {
+                            VStack(spacing: 3) {
+                                if let price = station.price(model.grade) { Text(PreviewRules.cents(price)).font(.system(size: 13, weight: .bold)).monospacedDigit() }
                                 BrandLogoView(station: station, size: 25)
-                                Text(station.price(model.grade).map(PreviewRules.cents) ?? "—")
-                                    .font(.system(size: 13, weight: .bold)).monospacedDigit()
                             }
-                            .padding(5).foregroundStyle(Color.fuelGreen).background(.white, in: Capsule())
-                            .overlay(Capsule().stroke(Color.fuelGreen, lineWidth: station.id == model.bestID ? 3 : 1))
+                            .padding(5).foregroundStyle(Color.fuelGreen).background(.white, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.fuelGreen, lineWidth: station.id == model.bestID ? 3 : 1))
                             .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
                         }.buttonStyle(.plain).accessibilityLabel("\(station.name), \(station.price(model.grade).map { PreviewRules.cents($0) + " cents per litre" } ?? tr("price_unknown"))")
                     }.annotationTitles(.hidden)

@@ -37,7 +37,7 @@ clearing action. Clearing local state does not delete reports accepted by D1.
 ## Maps, logos and hosting
 
 OpenStreetMap receives tile requests for the viewed area in the web app, Kotlin
-MapLibre map and Expo Leaflet WebView. The tile provider receives ordinary
+bundled Leaflet WebView map and Expo Leaflet WebView. The tile provider receives ordinary
 connection metadata and can infer the viewed area from tile URLs. Web map tile
 requests send the site origin as referrer. Swift uses Apple MapKit, which receives
 map requests through the platform SDK. Map tiles may use normal browser/platform

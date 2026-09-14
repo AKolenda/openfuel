@@ -145,3 +145,26 @@ test('query filters reject unknown and duplicated parameters', async () => {
     assert.equal((await worker.fetch(get(nearbyPath + query.replace('?', '&')), database())).status, 400);
   }
 });
+
+test('reviewed Tempo identities are served across the directory without moving stations or fabricating prices', async () => {
+  const {correctedStation} = await import('../../packages/data/corrections.mjs');
+  const corrections = JSON.parse(readFileSync(new URL('../../packages/data/station-corrections.json', import.meta.url), 'utf8'));
+  const snapshot = readFileSync(new URL('../../packages/data/canada-stations.jsonl', import.meta.url), 'utf8').trim().split('\n').map(JSON.parse);
+  for (const correction of corrections) {
+    const original = snapshot.find(s => s.id === correction.station_id);
+    assert.ok(original);
+    const updated = correctedStation(original);
+    assert.equal(updated.brand, 'Tempo');
+    assert.equal(updated.id, original.id);
+    assert.equal(updated.latitude, original.latitude);
+    assert.equal(updated.longitude, original.longitude);
+    assert.equal(stationBrand(updated).brandKey, 'tempo');
+    assert.equal(correctedStation({...original, name: 'New upstream name'}).name, 'New upstream name');
+    assert.equal(correctedStation({...original, latitude: original.latitude + .01}).name, original.name);
+  }
+  const body = await (await worker.fetch(get('/api/v1/stations?lat=51.047&lon=-114.143&radius=10000'), database())).json();
+  const bowTrail = body.stations.find(s => s.id === 'osm-node-266330515');
+  assert.equal(bowTrail.name, 'Tempo, Bow Trail');
+  assert.equal(bowTrail.prices.regular, null);
+  assert.match(bowTrail.correction_source_url, /^https:\/\/www.tempo.crs\//);
+});

@@ -3,7 +3,8 @@
   "imageHosts": [
     "thumb.wikimedia.org",
     "www.fuel.crs",
-    "www.shell.ca"
+    "www.shell.ca",
+    "www.tempo.crs"
   ],
   "brands": [
     {
@@ -161,6 +162,16 @@
       "logoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c0/United_Farmers_of_Alberta_Logo.svg/250px-United_Farmers_of_Alberta_Logo.svg.png",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:United_Farmers_of_Alberta_Logo.svg",
       "website": "https://www.ufa.com/"
+    },
+    {
+      "key": "tempo",
+      "name": "Tempo",
+      "aliases": [
+        "Tempo"
+      ],
+      "logoUrl": "https://www.tempo.crs/TempoThemeStatic/themes/TempoTheme/images/tempo-logo-blue.png",
+      "sourceUrl": "https://www.tempo.crs/sites/tempo",
+      "website": "https://www.tempo.crs/"
     }
   ]
 }

@@ -18,7 +18,7 @@ const storage = {
 // Retire the old, finer-grained area keys. New saved centres are rounded to
 // hundredths of a degree (roughly a kilometre), never a saved GPS fix.
 storage.remove('areas');
-const logoHosts=new Set(['thumb.wikimedia.org','www.fuel.crs','www.shell.ca']);
+const logoHosts=new Set(['thumb.wikimedia.org','www.fuel.crs','www.shell.ca','www.tempo.crs']);
 const failedLogos=new Set();
 function logoURL(value) {
   try { const url=new URL(value);return url.protocol==='https:'&&logoHosts.has(url.hostname)&&!url.username&&!url.password ? url.href : null; } catch { return null; }

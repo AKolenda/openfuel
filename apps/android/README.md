@@ -1,6 +1,6 @@
 # Android · Kotlin / Jetpack Compose
 
-A native Android app with MapLibre's native OpenGL map and real OpenStreetMap station
+A Kotlin/Compose Android app with a bundled Leaflet map in an isolated WebView and real OpenStreetMap station
 coordinates. On first arrival, the app explains location use and requests Android's foreground
 precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
 Declining permission offers Canadian city search. The current search area is always labelled;
@@ -15,7 +15,7 @@ The public HTTPS API is `https://openfuel.ca/api/v1`. Stations without a price r
 and reportable. Prices are actual community submissions, labelled **unverified**, with report
 age. No invented starting prices or sample stations appear. Confirm prices at the pump.
 Directions open the station's actual coordinates. Search, fuel grades, sorting, favorites,
-Cards/List layouts and report forms are native Compose controls, with no WebView.
+Cards/List layouts and report forms are native Compose controls. Only the map uses WebView; no hosted web page or Metro server is required.
 
 The last chosen city or area and its real stations appear immediately on reopening while the
 network and foreground location refresh. A later GPS fix cannot replace a newer city/map
@@ -25,19 +25,15 @@ Offline states explicitly identify saved data. Failed or unacknowledged reports 
 retry IDs prevent duplicate writes. Suggestions remain clearly labelled local drafts.
 
 Map tiles are fetched on demand from OpenStreetMap, with visible attribution, an app-specific
-User-Agent and HTTP caching. Tile prefetch and bulk/offline download are not enabled. This
+User-Agent and HTTP caching. A one-tile viewport buffer is used; bulk/offline downloading is not enabled. This
 community tile service has usage limits and no availability guarantee; plan a supported tile
 provider or self-hosting before large-scale adoption. There are no paid map keys or analytics.
 
-Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell and
-Co-op, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
-bundled or hosted by OpenFuel. One native Canvas overlay draws cached brand/price markers,
-culls offscreen stations and hit-tests taps against at least 44 dp targets. Camera movement
-reuses marker art instead of rebuilding GeoJSON and a GPU sprite atlas.
+Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
+bundled or hosted by OpenFuel. The bundled map renderer anchors cached brand/price markers geographically and handles station taps. Camera movement reuses marker art within the same layer as the map tiles. Prices appear above the brand icon.
 
 The approved curved F is used in the launcher and header. Location, fuel grades and Saved
-share one opaque row. Drag the station sheet fully down to browse the whole map; **Show
-stations** restores it. Recenter, information and **Search this area** are stacked in that
+share one opaque row. Drag the station sheet fully down to browse the whole map; **Show station list** restores it into List view. Recenter, information and **Search this area** are stacked in that
 order. Status-bar icons remain dark on the app's light surface even in Android dark mode.
 
 ## Build
@@ -95,5 +91,5 @@ Previous generated sample fixtures remain solely as isolated unit-test inputs an
 reference assets. They are never selected by the app's startup or live repository.
 
 Map/data attribution: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
-ODbL. [MapLibre Android](https://maplibre.org/maplibre-native/android/examples/getting-started/).
+ODbL. [Leaflet](https://leafletjs.com/) is bundled with its BSD-2-Clause licence.
 [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).

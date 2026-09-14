@@ -36,6 +36,7 @@ import androidx.compose.ui.layout.ContentScale
 import android.graphics.Bitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -116,7 +117,7 @@ private fun OpenFuelApp() {
     val scope = rememberCoroutineScope()
     val unavailable = stringResource(R.string.maps_unavailable)
     LaunchedEffect(Unit) { if (loadedDrafts.isFailure) snackbar.showSnackbar(context.getString(R.string.local_storage_error)) }
-    fun refresh(next: SearchPoint = point, explicit: Boolean = true) {
+    fun refresh(next: SearchPoint = point, explicit: Boolean = true, recenter: Boolean = true) {
         if (explicit) selectionVersion++
         val version = ++refreshVersion
         hasSearchArea = true
@@ -125,7 +126,7 @@ private fun OpenFuelApp() {
         point = next
         repository.rememberArea(next)
         browsePoint = null
-        if (changedArea || explicit) centerRequest++
+        if (recenter && (changedArea || explicit)) centerRequest++
         if (changedArea) stations = emptyList()
         refreshJob = scope.launch {
             syncing = true
@@ -206,7 +207,7 @@ private fun OpenFuelApp() {
                         Text(stringResource(R.string.fuel_nearby), fontSize = 23.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         Row(Modifier.clip(RoundedCornerShape(11.dp)).background(Color(DesignTokens.SOFT)).padding(3.dp)) {
                             listOf(true, false).forEach { mode ->
-                                TextButton(onClick = { cards = mode }, modifier = Modifier.height(32.dp).testTag(if (mode) "layout-cards" else "layout-list"),
+                                TextButton(onClick = { cards = mode }, modifier = Modifier.height(32.dp).semantics { this.selected = cards == mode }.testTag(if (mode) "layout-cards" else "layout-list"),
                                     contentPadding = PaddingValues(horizontal = 9.dp, vertical = 0.dp),
                                     colors = ButtonDefaults.textButtonColors(containerColor = if (cards == mode) Color.White else Color.Transparent)) {
                                     Icon(if (mode) Icons.Default.ViewAgenda else Icons.Default.ViewList, null, Modifier.size(13.dp))
@@ -250,8 +251,8 @@ private fun OpenFuelApp() {
                 LiveMap(visible, grade, bestId, point, devicePoint, centerRequest, brandLogos, onMove = { moved ->
                     val area = moved.takeIf { kotlin.math.abs(it.latitude - point.latitude) + kotlin.math.abs(it.longitude - point.longitude) > .004 }
                     if (area != null) selectionVersion++
-                    browsePoint = area
-                }, modifier = Modifier.fillMaxSize().padding(bottom = sheetInset), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
+                    browsePoint = moved
+                }, modifier = Modifier.fillMaxSize().padding(bottom = sheetInset).testTag("station-map"), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
                 Column(Modifier.padding(16.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), shadowElevation = 5.dp) {
                         Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 15.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -292,22 +293,36 @@ private fun OpenFuelApp() {
                         }
                     }
                 }
-                Column(Modifier.align(Alignment.BottomEnd).padding(end = 15.dp, bottom = sheetInset+16.dp), horizontalAlignment = Alignment.End) {
-                    FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.size(48.dp).testTag("use-location")) {
-                        if (locating) CircularProgressIndicator(Modifier.size(20.dp)) else Icon(Icons.Default.MyLocation, "Use my location")
-                    }
-                    FilledTonalIconButton(onClick = { menu = Menu.ABOUT }, modifier = Modifier.size(48.dp).testTag("map-info")) { Icon(Icons.Default.Info, stringResource(R.string.about)) }
-                    browsePoint?.let { area ->
-                        Button(onClick = { refresh(area) }, modifier = Modifier.heightIn(min = 48.dp).testTag("search-map-area")) { Text("Search this area") }
-                    }
-                }
-                if (sheetHidden) FilledTonalButton(onClick = { scope.launch { stationSheet.partialExpand() } },
-                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 15.dp, bottom = 24.dp).testTag("show-stations")) {
-                    Icon(Icons.Default.LocalGasStation, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Show stations")
-                }
                 Text("© OpenStreetMap contributors", fontSize = 10.sp, color = Ink,
                     modifier = Modifier.align(Alignment.BottomStart).padding(start = 15.dp, bottom = sheetInset+80.dp).background(Color.White.copy(alpha = .9f), RoundedCornerShape(5.dp)).clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(5.dp))
             }
+        }
+        // These controls belong to the screen, not the scaffold's moving sheet/body.
+        // Keep them above the native map and outside gesture/navigation-bar overlap.
+        if (stationSheet.currentValue != SheetValue.Expanded && stationSheet.targetValue != SheetValue.Expanded) {
+            Column(Modifier.align(Alignment.BottomEnd).navigationBarsPadding()
+                .padding(end = 15.dp, bottom = sheetInset + 16.dp), horizontalAlignment = Alignment.End) {
+                FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.size(48.dp).testTag("use-location")) {
+                    if (locating) CircularProgressIndicator(Modifier.size(20.dp)) else Icon(Icons.Default.MyLocation, "Use my location")
+                }
+                FilledTonalIconButton(onClick = { menu = Menu.ABOUT }, modifier = Modifier.size(48.dp).testTag("map-info")) {
+                    Icon(Icons.Default.Info, stringResource(R.string.about))
+                }
+                Button(onClick = {
+                    val area = (browsePoint ?: point).copy(label = "Map area", source = SearchSource.MAP)
+                    refresh(area, recenter = false)
+                }, enabled = !syncing, modifier = Modifier.heightIn(min = 48.dp).testTag("search-map-area")) {
+                    Text(if (syncing) "Searching…" else if (syncState == "offline") "Retry area search" else "Search this area")
+                }
+            }
+        }
+        if (sheetHidden) FilledTonalButton(onClick = {
+            cards = false
+            scope.launch { stationSheet.partialExpand() }
+        }, modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 144.dp)
+            .heightIn(min = 48.dp).testTag("show-stations")) {
+            Icon(Icons.Default.KeyboardArrowUp, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp)); Text("Show station list")
         }
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },

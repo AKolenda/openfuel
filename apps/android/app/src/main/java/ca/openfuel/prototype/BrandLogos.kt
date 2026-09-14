@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 internal fun allowedBrandLogoUrl(value: String?): String? = value?.takeIf {
     it.length <= 1024 && runCatching {
         val uri = URI(it)
-        uri.scheme == "https" && uri.host in setOf("thumb.wikimedia.org", "www.fuel.crs", "www.shell.ca") &&
+        uri.scheme == "https" && uri.host in setOf("thumb.wikimedia.org", "www.fuel.crs", "www.shell.ca", "www.tempo.crs") &&
             uri.userInfo == null && (uri.port == -1 || uri.port == 443) && uri.fragment == null
     }.getOrDefault(false)
 }

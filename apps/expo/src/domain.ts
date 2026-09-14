@@ -82,7 +82,7 @@ export function safeLogoUrl(value: unknown): string | null {
   try {
     const url = new URL(value);
     return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
-      ['thumb.wikimedia.org', 'www.fuel.crs', 'www.shell.ca'].includes(url.hostname)
+      ['thumb.wikimedia.org', 'www.fuel.crs', 'www.shell.ca','www.tempo.crs'].includes(url.hostname)
       ? url.href : null;
   } catch { return null; }
 }

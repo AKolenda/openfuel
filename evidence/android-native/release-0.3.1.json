@@ -1,0 +1,25 @@
+{
+  "version": "0.3.1-live",
+  "version_code": 5,
+  "bytes": 3779165,
+  "sha256": "2e0cb1ccc082233d6d82680b181397edffbebfd81a47adbc2924efb438975d5a",
+  "api": "https://openfuel.ca/api/v1",
+  "min_sdk": 26,
+  "debug_signed": true,
+  "certificate_sha256": "be7334a1706de518819866752772c2536ce0b7f687c8673925a3c49dbea5be87",
+  "cleartext": false,
+  "renderer": "Bundled Leaflet in WebView; native Compose interface",
+  "unit_tests_passed": 8,
+  "instrumentation_passed": 5,
+  "instrumentation_skipped": 1,
+  "regressions": [
+    "Cards -> hide -> physically tap Show station list -> List",
+    "Real swipe -> new query area and changed station IDs",
+    "Search preserves camera and zoom",
+    "Marker geographic anchor remains within 2 CSS pixels during animated pan",
+    "Test-only price above brand; no production writes"
+  ],
+  "data_audit_records": 12543,
+  "reviewed_tempo_corrections": 17,
+  "swift": "Source updated; Swift toolchain and Apple SDK unavailable in this environment; prior portable evidence is historical."
+}

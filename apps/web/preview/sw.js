@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
-const CACHE='openfuel-live-shell-v4';
+const CACHE='openfuel-live-shell-v5';
 const SHELL=['./','./index.html','./app.js','./styles.css','./vendor/leaflet.js','./vendor/leaflet.css','/brand/openfuel-wordmark-light.svg','/favicon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>(key.startsWith('openfuel-preview-')||key.startsWith('openfuel-live-shell-'))&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));

@@ -27,6 +27,58 @@ class NativeScreensTest {
     @get:Rule val permission = GrantPermissionRule.grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
 
+    private fun evaluate(scenario: ActivityScenario<MainActivity>, script: String): String {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result = ""
+        scenario.onActivity { activity ->
+            val web = activity.window.decorView.findViewWithTag<android.webkit.WebView>("openfuel-map-webview")
+            web.evaluateJavascript(script) { result = it; latch.countDown() }
+        }
+        assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        return result
+    }
+
+    @Test fun panSearchAndCardsSheetRestoreStayUsable() {
+        runBlocking { StationRepository(context).refresh(SearchPoint(51.0447, -114.0719, "Calgary · chosen city", SearchSource.CITY)) }
+        context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            compose.waitUntil(20_000) { evaluate(scenario, "typeof window.setStations") == "\"function\"" }
+            compose.waitUntil(40_000) { evaluate(scenario, "markers.size").toInt() > 0 }
+            compose.onNodeWithTag("layout-cards").performTouchInput { click() }
+            compose.onNodeWithTag("layout-cards").assertIsSelected()
+            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("show-stations").assertIsDisplayed().performTouchInput { click() }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isEmpty() }
+            compose.onNodeWithTag("layout-list").assertIsSelected()
+            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
+            assertTrue("Map has a usable viewport: " + evaluate(scenario, "JSON.stringify(map.getSize())"), evaluate(scenario, "map.getSize().y").toDouble() > 200)
+            val before = evaluate(scenario, "map.getCenter().lng").toDouble()
+            val previousIDs = StationRepository(context).initial().stations.map { it.id }.toSet()
+            compose.onNodeWithTag("station-map").performTouchInput { swipe(start = Offset(width*.2f,height*.5f), end = Offset(width*.8f,height*.5f), durationMillis = 650) }
+            compose.waitUntil(5_000) { kotlin.math.abs(evaluate(scenario, "map.getCenter().lng").toDouble() - before) > .02 }
+            // Stop any inertial scroll before recording the precise camera searched.
+            evaluate(scenario, "map.stop();true")
+            val longitude = evaluate(scenario, "map.getCenter().lng").toDouble()
+            val zoom = evaluate(scenario, "map.getZoom()").toDouble()
+            compose.onNodeWithTag("search-map-area").assertIsDisplayed().performTouchInput { click() }
+            compose.waitUntil(40_000) { StationRepository(context).initial().stations.map { it.id }.toSet() != previousIDs && StationRepository(context).initial().point.source == SearchSource.MAP }
+            assertEquals(longitude, StationRepository(context).initial().point.longitude, .0051)
+            assertEquals(longitude, evaluate(scenario, "map.getCenter().lng").toDouble(), .00001)
+            assertEquals(zoom, evaluate(scenario, "map.getZoom()").toDouble(), 0.0)
+            compose.onNodeWithTag("show-stations").assertIsDisplayed()
+            // Test-only marker, never sent to the API: price is above the logo and the
+            // logo centre stays anchored throughout an animated pan and zoom.
+            evaluate(scenario, """window.setStations({stations:[{id:'visual-test',name:'Test only',lat:map.getCenter().lat,lon:map.getCenter().lng,price:1499}],logos:{},location:null});true""")
+            assertEquals("true", evaluate(scenario, "document.querySelector('.station-price').getBoundingClientRect().bottom <= document.querySelector('.station-brand').getBoundingClientRect().top"))
+            evaluate(scenario, """window.maxDrift=0;window.trackAnchor=()=>{const item=markers.get('visual-test'),p=map.latLngToContainerPoint(item.marker.getLatLng()),r=document.querySelector('.station-brand').getBoundingClientRect(),m=map.getContainer().getBoundingClientRect();window.maxDrift=Math.max(window.maxDrift,Math.abs(r.x+r.width/2-m.x-p.x),Math.abs(r.y+r.height/2-m.y-p.y));};map.on('move',trackAnchor);map.panBy([100,50],{animate:true,duration:.4});true""")
+            compose.waitUntil(5_000) { evaluate(scenario, "!map._panAnim._inProgress") == "true" }
+            assertTrue("Marker follows the map frame", evaluate(scenario, "window.maxDrift").toDouble() <= 2.0)
+            screenshot("android-pan-search-restorable-sheet")
+        }
+    }
+
     @Test fun chosenCityRestoresAndStationSheetCanFullyHide() {
         val city = SearchPoint(51.0447, -114.0719, "Calgary · chosen city", SearchSource.CITY)
         val repository = StationRepository(context)

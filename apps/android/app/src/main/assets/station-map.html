@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https://tile.openstreetmap.org; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<style>/* LEAFLET_CSS */
+html,body{height:100%;width:100%;margin:0;background:#edf1ea}#map{position:fixed;inset:0}
+.station-pin{background:none;border:0}.station-chip{box-sizing:border-box;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid #285b43;border-radius:13px;background:white;color:#285b43;font:700 15px system-ui;box-shadow:0 1px 3px #0003}
+.station-chip.best{border-width:2px}.station-brand{height:29px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.leaflet-container .station-brand img{width:29px;height:29px;max-width:29px;object-fit:contain}.station-price{height:23px;line-height:23px}
+</style></head><body><div id="map" aria-label="Fuel station map"></div>
+<script>/* LEAFLET_JS */</script><script>
+const map=L.map('map',{zoomControl:false,attributionControl:false,zoomSnap:0.5}).setView([56.13,-106.35],3);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,updateWhenIdle:true,keepBuffer:1}).addTo(map);
+const markers=new Map();let locationDot=null;
+map.on('moveend',()=>{const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);});
+window.setArea=(lat,lon,overview)=>map.setView([lat,lon],overview?3:12.5,{animate:false});
+window.setStations=data=>{
+ const keep=new Set(data.stations.map(s=>s.id));
+ for(const [id,item] of markers){if(!keep.has(id)){item.marker.remove();markers.delete(id);}}
+ for(const s of data.stations){
+  const logo=data.logos[s.logo],known=s.price!=null,key=JSON.stringify([s.name,s.price,logo,s.best]);
+  let item=markers.get(s.id);
+  if(!item){const marker=L.marker([s.lat,s.lon],{title:s.name,keyboard:true}).on('click',()=>OpenFuelMap.selected(s.id));item={marker,key:null};markers.set(s.id,item);}
+  item.marker.setLatLng([s.lat,s.lon]);
+  if(item.key!==key){
+   const chip=document.createElement('div');chip.className='station-chip'+(s.best?' best':'');
+   if(known){const price=document.createElement('div');price.className='station-price';price.textContent=(s.price/10).toFixed(1);chip.append(price);}
+   const brand=document.createElement('div');brand.className='station-brand';brand.textContent=s.name.slice(0,1).toUpperCase()||'F';
+   if(logo){const img=document.createElement('img');img.alt='';img.src=logo;brand.replaceChildren(img);}
+   chip.append(brand);
+   const w=known?64:42,h=known?66:40;
+   // The brand centre is always the geographic anchor; adding a price grows upward.
+   item.marker.setIcon(L.divIcon({className:'station-pin',html:chip,iconSize:[w,h],iconAnchor:[w/2,h-20]}));
+   item.marker.addTo(map);item.marker.getElement().setAttribute('aria-label',s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));item.key=key;
+  }
+ }
+ if(data.location){const p=[data.location.lat,data.location.lon];if(locationDot)locationDot.setLatLng(p);else locationDot=L.circleMarker(p,{radius:8,color:'white',weight:3,fillColor:'#267bce',fillOpacity:1}).addTo(map);}
+ else if(locationDot){locationDot.remove();locationDot=null;}
+};
+new ResizeObserver(()=>map.invalidateSize({pan:false})).observe(document.getElementById('map'));
+OpenFuelMap.ready();
+</script></body></html>

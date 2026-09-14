@@ -241,6 +241,6 @@
   "javascript_errors": [],
   "external_requests": [],
   "mock_map_tile_requests": 339,
-  "mock_brand_logo_requests": 17,
+  "mock_brand_logo_requests": 16,
   "scope": "Built UI at desktop/mobile widths, with denied/granted/pending location, intercepted city/station/report API and map tile transport, reporting validation, favorites and offline cache. Test prices never reach a real backend. Live backend integration and genuine map screenshots are recorded separately. Not native app screenshots."
 }

@@ -79,3 +79,41 @@ remote schema and import. Seed SQL upserts geography/reference records and does
 not insert, overwrite or delete community price reports. It does not prune
 stations removed from a later upstream snapshot; removals need a deliberate
 review and migration that preserves report history.
+
+## Directory review, September 2026
+
+The snapshot's recent download date is not a verification date for each station.
+A whole-directory audit of all 12,543 entries found 4,270 missing addresses,
+621 unnamed stations, 366 pairs within 25 metres that need duplicate review,
+11,782 entries without a recorded survey date, and 188 dated surveys older than
+two years. Six fuel-tag records need review for road-vehicle fuel coverage.
+These are review flags, not grounds for automatic deletion or claims of closure.
+The reproducible audit and every flagged ID are in
+[`evidence/data/station-audit-2026-09-14.json`](../../evidence/data/station-audit-2026-09-14.json).
+
+Tempo's official locator was checked against the directory. Seventeen matching
+former-Husky OSM records have reviewed name/brand corrections in
+`station-corrections.json`, each with the original identity, coordinates, check
+date and direct source link. These represent OSM records, not necessarily 17
+distinct forecourts. They are factual corrections based on the
+[official Tempo locator](https://www.tempo.crs/sites/tempo/locations).
+The original OSM snapshot, station IDs, coordinates and community reports remain
+intact. The API applies a correction only while the original name, brand and
+coordinates still match; a subsequent upstream change requires renewed review.
+The API exposes `original_name`, `identity_checked_at` and
+`correction_source_url` for corrected records. Brand logos then use the corrected
+identity. This does not verify opening hours or pump prices.
+
+The remaining 230 Husky-tagged entries need individual checks: former Husky sites
+have changed to several brands. Ambiguous neighbouring sites must be checked by
+address/forecourt identity before any merge or rename. Broad automatic brand
+replacement would introduce errors. Other brands still need operator-by-operator
+verification; the audit does not establish every station as current.
+
+```sh
+python3 tools/audit_station_data.py --osm .local/imports/canada-fuel-osm.json --output .local/station-audit.json
+```
+
+Run this audit after each import, review identity corrections against upstream
+changes, and keep the dated review evidence. No current pump-price feed is inferred
+from a retailer directory or basemap.

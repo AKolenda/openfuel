@@ -8,16 +8,16 @@ Cloudflare serves the website, API, source archive and compact Android APK.
 | --- | --- |
 | Cloudflare D1 | Live schema applied locally and remotely; 12,543 real stations, 510 city entries and 54 dated monthly averages imported |
 | Pump data | Zero seeded station prices; community observations remain separate from regional averages |
-| Live Worker and SQLite | 25 tests passed: real geography, required location, city search, reports, retries, ordering, validation and limits |
+| Live Worker and SQLite | 26 tests passed: real geography, required location, city search, reports, retries, ordering, validation and limits |
 | Legacy edge regression | 56 tests passed |
 | Repository, Python API and policy | 125 tests passed (60 repository, 45 reference API, 20 policy) |
 | Local API | Read-only checks passed for Edmonton, Calgary, Toronto, Montréal, Vancouver and Yellowknife; see `evidence/live-api-local.json` |
 | Worker deployment | Wrangler dry run and deployment passed; `openfuel.ca` custom domain and TLS verified |
 | Public API/downloads | Six-city read-only smoke passed; downloaded APK/source matched local bytes. See `evidence/live-api-production.json` and `evidence/live-downloads.json` |
 | Web | 235 browser checks passed across desktop and small mobile screens; real OSM tiles and city fallback verified separately, including the deployed domain. See `evidence/browser-results.json` |
-| Native Android | Eight JVM tests and four public-API emulator checks passed; one local-report test skipped. Version 0.3.0-live, code 4; compact HTTPS universal APK is 20,128,593 bytes, debug signed, cleartext disabled. Exact artifact smoke verifies remote logo markers, tap details, GPS, compact controls and sheet hide/restore. See `evidence/android-native/release-0.3.0.json` |
+| Native Android | Eight JVM and five public-API emulator checks passed; one local-only report test skipped. Version 0.3.1-live/code 5; 3,779,165-byte HTTPS APK, debug signed, cleartext disabled. Real gesture tests verify new-area search, stable marker anchors and Cards-to-List sheet restoration. See `evidence/android-native/release-0.3.1.json` |
 | Expo | Typecheck, six domain tests, six embedded-map browser checks and Android export passed for current source. Prior Expo Go device evidence predates this branding/layout update; no new native Expo Go run is claimed |
-| Swift | 30 portable tests passed, one opt-in skip; source syntax, localizations and assets checked. Active source uses live API, MapKit and coarse saved areas; Apple SDK/device verification remains outstanding |
+| Swift | Source updated for price-above-logo markers, List restoration and Tempo logos. Prior portable results: 30 passed, one skip. Current host has no Swift compiler; Apple SDK/device verification still requires a Mac |
 | Source publication | Source and archive Gitleaks scans passed with no leaked credentials; reachable Git history is scanned before public push. See `PUBLICATION_AUDIT.md` |
 
 The production verification command is read-only:

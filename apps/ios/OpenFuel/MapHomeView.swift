@@ -43,7 +43,7 @@ struct MapHomeView: View {
                     }.padding(.trailing, 14)
                     Spacer()
                     if sheetHidden {
-                        Button { withAnimation { sheetHidden = false; expanded = false } } label: {
+                        Button { withAnimation { sheetHidden = false; expanded = false; model.preferences.cards = false } } label: {
                             Label(tr("show_stations"), systemImage: "list.bullet").font(.callout.weight(.semibold)).padding(.horizontal, 18).frame(height: 48)
                         }.background(.white, in: Capsule()).padding(.bottom, 22).accessibilityIdentifier("show-stations")
                     }
