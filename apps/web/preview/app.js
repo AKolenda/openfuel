@@ -24,8 +24,8 @@ function logoURL(value) {
   try { const url=new URL(value);return url.protocol==='https:'&&logoHosts.has(url.hostname)&&!url.username&&!url.password ? url.href : null; } catch { return null; }
 }
 function brandBadge(station,marker=false) {
+  // Brands without a curated logo show their initials, on the map as in the list.
   const url=logoURL(station.brandLogoUrl),fallback=esc(station.name.slice(0,2).toUpperCase());
-  if(marker&&!url)return '';
   return `<span class="${marker?'marker-brand':'station-initial'} brand-badge" aria-hidden="true"><span class="brand-fallback">${fallback}</span>${url&&!failedLogos.has(url)?`<img data-brand-logo src="${esc(url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;
 }
 document.addEventListener('load',event=>{if(event.target.matches?.('img[data-brand-logo]'))event.target.parentElement.classList.add('logo-loaded');},true);
@@ -196,7 +196,7 @@ function render() {
   }
   for (const s of list) {
     const price=s.prices[state.fuel], title=`${s.name}: ${price==null ? 'no reported price' : `${cents(price)} cents per litre, unverified`}`;
-    const badge=brandBadge(s,true),width=badge?86:58;
+    const badge=brandBadge(s,true),width=86;
     const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${badge}<span>${price==null?'Fuel':cents(price)}</span></span>`,iconSize:[width,36],iconAnchor:[width/2,40]})});
     marker.on('click',()=>openDetails(s.id));marker.addTo(markerLayer);
     marker.getElement()?.setAttribute('aria-label',title);
