@@ -15,8 +15,10 @@ Third-party logos, company marks, Lucide/Material icons and library/toolchain de
 from our licence grant. Their applicable notices and licences must be preserved. Brand artwork is not
 relicensed by using it in an AGPL UI. Imported data retains separate rights: `packages/data/canada-stations.jsonl` is ODbL-1.0,
 GeoNames city data is CC-BY-4.0, and Statistics Canada references follow its Open Licence.
-See `packages/data/README.md` for attribution and transformations. Bundled Leaflet includes its
-upstream licence in `apps/web/preview/vendor/Leaflet-LICENSE.txt`.
+See `packages/data/README.md` for attribution and transformations. Bundled Leaflet (BSD-2-Clause),
+MapLibre GL JS (BSD-3-Clause) and its Leaflet binding (ISC) include their upstream licences in
+`apps/web/preview/vendor/`. The map style in `packages/map-style` is a fork of OpenFreeMap Liberty:
+its code is BSD-3-Clause and its design, including OpenFuel's changes, is CC-BY-4.0.
 No font binaries, logo downloads, signing keys or native app binaries are bundled in this source archive.
 
 The supplied earlier archives used MPL-2.0 for clients and AGPL-3.0-or-later for some server code.

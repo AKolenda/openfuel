@@ -110,6 +110,7 @@ private fun OpenFuelApp() {
     var savedOnly by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf<Menu?>(null) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var baseMap by remember { mutableStateOf<String?>(null) } // "openfreemap" or "openstreetmap" once shown.
     val draftStore = remember { LocalDraftStore(context) }
     val loadedDrafts = remember { runCatching { draftStore.load() } }
     val drafts = remember { mutableStateListOf<StationProposal>().apply { addAll(loadedDrafts.getOrDefault(emptyList())) } }
@@ -267,7 +268,7 @@ private fun OpenFuelApp() {
                     val area = moved.takeIf { approximateDistanceMetres(point, it.latitude, it.longitude) > 750 }
                     if (area != null) selectionVersion++
                     browsePoint = moved
-                }, modifier = Modifier.fillMaxSize().testTag("station-map"), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
+                }, onBaseMap = { baseMap = it }, modifier = Modifier.fillMaxSize().testTag("station-map"), onSelect = { selectedId = it.id; menu = Menu.DETAIL })
                 Column(Modifier.padding(16.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), shadowElevation = 5.dp) {
                         Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 15.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -324,13 +325,14 @@ private fun OpenFuelApp() {
             Spacer(Modifier.width(6.dp)); Text("Show station list")
         }
         // Required attribution is a quiet edge label, not a floating map action.
-        Text("© OpenStreetMap contributors", fontSize = 9.sp, color = Ink,
+        Text(if (baseMap == "openfreemap") "OpenFreeMap © OpenMapTiles · Style after CARTO Voyager · © OpenStreetMap contributors"
+            else "© OpenStreetMap contributors", fontSize = 9.sp, color = Ink,
             modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().background(Color.White.copy(alpha = .85f))
                 .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp))
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
         title = { Text("Find fuel around you") },
-        text = { Text("Use your foreground location to find real nearby stations. Your search coordinates go to OpenFuel; map tiles are supplied by OpenStreetMap. No background tracking. You can also choose a city.") },
+        text = { Text("Use your foreground location to find real nearby stations. Your search coordinates go to OpenFuel; map tiles are supplied by OpenFreeMap. No background tracking. You can also choose a city.") },
         confirmButton = { TextButton(onClick = { requestLocation() }, modifier = Modifier.testTag("allow-location")) { Text("Use my location") } },
         dismissButton = { TextButton(onClick = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply(); menu = Menu.LOCATION }) { Text("Choose a city") } })
     if (menu != null) {

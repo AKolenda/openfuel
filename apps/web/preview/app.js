@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: AGPL-3.0-only
  * Real station map. Leaflet 1.9.4 is bundled with its BSD-2-Clause licence.
- * OSM tiles are fetched only for the visible map and use normal HTTP caching.
+ * Map tiles are fetched only for the visible map and use normal HTTP caching.
  * Prices are integer thousandths of CAD/litre; shown as Canadian cents/litre.
  */
 (() => {
@@ -38,14 +38,25 @@ if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { 
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
 L.control.zoom({position:'bottomright'}).addTo(map);
+const tileOptions = {maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1};
+// Map tiles are not stored in our service worker, bulk downloaded, or prefetched.
+function watchTiles(layer) {
+  const warn = failed => { $('tile-warning').hidden = !failed; };
+  const gl = layer.getMaplibreMap?.();
+  if (gl) {
+    gl.on('error', () => warn(true));
+    gl.on('sourcedata', event => { if (event.tile) warn(false); });
+  } else {
+    layer.on('tileerror', () => warn(true));
+    layer.on('tileload', () => warn(false));
+  }
+  return layer;
+}
+baseMapLayer(map, 'map/openfuel-style.json', tileOptions, (layer, name) => {
+  watchTiles(layer);
+  $('tile-provider').textContent = name === 'openfreemap' ? 'OpenFreeMap' : 'OpenStreetMap';
+});
 L.control.scale({position:'bottomleft', imperial:false}).addTo(map);
-const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1,
-  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
-}).addTo(map);
-// Public OSM tiles are not stored in our service worker, bulk downloaded, or prefetched.
-tiles.on('tileerror', () => { $('tile-warning').hidden = false; });
-tiles.on('tileload', () => { $('tile-warning').hidden = true; });
 const markerLayer = L.layerGroup().addTo(map), locationLayer = L.layerGroup().addTo(map);
 function mapFocusPoint() {
   const size=map.getSize(),panel=document.querySelector('.results-panel').getBoundingClientRect();

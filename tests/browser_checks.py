@@ -166,6 +166,13 @@ def main():
                     elif parsed.hostname=='tile.openstreetmap.org':
                         MAP_TILES.append(url)
                         route.fulfill(status=200,content_type='image/png',body=TILE)
+                    elif parsed.hostname=='tiles.openfreemap.org':
+                        # OpenFreeMap base map: tile index, empty vector tiles, glyphs and sprites.
+                        MAP_TILES.append(url)
+                        if parsed.path=='/planet':route.fulfill(status=200,content_type='application/json',body=json.dumps({'tiles':['https://tiles.openfreemap.org/planet/test/{z}/{x}/{y}.pbf'],'minzoom':0,'maxzoom':14}))
+                        elif parsed.path.endswith('.json'):route.fulfill(status=200,content_type='application/json',body='{}')
+                        elif parsed.path.endswith('.png'):route.fulfill(status=200,content_type='image/png',body=TILE)
+                        else:route.fulfill(status=200,content_type='application/x-protobuf',body=b'')
                     elif parsed.hostname=='thumb.wikimedia.org':
                         BRAND_REQUESTS.append(url)
                         if 'missing' in parsed.path:route.abort()

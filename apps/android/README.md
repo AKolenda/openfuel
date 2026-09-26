@@ -1,6 +1,6 @@
 # Android · Kotlin / Jetpack Compose
 
-A Kotlin/Compose Android app with a bundled Leaflet map in an isolated WebView and real OpenStreetMap station
+A Kotlin/Compose Android app with a bundled Leaflet and MapLibre map in an isolated WebView and real OpenStreetMap station
 coordinates. On first arrival, the app explains location use and requests Android's foreground
 precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
 Declining permission offers Canadian city search. The current search area is always labelled;
@@ -24,10 +24,12 @@ recomputed from that coarse area, and older snapshots are migrated. Precise GPS 
 Offline states explicitly identify saved data. Failed or unacknowledged reports never change displayed prices;
 retry IDs prevent duplicate writes. Suggestions remain clearly labelled local drafts.
 
-Map tiles are fetched on demand from OpenStreetMap, with visible attribution, an app-specific
-User-Agent and HTTP caching. A one-tile viewport buffer is used; bulk/offline downloading is not enabled. This
-community tile service has usage limits and no availability guarantee; plan a supported tile
-provider or self-hosting before large-scale adoption. There are no paid map keys or analytics.
+The base map is OpenStreetMap data from OpenFreeMap's vector tiles, drawn by the bundled MapLibre in
+OpenFuel's style ([packages/map-style](../../packages/map-style/README.md)). Tiles load on demand with
+visible attribution, an app-specific User-Agent and HTTP caching; bulk/offline downloading is not enabled.
+OpenFreeMap is free and has no usage limits, but is donation-funded with no availability guarantee.
+Without WebGL, or if OpenFreeMap refuses its tiles, the map uses OpenStreetMap's raster tiles, which
+have usage limits. There are no analytics.
 
 Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
 bundled or hosted by OpenFuel. The bundled map renderer anchors cached brand/price markers geographically and handles station taps. Camera movement reuses marker art within the same layer as the map tiles. Prices appear above the brand icon.
@@ -101,5 +103,7 @@ Previous generated sample fixtures remain solely as isolated unit-test inputs an
 reference assets. They are never selected by the app's startup or live repository.
 
 Map/data attribution: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
-ODbL. [Leaflet](https://leafletjs.com/) is bundled with its BSD-2-Clause licence.
+ODbL; [OpenFreeMap](https://openfreemap.org) and [OpenMapTiles](https://www.openmaptiles.org/).
+[Leaflet](https://leafletjs.com/) (BSD-2-Clause), [MapLibre GL JS](https://maplibre.org/) (BSD-3-Clause)
+and its Leaflet binding (ISC) are bundled with their licences.
 [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).

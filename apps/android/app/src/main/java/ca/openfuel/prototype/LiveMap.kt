@@ -17,15 +17,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
+// The base map is OpenFreeMap, with OpenStreetMap raster tiles when WebGL or OpenFreeMap is unavailable.
+private val tileHosts = listOf("tiles.openfreemap.org", "tile.openstreetmap.org")
+
 /** Bundled map code shares one compositor for tiles and geographically anchored logos. */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, brandLogos: Map<String, Bitmap>, onMove: (SearchPoint) -> Unit,
-            modifier: Modifier = Modifier, onSelect: (Station) -> Unit) {
+            onBaseMap: (String) -> Unit = {}, modifier: Modifier = Modifier, onSelect: (Station) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val select by rememberUpdatedState(onSelect)
     val moved by rememberUpdatedState(onMove)
+    val baseMap by rememberUpdatedState(onBaseMap)
     val stationIndex = remember(stations) { stations.associateBy { it.id } }
     val currentStations by rememberUpdatedState(stationIndex)
     var ready by remember { mutableStateOf(false) }
@@ -44,18 +48,27 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                     val uri = request.url
-                    if (uri.scheme == "https" && uri.host == "tile.openstreetmap.org" && (uri.port == -1 || uri.port == 443)) return null
+                    if (uri.scheme == "https" && uri.host in tileHosts && (uri.port == -1 || uri.port == 443)) return null
                     return WebResourceResponse("text/plain", "UTF-8", java.io.ByteArrayInputStream(byteArrayOf()))
                 }
             }
             addJavascriptInterface(MapBridge(
                 ready = { post { ready = true } },
                 moved = { lat, lon -> post { if (FuelCore.validStationPoint(lat, lon)) moved(SearchPoint(lat, lon, "Map area", SearchSource.MAP)) } },
-                selected = { id -> post { currentStations[id]?.let(select) } }
+                selected = { id -> post { currentStations[id]?.let(select) } },
+                base = { name -> post { baseMap(name) } }
             ), "OpenFuelMap")
-            val html = context.assets.open("station-map.html").bufferedReader().use { it.readText() }
-                .replace("/* LEAFLET_CSS */", context.assets.open("leaflet.css").bufferedReader().use { it.readText() })
-                .replace("/* LEAFLET_JS */", context.assets.open("leaflet.js").bufferedReader().use { it.readText() }.replace("</script", "<\\/script"))
+            fun asset(name: String) = context.assets.open(name).bufferedReader().use { it.readText() }
+            val html = asset("station-map.html")
+                .replace("MAP_TILE_ORIGIN", tileHosts.joinToString(" ") { "https://$it" })
+                .replace("MAP_CONNECT_SRC", "https://tiles.openfreemap.org")
+                .replace("/* MAP_CONFIG */", "const mapStyle=${asset("openfuel-style.json").trim().replace("</", "<\\/")};")
+                .replace("/* LEAFLET_CSS */", asset("leaflet.css"))
+                .replace("/* MAPLIBRE_CSS */", asset("maplibre-gl.css"))
+                .replace("/* LEAFLET_JS */", asset("leaflet.js").replace("</script", "<\\/script"))
+                .replace("/* MAPLIBRE_JS */", asset("maplibre-gl.js").replace("</script", "<\\/script"))
+                .replace("/* MAPLIBRE_LEAFLET_JS */", asset("leaflet-maplibre-gl.js").replace("</script", "<\\/script"))
+                .replace("/* BASE_MAP_JS */", asset("base-map.js").replace("</script", "<\\/script"))
             loadDataWithBaseURL("https://openfuel.ca/_native-map/", html, "text/html", null, "https://openfuel.ca/_native-map/")
         }
     }
@@ -107,8 +120,10 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
     AndroidView(factory = { view }, modifier = modifier)
 }
 
-internal class MapBridge(private val ready: () -> Unit, private val moved: (Double, Double) -> Unit, private val selected: (String) -> Unit) {
+internal class MapBridge(private val ready: () -> Unit, private val moved: (Double, Double) -> Unit, private val selected: (String) -> Unit,
+                         private val base: (String) -> Unit) {
     @JavascriptInterface fun ready() = ready.invoke()
     @JavascriptInterface fun moved(latitude: Double, longitude: Double) = moved.invoke(latitude, longitude)
     @JavascriptInterface fun selected(id: String) { if (id.length <= 120) selected.invoke(id) }
+    @JavascriptInterface fun base(name: String) { if (name == "openfreemap" || name == "openstreetmap") base.invoke(name) }
 }

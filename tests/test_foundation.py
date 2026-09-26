@@ -6,7 +6,7 @@ from zipfile import ZipFile
 import pytest
 from tools import project
 from tools.database import deployment_plan, credentials
-from tools.public_config import read_public_config, emit_public_config
+from tools.public_config import read_public_config, emit_public_config, read_donate_url
 ROOT=Path(__file__).resolve().parents[1]
 
 
@@ -39,6 +39,40 @@ def test_public_environment_is_not_arbitrary(tmp_path):
 def test_env_file_is_not_general_shell_code(tmp_path):
     (tmp_path/'.env').write_text('$(printenv)')
     with pytest.raises(ValueError):read_public_config(tmp_path,{})
+
+
+DONATE_TEST_URL='https://ko-fi.com/openfuel?utm=app'
+
+
+def test_donate_url_is_optional(tmp_path):
+    assert read_donate_url(tmp_path,{})==''
+    (tmp_path/'.env').write_text(f'OPENFUEL_PUBLIC_DONATE_URL={DONATE_TEST_URL}\n')
+    assert read_donate_url(tmp_path,{})==DONATE_TEST_URL
+
+
+@pytest.mark.parametrize('value',['http://ko-fi.com/x','https://user:pass@ko-fi.com/x','https://ko-fi.com/"><script>','javascript:alert(1)','//ko-fi.com/x'])
+def test_donate_url_rejects_unsafe_links(tmp_path,value):
+    with pytest.raises(ValueError):read_donate_url(tmp_path,{'OPENFUEL_PUBLIC_DONATE_URL':value})
+
+
+def _built_preview(tmp_path):
+    site=tmp_path/'site';(site/'preview').mkdir(parents=True)
+    (site/'preview/index.html').write_text((ROOT/'apps/web/preview/index.html').read_text())
+    return site
+
+
+def test_site_without_donate_url_has_no_donate_link(tmp_path):
+    site=_built_preview(tmp_path)
+    emit_public_config(tmp_path,site,{})
+    assert (site/'preview/index.html').read_text()==(ROOT/'apps/web/preview/index.html').read_text()
+    assert json.loads((site/'config.json').read_text())['donateURL']==''
+
+
+def test_site_with_donate_url_publishes_it(tmp_path):
+    site=_built_preview(tmp_path)
+    emit_public_config(tmp_path,site,{'OPENFUEL_PUBLIC_DONATE_URL':DONATE_TEST_URL})
+    assert '<meta name="openfuel-donate-url" content="https://ko-fi.com/openfuel?utm=app">' in (site/'preview/index.html').read_text()
+    assert json.loads((site/'config.json').read_text())['donateURL']==DONATE_TEST_URL
 
 
 @pytest.mark.parametrize('name',['.env','.env.production','.dev.vars','production.env','prod.env.local','Local.xcconfig','local.properties','secret.key'])

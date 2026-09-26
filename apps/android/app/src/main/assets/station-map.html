@@ -1,16 +1,21 @@
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https://tile.openstreetmap.org; connect-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: MAP_TILE_ORIGIN; connect-src MAP_CONNECT_SRC; worker-src blob:; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <style>/* LEAFLET_CSS */
+/* MAPLIBRE_CSS */
 html,body{height:100%;width:100%;margin:0;background:#edf1ea}#map{position:fixed;inset:0}
 .station-pin{background:none;border:0}.station-chip{box-sizing:border-box;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid #285b43;border-radius:13px;background:white;color:#285b43;font:700 15px system-ui;box-shadow:0 1px 3px #0003}
 .station-chip.best{border-width:2px}.station-brand{height:29px;display:flex;align-items:center;justify-content:center;font-size:18px}
 .leaflet-container .station-brand img{width:29px;height:29px;max-width:29px;object-fit:contain}.station-price{height:23px;line-height:23px}
 </style></head><body><div id="map" aria-label="Fuel station map"></div>
-<script>/* LEAFLET_JS */</script><script>
+<script>/* LEAFLET_JS */</script><script>/* MAPLIBRE_JS */</script><script>/* MAPLIBRE_LEAFLET_JS */</script>
+<script>/* BASE_MAP_JS */</script><script>
+/* MAP_CONFIG */
 const map=L.map('map',{zoomControl:false,attributionControl:false,zoomSnap:0.5}).setView([56.13,-106.35],3);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,updateWhenIdle:true,keepBuffer:1}).addTo(map);
+// Attribution is drawn natively at the screen edge.
+const tileOptions={maxZoom:19,updateWhenIdle:true,keepBuffer:1};
+baseMapLayer(map,mapStyle,tileOptions,(layer,name)=>OpenFuelMap.base(name));
 const markers=new Map();let locationDot=null,changingArea=false;
 map.on('moveend',()=>{if(!changingArea){const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);}});
 window.setArea=(lat,lon,overview)=>{changingArea=true;map.setView([lat,lon],overview?3:12.5,{animate:false});changingArea=false;};

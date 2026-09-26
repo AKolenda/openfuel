@@ -36,6 +36,7 @@ android {
         versionName = "0.3.2-live"
     }
     sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/vendor"))
+    sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/map"))
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
