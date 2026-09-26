@@ -2,6 +2,10 @@
 // Real Canadian station discovery with public, unverified community pump reports.
 import {correctedStation} from '../../packages/data/corrections.mjs';
 import {stationBrand} from '../../packages/brands/resolve.mjs';
+import metadata from '../../packages/data/metadata.json' with {type: 'json'};
+import marketAverages from '../../packages/data/market-averages.json' with {type: 'json'};
+import brandCatalog from '../../packages/brands/catalog.json' with {type: 'json'};
+import stationCorrections from '../../packages/data/station-corrections.json' with {type: 'json'};
 const grades = new Set(['regular', 'premium', 'diesel']);
 const headers = {
   'content-type': 'application/json; charset=utf-8',
@@ -13,6 +17,73 @@ const headers = {
 const json = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), {status, headers: {...headers, ...extra}});
 class InputError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status; }
+}
+
+// Daily D1 row budget, kept below the Workers Free limits (5M rows read, 100k written per UTC day) so
+// OpenFuel stops with a clear answer before Cloudflare does, and never runs up a bill on a paid plan.
+// Usage is counted per isolate and added to a one-row-per-day table now and then, so it is approximate.
+const budget = {day: '', pendingRead: 0, pendingWritten: 0, read: 0, written: 0, flushedAt: 0, flushing: false, cappedUntil: 0};
+const utcDay = now => new Date(now).toISOString().slice(0, 10);
+const nextUtcMidnight = now => Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1);
+class SpendingCap extends Error {
+  constructor(reason, until) { super(reason); this.reason = reason; this.until = until; }
+}
+function limits(env) {
+  return {read: Number(env.D1_DAILY_READ_BUDGET) || 4_000_000, written: Number(env.D1_DAILY_WRITE_BUDGET) || 80_000};
+}
+function rollDay(now) {
+  const day = utcDay(now);
+  // A new isolate or day flushes on its first metered request, so it learns the shared total at once.
+  if (budget.day !== day) Object.assign(budget, {day, pendingRead: 0, pendingWritten: 0, read: 0, written: 0, flushedAt: 0});
+}
+function checkBudget(env, now = Date.now()) {
+  if (budget.cappedUntil > now) throw new SpendingCap('daily_database_limit', budget.cappedUntil);
+  rollDay(now);
+  const cap = limits(env);
+  if (budget.read + budget.pendingRead >= cap.read || budget.written + budget.pendingWritten >= cap.written) {
+    budget.cappedUntil = nextUtcMidnight(now);
+    throw new SpendingCap('daily_database_budget', budget.cappedUntil);
+  }
+}
+function meter(results) {
+  for (const result of [results].flat()) {
+    budget.pendingRead += Number(result?.meta?.rows_read) || 0;
+    budget.pendingWritten += Number(result?.meta?.rows_written) || 0;
+  }
+  return results;
+}
+async function flushBudget(env, now = Date.now()) {
+  if (budget.flushing || (!budget.pendingRead && !budget.pendingWritten)) return;
+  if (budget.pendingRead < 25_000 && now - budget.flushedAt < 120_000) return;
+  const read = budget.pendingRead, written = budget.pendingWritten;
+  budget.flushing = true; budget.pendingRead = 0; budget.pendingWritten = 0; budget.flushedAt = now;
+  try {
+    const total = await env.DB.prepare('INSERT INTO usage_budget(day,rows_read,rows_written) VALUES(?1,?2,?3) ON CONFLICT(day) DO UPDATE SET rows_read=rows_read+excluded.rows_read, rows_written=rows_written+excluded.rows_written RETURNING rows_read, rows_written')
+      .bind(budget.day, read, written).first();
+    if (total) { budget.read = total.rows_read; budget.written = total.rows_written; }
+  } catch { budget.pendingRead += read; budget.pendingWritten += written; }
+  finally { budget.flushing = false; }
+}
+const d1LimitPattern = /exceeded D1's free tier daily row (read|write) limit/i;
+
+// Areas are 0.5 degree squares. The SQL expressions match the stations_area index and current_prices.area.
+const areaRow = lat => Math.floor((lat + 90) * 2), areaColumn = lon => Math.floor((lon + 180) * 2);
+const areaId = (row, column) => row * 1000 + column;
+// Geography changes only with a re-import, brand catalog or correction change, so its cache key
+// follows those files; prices stay briefly.
+const GEOGRAPHY_SECONDS = 86400, PRICE_SECONDS = 60;
+const fingerprint = text => { let hash = 2166136261; for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619); return (hash >>> 0).toString(36); };
+const GEOGRAPHY_VERSION = `${metadata.imported_at}.${fingerprint(JSON.stringify([brandCatalog, stationCorrections]))}`;
+const cacheKey = (origin, kind, id) => new Request(`${origin}/__cache/v1/${kind}/${kind === 'prices' ? '' : GEOGRAPHY_VERSION + '/'}${id}`);
+async function cached(key) {
+  const response = await globalThis.caches?.default.match(key);
+  return response ? response.json() : undefined;
+}
+function store(ctx, key, value, seconds) {
+  const cache = globalThis.caches?.default;
+  if (!cache) return;
+  const put = cache.put(key, new Response(JSON.stringify(value), {headers: {'content-type': 'application/json', 'cache-control': `public, max-age=${seconds}`}}));
+  ctx?.waitUntil ? ctx.waitUntil(put) : put.catch(() => {});
 }
 async function readReport(request) {
   if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) {
@@ -42,14 +113,15 @@ async function readReport(request) {
   }
   return body;
 }
-async function report(request, env) {
+async function report(request, env, ctx) {
   const body = await readReport(request);
   // Edge limit is best effort per IP, while a SQL trigger enforces per-install/global limits atomically.
   if (env.REPORT_LIMITER) {
     const {success} = await env.REPORT_LIMITER.limit({key: request.headers.get('cf-connecting-ip') || body.client_id});
     if (!success) throw new InputError('rate_limited', 'Too many reports. Try again in a minute.', 429);
   }
-  const existing = await env.DB.prepare('SELECT id FROM stations WHERE id = ?1').bind(body.station_id).first();
+  checkBudget(env);
+  const existing = await env.DB.prepare('SELECT id, latitude, longitude FROM stations WHERE id = ?1').bind(body.station_id).first();
   if (!existing) throw new InputError('station_not_found', 'This station was not found in the imported directory.', 404);
   const id = body.request_id || crypto.randomUUID();
   const findOld = () => env.DB.prepare('SELECT id, station_id, fuel_type, price_milli, client_id, observed_at FROM price_reports WHERE id = ?1').bind(id).first();
@@ -64,13 +136,16 @@ async function report(request, env) {
   if (old) return repeated(old);
   const observed_at = new Date().toISOString();
   try {
-    await env.DB.prepare('INSERT INTO price_reports (id, station_id, fuel_type, price_milli, client_id, observed_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
-      .bind(id, body.station_id, body.fuel_type, body.price_milli, body.client_id, observed_at).run();
+    meter(await env.DB.prepare('INSERT INTO price_reports (id, station_id, fuel_type, price_milli, client_id, observed_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
+      .bind(id, body.station_id, body.fuel_type, body.price_milli, body.client_id, observed_at).run());
   } catch (error) {
     // A concurrent retry may have committed after the initial lookup.
     if (body.request_id) { const committed = await findOld(); if (committed) return repeated(committed); }
     throw error;
   }
+  // This data centre shows the new price at once; others within PRICE_SECONDS.
+  const purge = globalThis.caches?.default.delete(cacheKey(new URL(request.url).origin, 'prices', areaId(areaRow(existing.latitude), areaColumn(existing.longitude))));
+  if (purge) ctx?.waitUntil ? ctx.waitUntil(purge) : purge.catch(() => {});
   return json({ok: true, report: {id, station_id: body.station_id, fuel_type: body.fuel_type, price_milli: body.price_milli, observed_at}, is_demo: false, verification: 'unverified'}, 201);
 }
 const radians = n => n * Math.PI / 180;
@@ -95,71 +170,128 @@ export function locationQuery(query) {
 export function normalizeSearch(value) {
   return value.normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase();
 }
-async function nearby(db, query) {
+function marketReference(lat, lon, fuel) {
+  const averages=marketAverages.filter(r=>r.fuel_type===fuel);
+  const regional=averages.filter(r=>r.city!=='Canada').map(r=>({...r,distance:distanceMetres(lat,lon,r.latitude,r.longitude)})).sort((a,b)=>a.distance-b.distance)[0];
+  return regional?.distance<=100000?regional:averages.find(r=>r.city==='Canada');
+}
+async function nearby(env, query, origin, ctx) {
   const {lat,lon,radius,fuel}=locationQuery(query);
   const dy=radius/110000, dx=Math.min(180, radius/(110000*Math.max(0.001,Math.cos(radians(lat)))));
-  const bounds=[lat-dy,lat+dy,lon-dx,lon+dx];
-  const [stationRows,priceRows,metadata,averages]=await db.batch([
-    db.prepare('SELECT id,latitude,longitude,data FROM stations WHERE latitude BETWEEN ?1 AND ?2 AND longitude BETWEEN ?3 AND ?4 LIMIT 2000').bind(...bounds),
-    db.prepare('SELECT p.* FROM current_prices p JOIN stations s ON s.id=p.station_id WHERE s.latitude BETWEEN ?1 AND ?2 AND s.longitude BETWEEN ?3 AND ?4 LIMIT 6000').bind(...bounds),
-    db.prepare("SELECT data FROM dataset_metadata WHERE id='canada'"),
-    db.prepare('SELECT * FROM market_averages WHERE fuel_type=?1').bind(fuel),
-  ]);
+  const south=Math.max(-90,lat-dy), north=Math.min(89.999999,lat+dy), west=Math.max(-180,lon-dx), east=Math.min(179.999999,lon+dx);
+  const areas=[];
+  for(let row=areaRow(south);row<=areaRow(north);row++) for(let column=areaColumn(west);column<=areaColumn(east);column++) areas.push({row,column,id:areaId(row,column)});
+  // Each area's stations and prices come from the Cache API when possible; only misses reach D1.
+  const geography=new Map(), prices=new Map();
+  await Promise.all(areas.map(async area=>{
+    const [places,priced]=await Promise.all([cached(cacheKey(origin,'stations',area.id)),cached(cacheKey(origin,'prices',area.id))]);
+    if(places) geography.set(area.id,places);
+    if(priced) prices.set(area.id,priced);
+  }));
+  const missingPlaces=areas.filter(area=>!geography.has(area.id)), missingPrices=areas.filter(area=>!prices.has(area.id));
+  if(missingPlaces.length||missingPrices.length) {
+    checkBudget(env);
+    // One statement per area row keeps D1 on the stations_area index; prices use current_prices.area.
+    const rows=[...new Set(missingPlaces.map(area=>area.row))].map(row=>{
+      const columns=missingPlaces.filter(area=>area.row===row).map(area=>area.column);
+      return {row,from:Math.min(...columns),to:Math.max(...columns)};
+    });
+    const statements=rows.map(({row,from,to})=>env.DB.prepare('SELECT id,latitude,longitude,data FROM stations WHERE CAST((latitude+90)*2 AS INTEGER)=?1 AND CAST((longitude+180)*2 AS INTEGER) BETWEEN ?2 AND ?3').bind(row,from,to));
+    if(missingPrices.length) statements.push(env.DB.prepare(`SELECT station_id,fuel_type,price_milli,observed_at,source,area FROM current_prices WHERE area IN (${missingPrices.map((_,i)=>'?'+(i+1)).join(',')})`).bind(...missingPrices.map(area=>area.id)));
+    const results=meter(await env.DB.batch(statements));
+    for(const area of missingPlaces) geography.set(area.id,[]);
+    rows.forEach((_,i)=>{
+      for(const row of results[i].results) {
+        const station={...correctedStation(JSON.parse(row.data)),latitude:row.latitude,longitude:row.longitude};
+        const id=areaId(areaRow(row.latitude),areaColumn(row.longitude));
+        if(geography.has(id)&&missingPlaces.some(area=>area.id===id)) geography.get(id).push({...station,...stationBrand(station),_id:row.id});
+      }
+    });
+    for(const area of missingPrices) prices.set(area.id,[]);
+    if(missingPrices.length) for(const row of results[results.length-1].results) prices.get(row.area)?.push([row.station_id,row.fuel_type,row.price_milli,row.observed_at,row.source]);
+    for(const area of missingPlaces) store(ctx,cacheKey(origin,'stations',area.id),geography.get(area.id),GEOGRAPHY_SECONDS);
+    for(const area of missingPrices) store(ctx,cacheKey(origin,'prices',area.id),prices.get(area.id),PRICE_SECONDS);
+  }
   const now=Date.now();
-  const prices=new Map();
-  for(const row of priceRows.results) { if(!prices.has(row.station_id)) prices.set(row.station_id,[]); prices.get(row.station_id).push(row); }
-  const stations=stationRows.results.map(row=>{
-    const station={...correctedStation(JSON.parse(row.data)),distanceMetres:distanceMetres(lat,lon,row.latitude,row.longitude),prices:{regular:null,premium:null,diesel:null},ages:{},observedAt:{},priceSources:{},stale:{},synthetic:false};
-    for(const price of prices.get(row.id)||[]) {
-      station.prices[price.fuel_type]=price.price_milli;
-      station.ages[price.fuel_type]=Math.max(0,Math.floor((now-Date.parse(price.observed_at))/60000));
-      station.observedAt[price.fuel_type]=price.observed_at;
-      station.priceSources[price.fuel_type]=price.source;
-      station.stale[price.fuel_type]=station.ages[price.fuel_type]>1440;
+  const byStation=new Map();
+  for(const area of areas) for(const price of prices.get(area.id)||[]) {
+    if(!byStation.has(price[0])) byStation.set(price[0],[]);
+    byStation.get(price[0]).push(price);
+  }
+  const stations=areas.flatMap(area=>geography.get(area.id)||[]).map(({_id,...place})=>{
+    const station={...place,distanceMetres:distanceMetres(lat,lon,place.latitude,place.longitude),prices:{regular:null,premium:null,diesel:null},ages:{},observedAt:{},priceSources:{},stale:{},synthetic:false};
+    for(const [,fuelType,priceMilli,observedAt,source] of byStation.get(_id)||[]) {
+      station.prices[fuelType]=priceMilli;
+      station.ages[fuelType]=Math.max(0,Math.floor((now-Date.parse(observedAt))/60000));
+      station.observedAt[fuelType]=observedAt;
+      station.priceSources[fuelType]=source;
+      station.stale[fuelType]=station.ages[fuelType]>1440;
     }
-    return {...station, ...stationBrand(station)};
+    return station;
   }).filter(s=>s.distanceMetres<=radius).sort((a,b)=>a.distanceMetres-b.distanceMetres);
-  const regional=averages.results.filter(r=>r.city!=='Canada').map(r=>({...r,distance:distanceMetres(lat,lon,r.latitude,r.longitude)})).sort((a,b)=>a.distance-b.distance)[0];
-  const reference=regional?.distance<=100000?regional:averages.results.find(r=>r.city==='Canada');
+  const reference=marketReference(lat,lon,fuel);
   return {mode:'live',is_demo:false,generated_at:new Date(now).toISOString(),currency:'CAD',unit:'L',
     location:{latitude:lat,longitude:lon,radiusMetres:radius},stations:stations.slice(0,200),
-    coverage:{...JSON.parse(metadata.results[0]?.data||'{"country":"CA"}'),matched_count:stations.length,returned_count:Math.min(stations.length,200),truncated:stations.length>200 || stationRows.results.length===2000,source_url:'https://www.openstreetmap.org/copyright',prices:'community-unverified'},
+    coverage:{...metadata,matched_count:stations.length,returned_count:Math.min(stations.length,200),truncated:stations.length>200,source_url:'https://www.openstreetmap.org/copyright',prices:'community-unverified'},
     market_reference:reference?{city:reference.city,period:reference.period,fuel_type:fuel,price_milli:reference.price_milli,kind:'monthly_average',source:'Statistics Canada',source_url:'https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101',note:'Dated regional monthly average, not a station pump price.'}:null};
 }
-async function geocode(db, query) {
+async function geocode(env, query, origin, ctx) {
   if ([...query.keys()].some(key => key !== 'q') || query.getAll('q').length !== 1)
     throw new InputError('invalid_search', 'Enter one Canadian city name.');
   const raw=query.get('q')?.trim()||'';
   if(raw.length<2 || raw.length>80) throw new InputError('invalid_search','Enter 2 to 80 characters of a Canadian city name.');
   const search=normalizeSearch(raw).replace(/[\\%_]/g,c=>'\\'+c);
-  const rows=await db.prepare("SELECT name,latitude,longitude FROM cities WHERE search_name LIKE ?1 ESCAPE '\\' ORDER BY CASE WHEN search_name LIKE ?2 ESCAPE '\\' THEN 0 ELSE 1 END,population DESC LIMIT 8").bind('%'+search+'%',search+'%').all();
-  return {results:rows.results,source:'GeoNames',attribution:'GeoNames, CC BY 4.0',coverage:'Canadian cities with population over 15000; coordinates can be entered directly.'};
+  // City names change only with a re-import; each distinct search reaches D1 once a day per data centre.
+  const key=cacheKey(origin,'geocode',encodeURIComponent(search));
+  const hit=await cached(key);
+  if(hit) return hit;
+  checkBudget(env);
+  const rows=meter(await env.DB.prepare("SELECT name,latitude,longitude FROM cities WHERE search_name LIKE ?1 ESCAPE '\\' ORDER BY CASE WHEN search_name LIKE ?2 ESCAPE '\\' THEN 0 ELSE 1 END,population DESC LIMIT 8").bind('%'+search+'%',search+'%').all());
+  const body={results:rows.results,source:'GeoNames',attribution:'GeoNames, CC BY 4.0',coverage:'Canadian cities with population over 15000; coordinates can be entered directly.'};
+  store(ctx,key,body,GEOGRAPHY_SECONDS);
+  return body;
+}
+function spendingCap(error, env) {
+  const now=Date.now();
+  return json({error:'spending_cap',reason:error.reason,resets_at:new Date(error.until).toISOString(),
+    message:"OpenFuel's free database allowance for today is used up. Saved stations still show; live prices return after midnight UTC.",
+    donate_url:env.OPENFUEL_DONATE_URL||null},503,{'retry-after':String(Math.max(60,Math.ceil((error.until-now)/1000)))});
 }
 export default {
-  async fetch(request,env) {
+  async fetch(request,env,ctx) {
     const url=new URL(request.url);
     if(!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     if(request.method==='OPTIONS') return new Response(null,{status:204,headers:{...headers,'access-control-allow-methods':'GET, HEAD, POST, OPTIONS','access-control-allow-headers':'Content-Type, Accept'}});
     try {
       if(!env.DB) return json({error:'not_configured',message:'The station database is not configured.'},503);
-      if(url.pathname==='/api/v1/reports' && request.method==='POST') return await report(request,env);
+      if(url.pathname==='/api/v1/reports' && request.method==='POST') return await report(request,env,ctx);
       if(!['GET','HEAD'].includes(request.method)) return json({error:'method_not_allowed'},405,{allow:url.pathname==='/api/v1/reports'?'POST, OPTIONS':'GET, HEAD, OPTIONS'});
-      let body;
+      let body, cacheControl;
+      // Health and regions answer from the bundled snapshot metadata; they never read D1.
       if(url.pathname==='/api/v1/health') {
-        const row=await env.DB.prepare('SELECT count(*) AS station_count FROM stations').first();
-        body={ok:true,service:'openfuel',database:'cloudflare-d1',databaseConfigured:true,writesEnabled:true,mode:'live',is_demo:false,station_count:row.station_count};
-      } else if(url.pathname==='/api/v1/stations') body=await nearby(env.DB,url.searchParams);
-      else if(url.pathname==='/api/v1/geocode') body=await geocode(env.DB,url.searchParams);
-      else if(url.pathname==='/api/v1/regions') { const row=await env.DB.prepare("SELECT data FROM dataset_metadata WHERE id='canada'").first(); body={regions:[{id:'CA',name:'Canada',is_demo:false,...JSON.parse(row?.data||'{}')}]}; }
+        body={ok:true,service:'openfuel',database:'cloudflare-d1',databaseConfigured:true,writesEnabled:true,mode:'live',is_demo:false,station_count:metadata.station_count};
+        cacheControl='public, max-age=60';
+      } else if(url.pathname==='/api/v1/stations') { body=await nearby(env,url.searchParams,url.origin,ctx); cacheControl='private, max-age=30'; }
+      else if(url.pathname==='/api/v1/geocode') { body=await geocode(env,url.searchParams,url.origin,ctx); cacheControl='public, max-age=86400'; }
+      else if(url.pathname==='/api/v1/regions') { body={regions:[{id:'CA',name:'Canada',is_demo:false,...metadata}]}; cacheControl='public, max-age=3600'; }
       else return json({error:'not_found'},404);
-      return request.method==='HEAD'?new Response(null,{headers}):json(body);
+      const extra={'cache-control':cacheControl};
+      return request.method==='HEAD'?new Response(null,{headers:{...headers,...extra}}):json(body,200,extra);
     } catch(error) {
       if(error instanceof InputError) return json({error:error.code,message:error.message},error.status,error.status===429?{'retry-after':'60'}:{});
+      if(error instanceof SpendingCap) return spendingCap(error,env);
+      const limit=String(error.message).match(d1LimitPattern);
+      if(limit) {
+        budget.cappedUntil=nextUtcMidnight(Date.now());
+        return spendingCap(new SpendingCap(`d1_free_daily_${limit[1].toLowerCase()}_limit`,budget.cappedUntil),env);
+      }
       if(String(error.message).includes('report_capacity_limit')) return json({error:'report_capacity',message:'The report archive is full. Station browsing remains available.'},429);
       if(String(error.message).includes('report_rate_limit')) return json({error:'rate_limited',message:'The hourly report limit was reached. Try again later.'},429,{'retry-after':'3600'});
       // Never log user coordinates, report identifiers, bodies, or IP addresses.
       console.error(JSON.stringify({event:'api_request_failed',path:url.pathname}));
       return json({error:'temporarily_unavailable',message:'Could not reach the station database. Please try again.'},503);
+    } finally {
+      if(env.DB) { const flush=flushBudget(env); ctx?.waitUntil ? ctx.waitUntil(flush) : await flush; }
     }
   }
 };

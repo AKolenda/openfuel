@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
-import {readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {readFileSync, readdirSync, mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -16,10 +16,11 @@ try {
   seed = readFileSync(join(temp, 'seed.sql'), 'utf8');
 } finally { rmSync(temp, {recursive: true, force: true}); }
 
+const migrations = readdirSync(new URL('./migrations/', import.meta.url)).filter(name => name.endsWith('.sql')).sort();
 function database() {
   const sql = new DatabaseSync(':memory:');
   sql.exec('PRAGMA foreign_keys = ON');
-  sql.exec(readFileSync(new URL('./migrations/0001_live.sql', import.meta.url), 'utf8'));
+  for (const migration of migrations) sql.exec(readFileSync(new URL('./migrations/' + migration, import.meta.url), 'utf8'));
   sql.exec(seed);
   const binding = {
     prepare(query) {
@@ -167,4 +168,42 @@ test('reviewed Tempo identities are served across the directory without moving s
   assert.equal(bowTrail.name, 'Tempo, Bow Trail');
   assert.equal(bowTrail.prices.regular, null);
   assert.match(bowTrail.correction_source_url, /^https:\/\/www.tempo.crs\//);
+});
+
+test('health and regions answer from bundled metadata without reading D1', async () => {
+  const env = {...database(), DB: {prepare: () => { throw new Error('D1 must not be read'); }, batch: () => { throw new Error('D1 must not be read'); }}};
+  assert.equal((await (await worker.fetch(get('/api/v1/health'), env)).json()).station_count, 12543);
+  assert.equal((await (await worker.fetch(get('/api/v1/regions'), env)).json()).regions[0].station_count, 12543);
+});
+test('stations, prices and city searches are served from the area cache on repeat requests', async () => {
+  const store = new Map();
+  globalThis.caches = {default: {
+    match: async key => store.get(key.url)?.clone(),
+    put: async (key, response) => { store.set(key.url, response.clone()); },
+    delete: async key => store.delete(key.url),
+  }};
+  try {
+    const env = database(); let reads = 0;
+    const prepare = env.DB.prepare, batch = env.DB.batch;
+    env.DB.prepare = query => { if (/^SELECT/.test(query)) reads++; return prepare(query); };
+    env.DB.batch = queries => batch(queries);
+    const first = await (await worker.fetch(get(), env)).json();
+    const afterFirst = reads;
+    assert.ok(afterFirst > 0);
+    const second = await (await worker.fetch(get(), env)).json();
+    assert.equal(reads, afterFirst);
+    assert.deepEqual(second.stations.map(s => s.id), first.stations.map(s => s.id));
+    // A report purges its area's prices in this data centre, so the next read shows it.
+    assert.equal((await worker.fetch(post(), env)).status, 201);
+    const updated = await (await worker.fetch(get(), env)).json();
+    assert.equal(updated.stations.find(s => s.id === stationId).prices.regular, 1399);
+    await worker.fetch(get('/api/v1/geocode?q=edmonton'), env);
+    const beforeRepeat = reads;
+    await worker.fetch(get('/api/v1/geocode?q=edmonton'), env);
+    assert.equal(reads, beforeRepeat);
+  } finally { delete globalThis.caches; }
+});
+test('stations responses may be reused briefly by the same browser', async () => {
+  const response = await worker.fetch(get(), database());
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=30');
 });
