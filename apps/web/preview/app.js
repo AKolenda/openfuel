@@ -32,12 +32,12 @@ document.addEventListener('load',event=>{if(event.target.matches?.('img[data-bra
 document.addEventListener('error',event=>{if(event.target.matches?.('img[data-brand-logo]')){failedLogos.add(event.target.src);event.target.remove();}},true);
 const saved = storage.read('favorites', []);
 const favorites = new Set(Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : []);
-const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, center:null, user:null, source:null, label:'', stations:[], selected:null, loadedAt:0, connection:'idle', generation:0, reportVersion:0, coverage:null};
+const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, center:null, user:null, source:null, label:'', stations:[], selected:null, loadedAt:0, loadFailed:false, connection:'idle', generation:0, reportVersion:0, coverage:null};
 let clientId = storage.read('client-id', null);
 if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { clientId = crypto.randomUUID(); storage.write('client-id', clientId); }
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
 // pendingRequest is the station request on its way ({generation, key}); fixTimer runs while a return visit waits for the device fix.
-let pendingRequest = null, fixTimer = null, markerFrame = 0;
+let pendingRequest = null, fixTimer = null, onlineTimer, markerFrame = 0;
 // A snapshot this young is as current as the server's own short caches, so it is not asked for again.
 const FRESH_SNAPSHOT_MS = 30000;
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
@@ -185,7 +185,7 @@ const snapshotFresh=()=>{const age=Date.now()-state.loadedAt;return age>=0&&age<
 /** Loads the chosen area unless its snapshot is fresh enough to show as it is. */
 function loadArea() {
   if(!snapshotFresh()){refreshStations();return;}
-  stopWaitingForFix();state.connection='online';render();
+  stopWaitingForFix();state.connection='online';state.loadFailed=false;render();
 }
 function stopWaitingForFix() { clearTimeout(fixTimer);fixTimer=null; }
 function visibleStations() {
@@ -256,9 +256,10 @@ async function refreshStations(fresh=false) {
     const response=await api(`stations?${query}`,fresh===true?{cache:'no-cache'}:{});
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (response.is_demo!==false || response.mode!=='live') throw Error('OpenFuel is still serving sample data. Please try again after the live update.');
-    state.stations=normalize(response.stations);state.coverage=response.coverage;state.loadedAt=Date.now();state.connection='online';cacheCurrent();render();
+    state.stations=normalize(response.stations);state.coverage=response.coverage;state.loadedAt=Date.now();state.loadFailed=false;state.connection='online';cacheCurrent();render();
   } catch (error) {
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
+    state.loadFailed=true;
     if (error instanceof ServiceLimit) { state.connection='limited';state.limitResetsAt=error.resetsAt;render();return; }
     state.connection='offline';render();toast(error.name==='AbortError' ? 'The request timed out. Try Refresh.' : error.message);
   } finally {
@@ -429,8 +430,14 @@ $('clear-local').addEventListener('click',()=>{
   favorites.clear();pendingReport=null;clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
 });
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}}));
-addEventListener('online',refreshStations);
-addEventListener('offline',()=>{if(state.center){state.generation++;state.connection='offline';render();}});
+// Reconnecting reloads only when the last load failed or the data is over a minute old. A mobile
+// connection can drop and return several times in a row, so the check waits for it to settle.
+addEventListener('online',()=>{clearTimeout(onlineTimer);onlineTimer=setTimeout(()=>{
+  if(!state.center||state.connection==='loading')return;
+  if(state.loadFailed||Date.now()-state.loadedAt>60000)refreshStations();
+  else if(state.connection==='offline'){state.connection='online';render();}
+},2000);});
+addEventListener('offline',()=>{clearTimeout(onlineTimer);if(state.center){if(state.connection==='loading')state.loadFailed=true;state.generation++;state.connection='offline';render();}});
 setInterval(()=>{if(!document.hidden&&state.center)render();},60000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 function locationGranted() {
