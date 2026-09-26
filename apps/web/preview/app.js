@@ -52,10 +52,20 @@ function watchTiles(layer) {
   }
   return layer;
 }
-baseMapLayer(map, 'map/openfuel-style.json', tileOptions, (layer, name) => {
-  watchTiles(layer);
-  $('tile-provider').textContent = name === 'openfreemap' ? 'OpenFreeMap' : 'OpenStreetMap';
-});
+// The base map starts once the first centre is known: a saved area, the device location or its refusal
+// (the Canada overview), or a search. A first visit then does not download the overview it immediately
+// leaves; until then the map shows its background colour. An unanswered permission prompt gets the
+// overview after 2.5 seconds.
+let baseMapStarted = false;
+const baseMapTimer = setTimeout(startBaseMap, 2500);
+function startBaseMap() {
+  if (baseMapStarted) return;
+  baseMapStarted = true;clearTimeout(baseMapTimer);
+  baseMapLayer(map, 'map/openfuel-style.json', tileOptions, (layer, name) => {
+    watchTiles(layer);
+    $('tile-provider').textContent = name === 'openfreemap' ? 'OpenFreeMap' : 'OpenStreetMap';
+  });
+}
 L.control.scale({position:'bottomleft', imperial:false}).addTo(map);
 const markerLayer = L.layerGroup().addTo(map), locationLayer = L.layerGroup().addTo(map);
 function mapFocusPoint() {
@@ -256,10 +266,12 @@ function chooseLocation(lat,lon,label,source='search',remember=true) {
   map.panBy(map.getSize().divideBy(2).subtract(mapFocusPoint()),{animate:false});$('search-area').hidden=true;
   if(remember)rememberArea();
   restoreArea();refreshStations();
+  // After the station request, so the prices go out first.
+  startBaseMap();
 }
 function locate() {
   if (locatePending) return;
-  if (!navigator.geolocation) { $('location-status').textContent='Location is unavailable in this browser. Search a city instead.';return; }
+  if (!navigator.geolocation) { $('location-status').textContent='Location is unavailable in this browser. Search a city instead.';startBaseMap();return; }
   const generation=++locationGeneration;
   locatePending=true;$('locate-button').disabled=true;
   $('location-status').textContent=state.center?`${state.label} · Checking device location…`:'Your browser will ask for location. You can search a city instead.';
@@ -277,6 +289,8 @@ function locate() {
     locatePending=false;$('locate-button').disabled=false;
     const reason=error.code===1?'Location permission is off. Search a city, or enable location in your browser.':error.code===3?'Location took too long. Try again or search a city.':'Could not find your device location. Try again or search a city.';
     $('location-status').textContent=state.center ? `${state.label} · ${error.code===1?'Device location off':'Device location unavailable'}` : reason;
+    // Without a fix a first visit shows the Canada overview.
+    startBaseMap();
   },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 }
 async function searchPlaces(event) {

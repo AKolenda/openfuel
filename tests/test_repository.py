@@ -198,7 +198,10 @@ def test_map_style_is_generated_from_liberty_snapshot():
     from tools.map_style import OUTPUT, SNAPSHOT, build
     assert json.loads(OUTPUT.read_text()) == build(json.loads(SNAPSHOT.read_text()))
     page=(ROOT/'apps/web/preview/index.html').read_text()
-    assert 'https://tiles.openfreemap.org' in page and 'vendor/maplibre-gl.js' in page
+    # MapLibre loads on demand from the base map script; the service worker keeps it for return visits.
+    assert 'https://tiles.openfreemap.org' in page and 'vendor/maplibre-gl.js' not in page
+    assert 'vendor/maplibre-gl.js' in (ROOT/'apps/web/preview/map/base-map.js').read_text()
+    assert './vendor/maplibre-gl.js' in (ROOT/'apps/web/preview/sw.js').read_text()
 
 def test_source_archive_fits_workers_asset_limit(tmp_path):
     archive=project.package_source(tmp_path/'source.zip')
