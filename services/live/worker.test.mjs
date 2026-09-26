@@ -193,7 +193,7 @@ test('stations, prices and city searches are served from the area cache on repea
     const second = await (await worker.fetch(get(), env)).json();
     assert.equal(reads, afterFirst);
     assert.deepEqual(second.stations.map(s => s.id), first.stations.map(s => s.id));
-    // A report purges its area's prices in this data centre, so the next read shows it.
+    // A report bumps its area's price version, so the next read misses the old cached prices.
     assert.equal((await worker.fetch(post(), env)).status, 201);
     const updated = await (await worker.fetch(get(), env)).json();
     assert.equal(updated.stations.find(s => s.id === stationId).prices.regular, 1399);
@@ -205,5 +205,24 @@ test('stations, prices and city searches are served from the area cache on repea
 });
 test('stations responses may be reused briefly by the same browser', async () => {
   const response = await worker.fetch(get(), database());
-  assert.equal(response.headers.get('cache-control'), 'private, max-age=30');
+  assert.equal(response.headers.get('cache-control'), 'private, max-age=15');
+});
+test('a price reported through another isolate reaches readers within the version check interval', async () => {
+  const store = new Map();
+  globalThis.caches = {default: {
+    match: async key => store.get(key.url)?.clone(),
+    put: async (key, response) => { store.set(key.url, response.clone()); },
+    delete: async key => store.delete(key.url),
+  }};
+  const realNow = Date.now;
+  try {
+    const env = database();
+    assert.equal((await (await worker.fetch(get(), env)).json()).stations.find(s => s.id === stationId).prices.regular, null);
+    // Written straight to D1, as another isolate's report would be; this isolate's memo still holds version 0.
+    await env.DB.prepare('INSERT INTO price_reports VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
+      .bind('other-isolate-report', stationId, 'regular', 1459, payload.client_id, new Date().toISOString()).run();
+    assert.equal((await (await worker.fetch(get(), env)).json()).stations.find(s => s.id === stationId).prices.regular, null);
+    Date.now = () => realNow() + 16_000;
+    assert.equal((await (await worker.fetch(get(), env)).json()).stations.find(s => s.id === stationId).prices.regular, 1459);
+  } finally { Date.now = realNow; delete globalThis.caches; }
 });

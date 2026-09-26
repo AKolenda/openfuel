@@ -70,11 +70,15 @@ const d1LimitPattern = /exceeded D1's free tier daily row (read|write) limit/i;
 const areaRow = lat => Math.floor((lat + 90) * 2), areaColumn = lon => Math.floor((lon + 180) * 2);
 const areaId = (row, column) => row * 1000 + column;
 // Geography changes only with a re-import, brand catalog or correction change, so its cache key
-// follows those files; prices stay briefly.
-const GEOGRAPHY_SECONDS = 86400, PRICE_SECONDS = 60;
+// follows those files. Prices are cached per area version: D1 bumps an area's version with every
+// report, so a cached price stays valid until a price there is updated. Each isolate re-reads the
+// versions (one row per area) at most every VERSION_SECONDS, which bounds how old a price can look.
+const GEOGRAPHY_SECONDS = 7 * 86400, PRICE_SECONDS = 7 * 86400, VERSION_SECONDS = 15;
+const versionMemo = new WeakMap();
 const fingerprint = text => { let hash = 2166136261; for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619); return (hash >>> 0).toString(36); };
 const GEOGRAPHY_VERSION = `${metadata.imported_at}.${fingerprint(JSON.stringify([brandCatalog, stationCorrections]))}`;
 const cacheKey = (origin, kind, id) => new Request(`${origin}/__cache/v1/${kind}/${kind === 'prices' ? '' : GEOGRAPHY_VERSION + '/'}${id}`);
+const versionsFor = db => { if (!versionMemo.has(db)) versionMemo.set(db, new Map()); return versionMemo.get(db); };
 async function cached(key) {
   const response = await globalThis.caches?.default.match(key);
   return response ? response.json() : undefined;
@@ -143,9 +147,9 @@ async function report(request, env, ctx) {
     if (body.request_id) { const committed = await findOld(); if (committed) return repeated(committed); }
     throw error;
   }
-  // This data centre shows the new price at once; others within PRICE_SECONDS.
-  const purge = globalThis.caches?.default.delete(cacheKey(new URL(request.url).origin, 'prices', areaId(areaRow(existing.latitude), areaColumn(existing.longitude))));
-  if (purge) ctx?.waitUntil ? ctx.waitUntil(purge) : purge.catch(() => {});
+  // The report bumped its area's version in D1, so every data centre reads the new price on its next
+  // version check; this isolate checks at once.
+  versionsFor(env.DB).delete(areaId(areaRow(existing.latitude), areaColumn(existing.longitude)));
   return json({ok: true, report: {id, station_id: body.station_id, fuel_type: body.fuel_type, price_milli: body.price_milli, observed_at}, is_demo: false, verification: 'unverified'}, 201);
 }
 const radians = n => n * Math.PI / 180;
@@ -181,23 +185,21 @@ async function nearby(env, query, origin, ctx) {
   const south=Math.max(-90,lat-dy), north=Math.min(89.999999,lat+dy), west=Math.max(-180,lon-dx), east=Math.min(179.999999,lon+dx);
   const areas=[];
   for(let row=areaRow(south);row<=areaRow(north);row++) for(let column=areaColumn(west);column<=areaColumn(east);column++) areas.push({row,column,id:areaId(row,column)});
-  // Each area's stations and prices come from the Cache API when possible; only misses reach D1.
-  const geography=new Map(), prices=new Map();
-  await Promise.all(areas.map(async area=>{
-    const [places,priced]=await Promise.all([cached(cacheKey(origin,'stations',area.id)),cached(cacheKey(origin,'prices',area.id))]);
-    if(places) geography.set(area.id,places);
-    if(priced) prices.set(area.id,priced);
-  }));
-  const missingPlaces=areas.filter(area=>!geography.has(area.id)), missingPrices=areas.filter(area=>!prices.has(area.id));
-  if(missingPlaces.length||missingPrices.length) {
+  // Each area's stations come from the Cache API when possible. Prices are cached per area version;
+  // an area without a version has no reports and needs no price read at all.
+  const geography=new Map(), prices=new Map(), memo=versionsFor(env.DB), now=Date.now();
+  await Promise.all(areas.map(async area=>{ const places=await cached(cacheKey(origin,'stations',area.id)); if(places) geography.set(area.id,places); }));
+  const missingPlaces=areas.filter(area=>!geography.has(area.id));
+  const unchecked=areas.filter(area=>!(now-(memo.get(area.id)?.checkedAt??-Infinity)<VERSION_SECONDS*1000));
+  if(missingPlaces.length||unchecked.length) {
     checkBudget(env);
-    // One statement per area row keeps D1 on the stations_area index; prices use current_prices.area.
+    // One statement per area row keeps D1 on the stations_area index.
     const rows=[...new Set(missingPlaces.map(area=>area.row))].map(row=>{
       const columns=missingPlaces.filter(area=>area.row===row).map(area=>area.column);
       return {row,from:Math.min(...columns),to:Math.max(...columns)};
     });
     const statements=rows.map(({row,from,to})=>env.DB.prepare('SELECT id,latitude,longitude,data FROM stations WHERE CAST((latitude+90)*2 AS INTEGER)=?1 AND CAST((longitude+180)*2 AS INTEGER) BETWEEN ?2 AND ?3').bind(row,from,to));
-    if(missingPrices.length) statements.push(env.DB.prepare(`SELECT station_id,fuel_type,price_milli,observed_at,source,area FROM current_prices WHERE area IN (${missingPrices.map((_,i)=>'?'+(i+1)).join(',')})`).bind(...missingPrices.map(area=>area.id)));
+    if(unchecked.length) statements.push(env.DB.prepare(`SELECT area,version FROM area_versions WHERE area IN (${unchecked.map((_,i)=>'?'+(i+1)).join(',')})`).bind(...unchecked.map(area=>area.id)));
     const results=meter(await env.DB.batch(statements));
     for(const area of missingPlaces) geography.set(area.id,[]);
     rows.forEach((_,i)=>{
@@ -207,12 +209,22 @@ async function nearby(env, query, origin, ctx) {
         if(geography.has(id)&&missingPlaces.some(area=>area.id===id)) geography.get(id).push({...station,...stationBrand(station),_id:row.id});
       }
     });
-    for(const area of missingPrices) prices.set(area.id,[]);
-    if(missingPrices.length) for(const row of results[results.length-1].results) prices.get(row.area)?.push([row.station_id,row.fuel_type,row.price_milli,row.observed_at,row.source]);
     for(const area of missingPlaces) store(ctx,cacheKey(origin,'stations',area.id),geography.get(area.id),GEOGRAPHY_SECONDS);
-    for(const area of missingPrices) store(ctx,cacheKey(origin,'prices',area.id),prices.get(area.id),PRICE_SECONDS);
+    if(unchecked.length) {
+      const found=new Map(results[results.length-1].results.map(row=>[row.area,row.version]));
+      for(const area of unchecked) memo.set(area.id,{version:found.get(area.id)??0,checkedAt:now});
+    }
   }
-  const now=Date.now();
+  const versioned=areas.map(area=>({...area,version:memo.get(area.id).version})).filter(area=>area.version>0);
+  await Promise.all(versioned.map(async area=>{ const list=await cached(cacheKey(origin,'prices',`${area.id}/${area.version}`)); if(list) prices.set(area.id,list); }));
+  const missingPrices=versioned.filter(area=>!prices.has(area.id));
+  if(missingPrices.length) {
+    checkBudget(env);
+    const [result]=meter(await env.DB.batch([env.DB.prepare(`SELECT station_id,fuel_type,price_milli,observed_at,source,area FROM current_prices WHERE area IN (${missingPrices.map((_,i)=>'?'+(i+1)).join(',')})`).bind(...missingPrices.map(area=>area.id))]));
+    for(const area of missingPrices) prices.set(area.id,[]);
+    for(const row of result.results) prices.get(row.area)?.push([row.station_id,row.fuel_type,row.price_milli,row.observed_at,row.source]);
+    for(const area of missingPrices) store(ctx,cacheKey(origin,'prices',`${area.id}/${area.version}`),prices.get(area.id),PRICE_SECONDS);
+  }
   const byStation=new Map();
   for(const area of areas) for(const price of prices.get(area.id)||[]) {
     if(!byStation.has(price[0])) byStation.set(price[0],[]);
@@ -271,7 +283,7 @@ export default {
       if(url.pathname==='/api/v1/health') {
         body={ok:true,service:'openfuel',database:'cloudflare-d1',databaseConfigured:true,writesEnabled:true,mode:'live',is_demo:false,station_count:metadata.station_count};
         cacheControl='public, max-age=60';
-      } else if(url.pathname==='/api/v1/stations') { body=await nearby(env,url.searchParams,url.origin,ctx); cacheControl='private, max-age=30'; }
+      } else if(url.pathname==='/api/v1/stations') { body=await nearby(env,url.searchParams,url.origin,ctx); cacheControl='private, max-age=15'; }
       else if(url.pathname==='/api/v1/geocode') { body=await geocode(env,url.searchParams,url.origin,ctx); cacheControl='public, max-age=86400'; }
       else if(url.pathname==='/api/v1/regions') { body={regions:[{id:'CA',name:'Canada',is_demo:false,...metadata}]}; cacheControl='public, max-age=3600'; }
       else return json({error:'not_found'},404);

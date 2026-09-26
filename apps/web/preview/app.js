@@ -223,7 +223,7 @@ async function refreshStations(fresh=false) {
   state.connection='loading';render();
   try {
     const query=new URLSearchParams({lat:center.lat.toFixed(6),lon:center.lon.toFixed(6),radius:String(radius),fuel:state.fuel});
-    // Normal loads may reuse the browser's copy for 30 seconds; Refresh always asks again.
+    // Normal loads may reuse the browser's copy for 15 seconds; Refresh always asks again.
     const response=await api(`stations?${query}`,fresh===true?{cache:'no-cache'}:{});
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (response.is_demo!==false || response.mode!=='live') throw Error('OpenFuel is still serving sample data. Please try again after the live update.');
