@@ -27,12 +27,20 @@ class NativeScreensTest {
     @get:Rule val permission = GrantPermissionRule.grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
 
+    private fun mapView(scenario: ActivityScenario<MainActivity>): Boolean {
+        var found = false
+        scenario.onActivity { found = it.window.decorView.findViewWithTag<android.webkit.WebView>("openfuel-map-webview") != null }
+        return found
+    }
+
+    /** Answers "null" until the map WebView exists; it is created after the first frame. */
     private fun evaluate(scenario: ActivityScenario<MainActivity>, script: String): String {
         val latch = java.util.concurrent.CountDownLatch(1)
         var result = ""
         scenario.onActivity { activity ->
             val web = activity.window.decorView.findViewWithTag<android.webkit.WebView>("openfuel-map-webview")
-            web.evaluateJavascript(script) { result = it; latch.countDown() }
+            if (web == null) { result = "null"; latch.countDown() }
+            else web.evaluateJavascript(script) { result = it; latch.countDown() }
         }
         assertTrue(latch.await(5, java.util.concurrent.TimeUnit.SECONDS))
         return result
@@ -149,12 +157,19 @@ class NativeScreensTest {
         val initial = StationRepository(context).initial()
         assertFalse(initial.cached)
         assertTrue(initial.stations.isEmpty())
-        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             compose.onNodeWithText("Find fuel around you").assertExists()
+            // No base map (and no tile request) sits behind the first-arrival question.
+            Thread.sleep(1_500)
+            assertFalse("Map loaded before an area was known", mapView(scenario))
             compose.onNodeWithText("Choose a city").performClick()
             compose.onNodeWithText("Choose your area").assertExists()
             compose.onNodeWithText("Edmonton · chosen city").assertExists()
             screenshot("android-first-arrival")
+            assertFalse(mapView(scenario))
+            compose.onNodeWithTag("city-Edmonton").performClick()
+            compose.waitUntil(20_000) { evaluate(scenario, "typeof window.setStations") == "\"function\"" }
+            assertEquals("true", evaluate(scenario, "Math.abs(map.getCenter().lat-53.546)<0.01"))
         }
     }
 

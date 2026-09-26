@@ -73,4 +73,10 @@
   <string name="refresh_prices">Actualiser les prix</string>
   <string name="report_saved">Price report saved · unverified community observation.</string>
   <string name="report_failed">Envoi non confirmé. Vérifiez la connexion et actualisez avant de réessayer.</string>
+  <string name="limit_notice_saved">La base de données d’OpenFuel a atteint sa limite quotidienne gratuite : les prix en direct sont suspendus jusque vers %1$s. Les prix enregistrés restent affichés.</string>
+  <string name="limit_notice">La base de données d’OpenFuel a atteint sa limite quotidienne gratuite : les prix en direct sont suspendus jusque vers %1$s.</string>
+  <string name="limit_report">La base de données d’OpenFuel a atteint sa limite quotidienne gratuite : les signalements de prix sont suspendus jusque vers %1$s.</string>
+  <string name="donate">Faire un don</string>
+  <string name="donate_costs">Faire un don pour couvrir les coûts de la base de données et de la carte</string>
+  <string name="link_unavailable">Aucune application ne peut ouvrir ce lien. Installez un navigateur Web.</string>
 </resources>

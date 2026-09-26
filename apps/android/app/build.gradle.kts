@@ -19,6 +19,15 @@ require(!emulatorTest || gradle.startParameter.taskNames.none { it.contains("rel
 require((parsedApi.scheme == "https" || localTestHost) && parsedApi.host != null && parsedApi.userInfo == null && parsedApi.query == null && parsedApi.fragment == null) {
     "OPENFUEL_API_BASE_URL must be a public HTTPS base URL without credentials or query parameters."
 }
+// Optional donation page for the database and map costs. Without it the app shows no donate UI.
+val donateUrl = providers.gradleProperty("OPENFUEL_DONATE_URL")
+    .orElse(providers.environmentVariable("OPENFUEL_DONATE_URL"))
+    .getOrElse("")
+val parsedDonate = runCatching { URI(donateUrl) }.getOrNull()
+require(donateUrl.isEmpty() || (parsedDonate != null && parsedDonate.scheme == "https" && !parsedDonate.host.isNullOrEmpty() &&
+    parsedDonate.userInfo == null && donateUrl.none { it.isWhitespace() || it in "\"'\\" })) {
+    "OPENFUEL_DONATE_URL must be an HTTPS URL without credentials, quotes or whitespace."
+}
 val dataMode = providers.gradleProperty("OPENFUEL_DATA_MODE").getOrElse("live")
 require(dataMode == "live") { "This app uses real station geography." }
 android {
@@ -32,6 +41,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"$publicApiBase\"")
         buildConfigField("String", "DATA_MODE", "\"$dataMode\"")
+        buildConfigField("String", "DONATE_URL", "\"$donateUrl\"")
         versionCode = 6
         versionName = "0.3.2-live"
     }

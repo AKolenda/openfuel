@@ -48,7 +48,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.util.UUID
 
 private val Forest = Color(DesignTokens.GREEN)
@@ -60,6 +62,8 @@ private enum class Menu { LOCATION, SETTINGS, SORT, ABOUT, DETAIL, PRICE, NEW_ST
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The saved snapshot is parsed, and its area's fresh stations requested, off the UI thread while the UI starts.
+        val startup = StationRepository.startup(applicationContext)
         super.onCreate(savedInstanceState)
         // The app has a light surface even when Android's system theme is dark.
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
@@ -68,19 +72,23 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme(primary = Forest, onPrimary = Color.White,
                 background = Color.White, surface = Color.White, onSurface = Ink, outlineVariant = Rule,
                 secondary = Forest, onSecondary = Color.White, secondaryContainer = Pale, onSecondaryContainer = Forest)) {
-                OpenFuelApp()
+                val ready = startup.collectAsState().value
+                if (ready != null) OpenFuelApp(ready) else Box(Modifier.fillMaxSize().background(Color(MAP_BACKGROUND)))
             }
         }
     }
+
+    // Responses already in the HTTP cache stay usable if the process is stopped in the background.
+    override fun onStop() { super.onStop(); StationRepository.flushHttpCache() }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OpenFuelApp() {
+private fun OpenFuelApp(startup: StationRepository.Startup) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE) }
     val repository = remember { StationRepository(context) }
-    val initial = remember { repository.initial() }
+    val initial = startup.snapshot
     var stations by remember { mutableStateOf(initial.stations) }
     var syncState by remember { mutableStateOf(if (initial.cached) "cached" else "choose-area") }
     var hasSearchArea by remember { mutableStateOf(initial.point.source != SearchSource.OVERVIEW) }
@@ -97,8 +105,10 @@ private fun OpenFuelApp() {
     var refreshVersion by remember { mutableIntStateOf(0) }
     var locationVersion by remember { mutableIntStateOf(0) }
     var syncing by remember { mutableStateOf(false) }
+    var limitResetsAt by remember { mutableStateOf(Instant.EPOCH) } // Shown while syncState is "limited".
     var submitting by remember { mutableStateOf(false) }
     var reportError by remember { mutableStateOf<String?>(null) }
+    var reportLimited by remember { mutableStateOf(false) }
     var grade by rememberSaveable { mutableStateOf(Grade.entries.find { it.name == prefs.getString("fuel-grade", "REGULAR") } ?: Grade.REGULAR) }
     var sort by rememberSaveable { mutableStateOf(SortMode.BEST) }
     var filters by remember { mutableStateOf(Filters()) }
@@ -121,13 +131,20 @@ private fun OpenFuelApp() {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val unavailable = stringResource(R.string.maps_unavailable)
+    val linkUnavailable = stringResource(R.string.link_unavailable)
     LaunchedEffect(Unit) { if (loadedDrafts.isFailure) snackbar.showSnackbar(context.getString(R.string.local_storage_error)) }
-    fun refresh(next: SearchPoint = point, explicit: Boolean = true, recenter: Boolean = true) {
+    // Official builds may name a donation page for the database and map costs; without one no donate UI appears.
+    val donate: (() -> Unit)? = BuildConfig.DONATE_URL.takeIf { it.isNotEmpty() }?.let { url -> {
+        try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        catch (_: ActivityNotFoundException) { scope.launch { snackbar.showSnackbar(linkUnavailable) } }
+    } }
+    fun refresh(next: SearchPoint = point, explicit: Boolean = true, recenter: Boolean = true, fresh: Boolean = false,
+                preloaded: Deferred<List<Station>>? = null) {
         if (explicit) selectionVersion++
         val version = ++refreshVersion
         hasSearchArea = true
         refreshJob?.cancel()
-        val changedArea = next.forStorage().latitude != point.forStorage().latitude || next.forStorage().longitude != point.forStorage().longitude
+        val changedArea = !next.sameCell(point)
         point = next
         repository.rememberArea(next)
         browsePoint = null
@@ -136,12 +153,19 @@ private fun OpenFuelApp() {
         refreshJob = scope.launch {
             syncing = true
             try {
-                val loaded = repository.refresh(next, saveSnapshot = false)
+                // Requests for one 0.01° cell share an answer, including the one started before the first frame.
+                val loaded = (preloaded ?: repository.prefetch(next, fresh)).await()
                 if (version != refreshVersion) return@launch
-                repository.cache(loaded, next)
-                stations = loaded
+                // A GPS fix in the same cell may have moved the search origin while this loaded.
+                val area = point
+                repository.cache(loaded, area)
+                stations = if (area.latitude == next.latitude && area.longitude == next.longitude) loaded else loaded.measuredFrom(area)
                 syncState = "connected"
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+            catch (error: ServiceLimitException) {
+                // Saved stations stay on screen under the daily-limit notice.
+                if (version == refreshVersion) { limitResetsAt = error.resetsAt; syncState = "limited" }
+            }
             catch (error: Exception) {
                 if (version == refreshVersion) syncState = "offline"
             } finally { if (version == refreshVersion) syncing = false }
@@ -159,7 +183,14 @@ private fun OpenFuelApp() {
                 if (version != locationVersion) return@launch
                 if (fix != null) {
                     devicePoint = fix; locationMessage = null
-                    if (recenter && selectionVersion == selectedWhenStarted) refresh(fix, explicit = false)
+                    if (recenter && selectionVersion == selectedWhenStarted) {
+                        // A fix inside the area already loaded (or loading) moves the search origin, not the data.
+                        if (hasSearchArea && fix.sameCell(point) && (syncing || syncState == "connected" || syncState == "limited")) {
+                            point = fix; repository.rememberArea(fix); browsePoint = null
+                            stations = stations.measuredFrom(fix)
+                            if (!silent) centerRequest++
+                        } else refresh(fix, explicit = false)
+                    }
                 } else if (!silent && selectionVersion == selectedWhenStarted) {
                     locationMessage = "Location unavailable. Turn on device location or choose a city."; menu = Menu.LOCATION
                 }
@@ -181,7 +212,7 @@ private fun OpenFuelApp() {
         else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     LaunchedEffect(Unit) {
-        if (hasSearchArea) refresh(explicit = false)
+        if (hasSearchArea) refresh(explicit = false, preloaded = startup.fresh)
         if (!locationIntro && hasLocationPermission(context)) locate(recenter = point.source == SearchSource.DEVICE || !hasSearchArea, silent = hasSearchArea)
     }
     fun go(station: Station) {
@@ -240,10 +271,11 @@ private fun OpenFuelApp() {
                         Text(stringResource(R.string.station_count, visible.size), fontSize = 11.sp, color = Muted, modifier = Modifier.weight(1f))
                         TextButton(onClick = { menu = Menu.SORT }, modifier = Modifier.testTag("open-sort")) { Text(sortLabel(sort), fontSize = 11.sp); Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(16.dp)) }
                     }
-                    if (syncState == "offline" || syncState == "cached") Text(
+                    if (syncState == "limited") LimitNotice(limitResetsAt, saved = stations.isNotEmpty(), donate = donate)
+                    else if (syncState == "offline" || syncState == "cached") Text(
                         if (syncState == "offline") "Offline · showing saved stations" else "Showing saved stations",
                         Modifier.padding(horizontal = 18.dp, vertical = 4.dp).testTag("sync-status"), fontSize = 11.sp, color = Muted)
-                    PullToRefreshBox(isRefreshing = syncing, onRefresh = { if (hasSearchArea && !syncing) refresh(recenter = false) }, modifier = Modifier.weight(1f).semantics { stateDescription = if (syncing) "Refreshing" else "Idle" }.testTag("pull-refresh")) {
+                    PullToRefreshBox(isRefreshing = syncing, onRefresh = { if (hasSearchArea && !syncing) refresh(recenter = false, fresh = true) }, modifier = Modifier.weight(1f).semantics { stateDescription = if (syncing) "Refreshing" else "Idle" }.testTag("pull-refresh")) {
                     LazyColumn(Modifier.fillMaxSize().testTag("station-list"), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 52.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (visible.isEmpty()) item {
                             Text(stringResource(R.string.no_matches), Modifier.padding(20.dp), color = Muted)
@@ -264,7 +296,8 @@ private fun OpenFuelApp() {
             }
         ) {
             Box(Modifier.fillMaxSize()) {
-                LiveMap(visible, grade, bestId, point, devicePoint, centerRequest, brandLogos, onMove = { moved ->
+                // No base map is loaded until there is an area to show.
+                if (hasSearchArea) LiveMap(visible, grade, bestId, point, devicePoint, centerRequest, brandLogos, onMove = { moved ->
                     val area = moved.takeIf { approximateDistanceMetres(point, it.latitude, it.longitude) > 750 }
                     if (area != null) selectionVersion++
                     browsePoint = moved
@@ -349,7 +382,7 @@ private fun OpenFuelApp() {
                     }
                     Menu.SETTINGS -> SettingsContent(filters, provider, fullWidth, grade,
                         changeGrade = { grade = it; prefs.edit().putString("fuel-grade", it.name).apply() }, about = { menu = Menu.ABOUT },
-                        refresh = { if (hasSearchArea && !syncing) refresh(recenter = false); menu = null },
+                        donate = donate, refresh = { if (hasSearchArea && !syncing) refresh(recenter = false, fresh = true); menu = null },
                         dismiss = { menu = null }, apply = { f, p, wide ->
                             filters = f; provider = p; fullWidth = wide
                             prefs.edit().putString("maps", if (p == MapProvider.GOOGLE) "google" else "ask").putBoolean("wide", wide).apply()
@@ -358,6 +391,7 @@ private fun OpenFuelApp() {
                     Menu.ABOUT -> {
                         SheetTitle(stringResource(R.string.about)) { menu = null }
                         Text(stringResource(R.string.about_body), lineHeight = 24.sp, color = Muted)
+                        donate?.let { TextButton(onClick = it, modifier = Modifier.testTag("about-donate")) { Text(stringResource(R.string.donate_costs)) } }
                         Spacer(Modifier.height(20.dp))
                         Text(stringResource(R.string.drafts_count, drafts.size), fontWeight = FontWeight.SemiBold)
                         drafts.forEach { draft -> Text("${draft.name} · ${draft.kind.name.lowercase().replace('_', ' ')}", Modifier.padding(top = 10.dp), fontSize = 12.sp) }
@@ -375,15 +409,15 @@ private fun OpenFuelApp() {
                         }
                         Text(stringResource(R.string.sample_handoff), fontSize = 11.sp, color = Muted, modifier = Modifier.padding(vertical = 12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { reportError = null; menu = Menu.PRICE }, Modifier.weight(1f)) { Text(stringResource(R.string.report_price)) }
+                            OutlinedButton(onClick = { reportError = null; reportLimited = false; menu = Menu.PRICE }, Modifier.weight(1f)) { Text(stringResource(R.string.report_price)) }
                             OutlinedButton(onClick = { save(s) }, Modifier.weight(1f)) { Text(stringResource(if (s.id in favorites) R.string.unsave else R.string.save)) }
                         }
                         TextButton(onClick = { menu = Menu.CORRECTION }) { Text(stringResource(R.string.suggest_correction)) }
                     }
-                    Menu.PRICE -> selected?.let { s -> PriceForm(s, grade, submitting, reportError, close = { if (!submitting) menu = null }) { value ->
+                    Menu.PRICE -> selected?.let { s -> PriceForm(s, grade, submitting, reportError, donate.takeIf { reportLimited }, close = { if (!submitting) menu = null }) { value ->
                         if (!submitting) scope.launch {
                             submitting = true
-                            reportError = null
+                            reportError = null; reportLimited = false
                             val reportedGrade = grade
                             runCatching { repository.report(s, reportedGrade, value) }.onSuccess {
                                 stations = it
@@ -391,8 +425,13 @@ private fun OpenFuelApp() {
                                 menu = Menu.DETAIL
                                 snackbar.showSnackbar(context.getString(R.string.report_saved))
                             }.onFailure {
-                                reportError = if (it is PrototypeApiException) it.message else context.getString(R.string.report_failed)
-                                if (it !is PrototypeApiException) syncState = "offline"
+                                reportLimited = it is ServiceLimitException
+                                reportError = when (it) {
+                                    is ServiceLimitException -> context.getString(R.string.limit_report, resetTime(context, it.resetsAt))
+                                    is PrototypeApiException -> it.message
+                                    else -> context.getString(R.string.report_failed)
+                                }
+                                if (it !is PrototypeApiException && it !is ServiceLimitException) syncState = "offline"
                             }
                             submitting = false
                         }
@@ -441,6 +480,19 @@ private fun StationRow(s: Station, grade: Grade, filters: Filters, cards: Boolea
         }
     }
 }
+/** The database's free daily limit: live prices pause and saved ones stay on screen until it resets. */
+@Composable private fun LimitNotice(resetsAt: Instant, saved: Boolean, donate: (() -> Unit)?) {
+    val context = LocalContext.current
+    Surface(color = Pale, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).testTag("limit-notice")) {
+        Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(if (saved) R.string.limit_notice_saved else R.string.limit_notice, resetTime(context, resetsAt)),
+                fontSize = 12.sp, lineHeight = 16.sp, color = Ink, modifier = Modifier.weight(1f))
+            if (donate != null) TextButton(onClick = donate, modifier = Modifier.testTag("limit-donate")) { Text(stringResource(R.string.donate)) }
+        }
+    }
+}
+/** Local clock time in the user's 12/24-hour format. */
+private fun resetTime(context: Context, at: Instant): String = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date.from(at))
 @Composable private fun GoButton(best: Boolean, action: () -> Unit) {
     Surface(onClick = action, color = if (best) Forest else Pale, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(48.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -486,7 +538,7 @@ private fun openMaps(context: Context, station: Station, provider: MapProvider):
     } catch (_: ActivityNotFoundException) { false } catch (_: SecurityException) { false }
 }
 
-@Composable private fun SettingsContent(initial: Filters, initialProvider: MapProvider, initialWide: Boolean, grade: Grade, changeGrade: (Grade) -> Unit, about: () -> Unit, refresh: () -> Unit, dismiss: () -> Unit, apply: (Filters, MapProvider, Boolean) -> Unit) {
+@Composable private fun SettingsContent(initial: Filters, initialProvider: MapProvider, initialWide: Boolean, grade: Grade, changeGrade: (Grade) -> Unit, about: () -> Unit, donate: (() -> Unit)?, refresh: () -> Unit, dismiss: () -> Unit, apply: (Filters, MapProvider, Boolean) -> Unit) {
     var f by remember { mutableStateOf(initial) }; var provider by remember { mutableStateOf(initialProvider) }; var wide by remember { mutableStateOf(initialWide) }
     SheetTitle(stringResource(R.string.settings), dismiss)
     Text("Fuel type", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
@@ -499,6 +551,7 @@ private fun openMaps(context: Context, station: Station, provider: MapProvider):
     Text("Station data", fontWeight = FontWeight.SemiBold)
     Text("Station locations: OpenStreetMap contributors. Community pump prices are unverified; check the report time and confirm at the pump.", fontSize = 12.sp, color = Muted)
     TextButton(onClick = about, modifier = Modifier.testTag("open-about")) { Text("About OpenFuel and data sources") }
+    if (donate != null) TextButton(onClick = donate, modifier = Modifier.testTag("donate")) { Text(stringResource(R.string.donate_costs)) }
 
     Text(stringResource(R.string.open_with), fontWeight = FontWeight.SemiBold)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -524,7 +577,7 @@ private fun openMaps(context: Context, station: Station, provider: MapProvider):
         Text(label, modifier = Modifier.weight(1f)); Switch(checked,onCheckedChange = change)
     }
 }
-@Composable private fun PriceForm(s: Station, grade: Grade, submitting: Boolean, error: String?, close: () -> Unit, submit: (Int) -> Unit) {
+@Composable private fun PriceForm(s: Station, grade: Grade, submitting: Boolean, error: String?, donate: (() -> Unit)?, close: () -> Unit, submit: (Int) -> Unit) {
     var text by remember { mutableStateOf(s.prices[grade]?.let(FuelCore::priceText) ?: "") }
     val value = FuelCore.parsePrice(text)
     SheetTitle(stringResource(R.string.report_price), close)
@@ -533,6 +586,7 @@ private fun openMaps(context: Context, station: Station, provider: MapProvider):
         singleLine = true, enabled = !submitting, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), isError = text.isNotEmpty() && value == null)
     Text(stringResource(R.string.local_price_note), Modifier.padding(vertical = 14.dp), color = Muted, fontSize = 12.sp)
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 12.dp).testTag("report-error")) }
+    if (donate != null) TextButton(onClick = donate, modifier = Modifier.padding(bottom = 8.dp)) { Text(stringResource(R.string.donate)) }
     Button(onClick = { value?.let(submit) }, enabled = value != null && !submitting, modifier = Modifier.fillMaxWidth().testTag("submit-report")) {
         if (submitting) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
         else Text(stringResource(R.string.update_demo))

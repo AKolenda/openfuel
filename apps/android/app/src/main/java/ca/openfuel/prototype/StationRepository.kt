@@ -2,23 +2,40 @@
 package ca.openfuel.prototype
 
 import android.content.Context
+import android.net.http.HttpResponseCache
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.ensureActive
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.round
 
 class PrototypeApiException(message: String) : IOException(message)
+/** OpenFuel's database reached its free daily allowance; live answers return at about [resetsAt]. */
+class ServiceLimitException(val resetsAt: Instant, message: String) : IOException(message)
 enum class SearchSource { OVERVIEW, CITY, MAP, DEVICE }
 data class SearchPoint(val latitude: Double, val longitude: Double, val label: String, val source: SearchSource = SearchSource.CITY) {
     fun forStorage() = copy(latitude = round(latitude * 100) / 100, longitude = round(longitude * 100) / 100)
+    /** Both points round to the same saved 0.01° area (about 1 km). */
+    fun sameCell(other: SearchPoint): Boolean {
+        val a = forStorage(); val b = other.forStorage()
+        return a.latitude == b.latitude && a.longitude == b.longitude
+    }
     companion object {
         val CANADA_OVERVIEW = SearchPoint(55.0, -104.0, "Choose an area", SearchSource.OVERVIEW)
         val EDMONTON = SearchPoint(53.5461, -113.4938, "Edmonton · chosen city")
@@ -27,28 +44,37 @@ data class SearchPoint(val latitude: Double, val longitude: Double, val label: S
 
 /** Only real station snapshots enter this cache. A random installation ID is not authentication. */
 class StationRepository(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE)
     private val base = BuildConfig.API_BASE_URL.trimEnd('/')
     val configured = !URL(base).host.endsWith(".invalid")
-    private val clientId = prefs.getString("client-id", null) ?: UUID.randomUUID().toString().also {
-        prefs.edit().putString("client-id", it).apply()
+    // Read when a report is sent, so creating a repository never waits for the preferences file.
+    private val clientId by lazy {
+        prefs.getString("client-id", null) ?: UUID.randomUUID().toString().also { prefs.edit().putString("client-id", it).apply() }
     }
     data class Snapshot(val stations: List<Station>, val cached: Boolean, val point: SearchPoint = SearchPoint.CANADA_OVERVIEW)
+    /** What the first frame needs: the saved snapshot, and the saved area's fresh stations, already requested. */
+    class Startup(val snapshot: Snapshot, val fresh: Deferred<List<Station>>?)
 
-    fun initial(): Snapshot = runCatching {
-        val storedLat = prefs.getString("latitude", null)?.toDoubleOrNull() ?: return Snapshot(emptyList(), false)
-        val storedLon = prefs.getString("longitude", null)?.toDoubleOrNull() ?: return Snapshot(emptyList(), false)
+    /** The saved search area, read without parsing its stations. */
+    fun savedArea(): SearchPoint? = runCatching {
+        val storedLat = prefs.getString("latitude", null)?.toDoubleOrNull() ?: return null
+        val storedLon = prefs.getString("longitude", null)?.toDoubleOrNull() ?: return null
         val source = runCatching { SearchSource.valueOf(prefs.getString("area-source", null) ?: "MAP") }.getOrDefault(SearchSource.MAP)
         val savedLabel = prefs.getString("area-label", null)?.take(100) ?: "Saved search area"
-        val point = SearchPoint(storedLat, storedLon, if (source == SearchSource.DEVICE) "Last location area" else savedLabel, source).forStorage()
-        require(FuelCore.validStationPoint(point.latitude, point.longitude))
+        SearchPoint(storedLat, storedLon, if (source == SearchSource.DEVICE) "Last location area" else savedLabel, source).forStorage()
+            .takeIf { FuelCore.validStationPoint(it.latitude, it.longitude) }
+    }.getOrNull()
+
+    fun initial(): Snapshot = runCatching {
+        val point = savedArea() ?: return Snapshot(emptyList(), false)
         if (!prefs.contains("snapshot-latitude") && prefs.contains("stations")) prefs.edit()
             .putString("snapshot-latitude", point.latitude.toString()).putString("snapshot-longitude", point.longitude.toString()).apply()
         // Migrate old snapshots that retained an unnecessarily precise search coordinate.
         rememberArea(point)
         val body = prefs.getString("stations", null) ?: return Snapshot(emptyList(), false, point)
-        val cachedLat = prefs.getString("snapshot-latitude", null)?.toDoubleOrNull() ?: storedLat
-        val cachedLon = prefs.getString("snapshot-longitude", null)?.toDoubleOrNull() ?: storedLon
+        val cachedLat = prefs.getString("snapshot-latitude", null)?.toDoubleOrNull() ?: point.latitude
+        val cachedLon = prefs.getString("snapshot-longitude", null)?.toDoubleOrNull() ?: point.longitude
         if (round(cachedLat * 100) / 100 != point.latitude || round(cachedLon * 100) / 100 != point.longitude) return Snapshot(emptyList(), false, point)
         val elapsed = ((System.currentTimeMillis() - prefs.getLong("saved-at", System.currentTimeMillis())) / 60_000)
             .coerceIn(0, 1_000_000).toInt()
@@ -76,15 +102,31 @@ class StationRepository(context: Context) {
         }.filter { FuelCore.validStationPoint(it.latitude, it.longitude) }
     }
 
-    suspend fun refresh(point: SearchPoint = initial().point, saveSnapshot: Boolean = true): List<Station> = withContext(Dispatchers.IO) {
+    /**
+     * Starts the /stations request for [point] without waiting for it, or joins the one already running
+     * for the same 0.01° cell. [fresh] skips the HTTP cache, for explicit refreshes.
+     */
+    fun prefetch(point: SearchPoint, fresh: Boolean = false): Deferred<List<Station>> {
         require(FuelCore.validStationPoint(point.latitude, point.longitude))
         val latitude = String.format(Locale.ROOT, "%.3f", point.latitude)
         val longitude = String.format(Locale.ROOT, "%.3f", point.longitude)
-        val body = request("/stations?lat=$latitude&lon=$longitude&radius=10000")
-        val stations = parseStations(body)
-        coroutineContext.ensureActive()
-        if (saveSnapshot) cache(stations, point)
-        stations
+        val path = "/stations?lat=$latitude&lon=$longitude&radius=10000"
+        val shared = stationRequests.start(point.forStorage().let { it.latitude to it.longitude }) {
+            // Shortly after this device's own report, copies the HTTP cache kept from before it are skipped.
+            val reported = System.currentTimeMillis() - prefs.getLong("reported-at", 0) in 0..REPORT_BYPASS_MS
+            path to parseStations(request(path, noCache = fresh || reported))
+        }
+        return background.async {
+            val (asked, stations) = shared.await()
+            // An answer shared with another point in the cell is re-measured from this one.
+            if (asked == path) stations else stations.measuredFrom(point)
+        }
+    }
+
+    suspend fun refresh(point: SearchPoint = initial().point, saveSnapshot: Boolean = true, fresh: Boolean = false): List<Station> {
+        val stations = prefetch(point, fresh).await()
+        if (saveSnapshot) withContext(Dispatchers.IO) { cache(stations, point) }
+        return stations
     }
 
     suspend fun report(station: Station, grade: Grade, price: Int): List<Station> = withContext(Dispatchers.IO) {
@@ -111,12 +153,13 @@ class StationRepository(context: Context) {
             if (it.id == station.id) FuelCore.updatePrice(it, grade, price).copy(ages = it.ages + (grade to age)) else it
         }
         cache(updated, snapshot.point)
-        prefs.edit().remove("pending-report-key").remove("pending-report-id").apply()
+        prefs.edit().remove("pending-report-key").remove("pending-report-id").putLong("reported-at", System.currentTimeMillis()).apply()
         updated
     }
 
-    private fun request(path: String, payload: JSONObject? = null): JSONObject {
+    private fun request(path: String, payload: JSONObject? = null, noCache: Boolean = false): JSONObject {
         if (!configured) throw IOException("This build has no server configured.")
+        installHttpCache(appContext)
         val connection = URL(base + path).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 15_000
@@ -124,6 +167,7 @@ class StationRepository(context: Context) {
             connection.instanceFollowRedirects = false
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("User-Agent", "OpenFuel-Android/${BuildConfig.VERSION_NAME} (+https://openfuel.ca)")
+            if (noCache) connection.setRequestProperty("Cache-Control", "no-cache")
             if (payload != null) {
                 connection.requestMethod = "POST"; connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
@@ -141,7 +185,9 @@ class StationRepository(context: Context) {
                     }; result.toString()
                 }.orEmpty()
             if (status !in 200..299) {
-                val detail = runCatching { JSONObject(text).optString("message") }.getOrDefault("")
+                val error = runCatching { JSONObject(text) }.getOrNull()
+                val detail = error?.optString("message").orEmpty()
+                serviceLimit(status, error != null, error?.optString("error"), error?.optString("resets_at"), detail)?.let { throw it }
                 throw PrototypeApiException(detail.takeIf { it.isNotBlank() } ?: "Station service unavailable ($status). Please try again.")
             }
             return JSONObject(text)
@@ -195,13 +241,79 @@ class StationRepository(context: Context) {
                 brandLogoUrl = s.optString("brandLogoUrl").takeIf { it.startsWith("https://") && it.length <= 1024 })
         }
     }
+
+    companion object {
+        private const val HTTP_CACHE_BYTES = 4L * 1024 * 1024
+        private const val REPORT_BYPASS_MS = 60_000L
+        private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private val stationRequests = SharedLoads<Pair<Double, Double>, Pair<String, List<Station>>>(background)
+
+        /** Lets HttpURLConnection honour the API's Cache-Control: 15 s for stations, a day for city searches. */
+        @Synchronized fun installHttpCache(context: Context) {
+            if (HttpResponseCache.getInstalled() == null)
+                runCatching { HttpResponseCache.install(File(context.cacheDir, "api-http"), HTTP_CACHE_BYTES) }
+        }
+
+        fun flushHttpCache() { background.launch { HttpResponseCache.getInstalled()?.flush() } }
+
+        /**
+         * Runs off the UI thread as the activity starts: installs the HTTP cache, requests the saved
+         * area's fresh stations, then parses the saved snapshot while that request is under way.
+         */
+        fun startup(context: Context): StateFlow<Startup?> {
+            val state = MutableStateFlow<Startup?>(null)
+            background.launch {
+                state.value = runCatching {
+                    installHttpCache(context)
+                    val repository = StationRepository(context)
+                    val fresh = repository.savedArea()?.let { repository.prefetch(it) }
+                    Startup(repository.initial(), fresh)
+                }.getOrElse { Startup(Snapshot(emptyList(), false), null) }
+            }
+            return state
+        }
+    }
 }
 
-internal fun approximateDistanceMetres(point: SearchPoint, latitude: Double, longitude: Double): Int {
-    val origin = point.forStorage()
-    val dLat = Math.toRadians(latitude - origin.latitude)
-    val dLon = Math.toRadians(longitude - origin.longitude)
-    val a = kotlin.math.sin(dLat / 2).let { it * it } + kotlin.math.cos(Math.toRadians(origin.latitude)) *
+internal fun approximateDistanceMetres(point: SearchPoint, latitude: Double, longitude: Double): Int =
+    point.forStorage().let { distanceMetres(it.latitude, it.longitude, latitude, longitude) }
+
+/** Distances from [point] as the API measures them, from the request's three-decimal coordinates. */
+internal fun List<Station>.measuredFrom(point: SearchPoint): List<Station> {
+    val latitude = round(point.latitude * 1000) / 1000
+    val longitude = round(point.longitude * 1000) / 1000
+    return map { it.copy(distanceMetres = distanceMetres(latitude, longitude, it.latitude!!, it.longitude!!)) }
+}
+
+internal fun distanceMetres(fromLatitude: Double, fromLongitude: Double, latitude: Double, longitude: Double): Int {
+    val dLat = Math.toRadians(latitude - fromLatitude)
+    val dLon = Math.toRadians(longitude - fromLongitude)
+    val a = kotlin.math.sin(dLat / 2).let { it * it } + kotlin.math.cos(Math.toRadians(fromLatitude)) *
         kotlin.math.cos(Math.toRadians(latitude)) * kotlin.math.sin(dLon / 2).let { it * it }
     return (12_742_000 * kotlin.math.atan2(kotlin.math.sqrt(a.coerceIn(0.0, 1.0)), kotlin.math.sqrt((1 - a).coerceIn(0.0, 1.0)))).toInt()
+}
+
+/**
+ * Recognises the daily-limit answers: the Worker's JSON `spending_cap` error (HTTP 503), and the
+ * non-JSON 429 page Cloudflare serves once its daily request limit is reached. Other failures give null.
+ */
+internal fun serviceLimit(status: Int, json: Boolean, error: String?, resetsAt: String?, message: String?,
+                          now: Instant = Instant.now()): ServiceLimitException? {
+    if (error != "spending_cap" && (status != 429 || json)) return null
+    // Both daily limits reset at midnight UTC.
+    val midnight = now.atZone(ZoneOffset.UTC).toLocalDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+    val reset = resetsAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: midnight
+    return ServiceLimitException(reset, message?.takeIf { it.isNotBlank() } ?: "OpenFuel's database reached its free daily limit.")
+}
+
+/** While a load for a key is running, later callers for that key share it instead of starting another. */
+internal class SharedLoads<K, V>(private val scope: CoroutineScope) {
+    private val running = HashMap<K, Deferred<V>>()
+    fun start(key: K, load: suspend () -> V): Deferred<V> = synchronized(running) {
+        running[key] ?: scope.async(start = CoroutineStart.LAZY) { load() }.also { task ->
+            running[key] = task
+            task.invokeOnCompletion { synchronized(running) { if (running[key] === task) running.remove(key) } }
+            task.start()
+        }
+    }
 }

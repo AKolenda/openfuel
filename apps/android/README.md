@@ -7,7 +7,7 @@ Declining permission offers Canadian city search. The current search area is alw
 a chosen city or cached area never masquerades as GPS. Pan/zoom and tap **Search this area**
 to load another part of the map, or tap the location button to recenter.
 
-Fresh installs show a Canada overview until you grant location access or choose an area.
+Fresh installs load no map, and request no tiles, until you grant location access or choose an area.
 No city is silently selected. Nearby searches round coordinates to three decimal places
 (roughly 100 m) before sending them to the API.
 
@@ -23,6 +23,11 @@ selection. Saved coordinates use two decimal places (about 1 km); cached distanc
 recomputed from that coarse area, and older snapshots are migrated. Precise GPS stays in memory.
 Offline states explicitly identify saved data. Failed or unacknowledged reports never change displayed prices;
 retry IDs prevent duplicate writes. Suggestions remain clearly labelled local drafts.
+The saved area's fresh stations are requested as the app starts, before the map loads; a GPS fix
+in the same saved area moves only the location dot and distances. API answers are reused for as
+long as their Cache-Control allows (15 seconds for stations), except for Refresh and just after a report.
+When OpenFuel's database reaches its free daily limit, saved prices stay on screen under a notice
+giving the local time live prices return.
 
 The base map is OpenStreetMap data from OpenFreeMap's vector tiles, drawn by the bundled MapLibre in
 OpenFuel's style ([packages/map-style](../../packages/map-style/README.md)). Tiles load on demand with
@@ -59,8 +64,15 @@ wrapper downloads Gradle 8.11.1. No Cloudflare secrets belong in this app.
 ./gradlew :app:clean :app:assembleDebug
 # Use your own HTTPS deployment:
 ./gradlew :app:assembleDebug -POPENFUEL_API_BASE_URL=https://your-worker.workers.dev/api/v1
+# Optional donate link (Gradle property or environment variable):
+./gradlew :app:assembleDebug -POPENFUEL_DONATE_URL=https://example.org/donate
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
+
+`OPENFUEL_DONATE_URL` must be an HTTPS URL without credentials, quotes or whitespace; the build
+fails otherwise. When set, Settings and About show **Donate to cover the database and map costs**
+(opening the browser), and the daily-limit notice and report form get a Donate button. Without it
+no donate UI appears.
 
 Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.0-live (code 4), Android 8+
 (API 26), signed with the local Android debug key. This is a directly installable development

@@ -73,4 +73,10 @@
   <string name="refresh_prices">Refresh prices</string>
   <string name="report_saved">Price report saved · unverified community observation.</string>
   <string name="report_failed">Report was not confirmed. Check your connection and refresh before trying again.</string>
+  <string name="limit_notice_saved">OpenFuel\'s database reached its free daily limit, so live prices are paused until about %1$s. Saved prices still show.</string>
+  <string name="limit_notice">OpenFuel\'s database reached its free daily limit, so live prices are paused until about %1$s.</string>
+  <string name="limit_report">OpenFuel\'s database reached its free daily limit, so price reports are paused until about %1$s.</string>
+  <string name="donate">Donate</string>
+  <string name="donate_costs">Donate to cover the database and map costs</string>
+  <string name="link_unavailable">No app can open this link. Install a web browser.</string>
 </resources>
