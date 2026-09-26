@@ -36,7 +36,10 @@ const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, cente
 let clientId = storage.read('client-id', null);
 if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { clientId = crypto.randomUUID(); storage.write('client-id', clientId); }
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
-let markerFrame = 0;
+// pendingRequest is the station request on its way ({generation, key}); fixTimer runs while a return visit waits for the device fix.
+let pendingRequest = null, fixTimer = null, markerFrame = 0;
+// A snapshot this young is as current as the server's own short caches, so it is not asked for again.
+const FRESH_SNAPSHOT_MS = 30000;
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
 L.control.zoom({position:'bottomright'}).addTo(map);
 const tileOptions = {maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1};
@@ -168,14 +171,23 @@ function restoreArea() {
   if (!area || !Number.isFinite(area.loadedAt)) return false;
   try { state.stations=normalize(area.stations);state.loadedAt=area.loadedAt;state.coverage=area.coverage;return true; } catch { return false; }
 }
+/** Shows the saved area and its snapshot without asking the server; the caller decides when to load it. */
 function restoreLastArea() {
   const last=storage.read('last-area',null);
-  if(!last||!Number.isFinite(last.lat)||Math.abs(last.lat)>90||!Number.isFinite(last.lon)||Math.abs(last.lon)>180||![5000,10000,25000,50000].includes(last.radius))return;
+  if(!last||!Number.isFinite(last.lat)||Math.abs(last.lat)>90||!Number.isFinite(last.lon)||Math.abs(last.lon)>180||![5000,10000,25000,50000].includes(last.radius))return false;
   state.radius=last.radius;state.fuel=grades.includes(last.fuel)?last.fuel:'regular';$('radius').value=String(state.radius);
   const label=typeof last.label==='string'&&last.label.length<=160?last.label:'Your last searched area';
   const center=coarseCenter(last);
-  chooseLocation(center.lat,center.lon,`${label} · saved area`,'previous',false);
+  chooseLocation(center.lat,center.lon,`${label} · saved area`,'previous',false,false);
+  return true;
 }
+const snapshotFresh=()=>{const age=Date.now()-state.loadedAt;return age>=0&&age<FRESH_SNAPSHOT_MS;};
+/** Loads the chosen area unless its snapshot is fresh enough to show as it is. */
+function loadArea() {
+  if(!snapshotFresh()){refreshStations();return;}
+  stopWaitingForFix();state.connection='online';render();
+}
+function stopWaitingForFix() { clearTimeout(fixTimer);fixTimer=null; }
 function visibleStations() {
   return state.stations.filter(s => !state.saved || favorites.has(s.id)).sort((a,b) => {
     if (state.sort==='price') {
@@ -233,8 +245,10 @@ function render() {
 }
 async function refreshStations(fresh=false) {
   if (!state.center) return;
+  stopWaitingForFix();
   const generation=++state.generation, reportVersion=state.reportVersion;
   const center={...state.center},radius=state.radius;
+  pendingRequest={generation,key:cacheKey(center)};
   state.connection='loading';render();
   try {
     const query=new URLSearchParams({lat:center.lat.toFixed(6),lon:center.lon.toFixed(6),radius:String(radius),fuel:state.fuel});
@@ -247,6 +261,8 @@ async function refreshStations(fresh=false) {
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (error instanceof ServiceLimit) { state.connection='limited';state.limitResetsAt=error.resetsAt;render();return; }
     state.connection='offline';render();toast(error.name==='AbortError' ? 'The request timed out. Try Refresh.' : error.message);
+  } finally {
+    if (pendingRequest?.generation===generation) pendingRequest=null;
   }
 }
 function closePlaceChoices() {
@@ -258,11 +274,15 @@ function showAreaChoices() {
   $('search-results').innerHTML='<p class="search-message">Choose where to find fuel.</p><button class="search-result" data-area-action="city">Search a Canadian city or coordinates</button><button class="search-result" data-area-action="device">Use my device location</button><button class="search-result" data-area-action="map">Use the visible map area</button>';
   $('search-results').hidden=false;$('area-selector').setAttribute('aria-expanded','true');
 }
-function chooseLocation(lat,lon,label,source='search',remember=true) {
+function chooseLocation(lat,lon,label,source='search',remember=true,load=true) {
   if (!Number.isFinite(lat)||Math.abs(lat)>90||!Number.isFinite(lon)||Math.abs(lon)>180) return;
   // A city or map choice wins over an earlier, still-pending device request.
-  locationGeneration++;searchGeneration++;locatePending=false;$('locate-button').disabled=false;
-  state.generation++;state.center={lat,lon};state.source=source;state.label=label;state.stations=[];state.loadedAt=0;state.selected=null;state.coverage=null;
+  locationGeneration++;searchGeneration++;locatePending=false;$('locate-button').disabled=false;stopWaitingForFix();
+  // A choice in the same area as the station request already on its way (a device fix in the saved
+  // area, for example) keeps that request instead of sending another.
+  const requested=pendingRequest?.generation===state.generation&&pendingRequest.key===cacheKey({lat,lon});
+  if(!requested)state.generation++;
+  state.center={lat,lon};state.source=source;state.label=label;state.stations=[];state.loadedAt=0;state.selected=null;state.coverage=null;
   $('location-status').textContent=label;
   const shortLabel=source==='device'?'Nearby':source==='search'?label.split(',')[0]:source==='previous'?'Saved area':'Map area';
   $('area-label').textContent=shortLabel;$('area-selector').setAttribute('aria-label',`Choose location, currently ${shortLabel}`);$('area-selector').title=label;
@@ -270,7 +290,8 @@ function chooseLocation(lat,lon,label,source='search',remember=true) {
   map.setView([lat,lon],13,{animate:false});
   map.panBy(map.getSize().divideBy(2).subtract(mapFocusPoint()),{animate:false});$('search-area').hidden=true;
   if(remember)rememberArea();
-  restoreArea();refreshStations();
+  restoreArea();
+  if(load&&!requested)loadArea();else render();
   // After the station request, so the prices go out first.
   startBaseMap();
 }
@@ -280,6 +301,7 @@ function locate() {
   const generation=++locationGeneration;
   locatePending=true;$('locate-button').disabled=true;
   $('location-status').textContent=state.center?`${state.label} · Checking device location…`:'Your browser will ask for location. You can search a city instead.';
+  // Station areas are kilometres wide, so a coarse fix up to five minutes old is enough and arrives sooner.
   navigator.geolocation.getCurrentPosition(position=>{
     if(generation!==locationGeneration)return;
     locatePending=false;$('locate-button').disabled=false;
@@ -294,9 +316,10 @@ function locate() {
     locatePending=false;$('locate-button').disabled=false;
     const reason=error.code===1?'Location permission is off. Search a city, or enable location in your browser.':error.code===3?'Location took too long. Try again or search a city.':'Could not find your device location. Try again or search a city.';
     $('location-status').textContent=state.center ? `${state.label} · ${error.code===1?'Device location off':'Device location unavailable'}` : reason;
-    // Without a fix a first visit shows the Canada overview.
+    // Without a fix a return visit loads its saved area now, and a first visit shows the Canada overview.
+    if(fixTimer)loadArea();
     startBaseMap();
-  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+  },{enableHighAccuracy:false,timeout:15000,maximumAge:300000});
 }
 async function searchPlaces(event) {
   event.preventDefault();const query=$('place-search').value.trim(), generation=++searchGeneration;
@@ -379,7 +402,7 @@ $('place-search').addEventListener('keydown',event=>{if(event.key==='Escape')clo
 $('locate-button').addEventListener('click',locate);$('empty-locate').addEventListener('click',locate);
 $('search-area').addEventListener('click',()=>{const center=visibleMapCenter();chooseLocation(center.lat,center.lng,`Map area · ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)}`,'map');});
 $('refresh-button').addEventListener('click',()=>refreshStations(true));
-$('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();refreshStations();}});
+$('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();loadArea();}});
 $('sort').addEventListener('change',event=>{state.sort=event.target.value;render();});
 $('saved-button').addEventListener('click',()=>{state.saved=!state.saved;render();});
 $('report-form').addEventListener('submit',submitReport);
@@ -401,7 +424,7 @@ $('sheet-toggle').addEventListener('pointercancel',()=>{sheetPointer=null;});
 $('sheet-toggle').addEventListener('click',event=>{if(suppressSheetClick){event.stopImmediatePropagation();suppressSheetClick=false;}},true);
 $('clear-local').addEventListener('click',()=>{
   try{Object.keys(localStorage).filter(key=>key.startsWith('openfuel-')).forEach(key=>localStorage.removeItem(key));}catch{}
-  state.generation++;locationGeneration++;locatePending=false;$('locate-button').disabled=false;
+  state.generation++;locationGeneration++;locatePending=false;$('locate-button').disabled=false;stopWaitingForFix();
   if(state.connection==='loading')state.connection='idle';
   favorites.clear();pendingReport=null;clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
 });
@@ -410,8 +433,19 @@ addEventListener('online',refreshStations);
 addEventListener('offline',()=>{if(state.center){state.generation++;state.connection='offline';render();}});
 setInterval(()=>{if(!document.hidden&&state.center)render();},60000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+function locationGranted() {
+  try { return navigator.permissions.query({name:'geolocation'}).then(status=>status.state==='granted',()=>false); } catch { return Promise.resolve(false); }
+}
 // A one-shot request on entry lets the browser own the permission decision.
 // Denial never substitutes a fictional location or a bundled sample station.
-restoreLastArea();
-requestAnimationFrame(()=>locate());
+// A return visit shows its saved area at once and sends one station request. With location already
+// granted it waits up to 3 seconds for the fix and loads that area (the saved one when the fix rounds
+// to it); otherwise it loads the saved area. A snapshot under 30 seconds old is not asked for again.
+if(!restoreLastArea())requestAnimationFrame(()=>locate());
+else locationGranted().then(granted=>{
+  if(state.source!=='previous')return;
+  if(granted&&!snapshotFresh()){state.connection='loading';render();fixTimer=setTimeout(loadArea,3000);}
+  else loadArea();
+  requestAnimationFrame(()=>locate());
+});
 })();
