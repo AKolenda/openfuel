@@ -1,13 +1,24 @@
 import { type Coordinates, type Fuel, validateResponse } from './domain';
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://openfuel.ca/api/v1').replace(/\/$/, '');
+const DONATE_URL = process.env.EXPO_PUBLIC_DONATE_URL || '';
+
+/** OpenFuel's database reached its daily allowance: the Worker's own cap or Cloudflare's 429 limit page. */
+function serviceLimit(resetsAt?: string) {
+  const reset = resetsAt && Number.isFinite(Date.parse(resetsAt)) ? new Date(resetsAt) : null;
+  const until = reset ? ` until about ${reset.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ' until midnight UTC';
+  return new Error(`OpenFuel reached its free daily database limit, so live prices are paused${until}.${DONATE_URL ? ` Donations keep it running: ${DONATE_URL}` : ''}`);
+}
 
 async function request(path: string, init?: RequestInit) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 35_000);
   try {
     const response = await fetch(`${API_URL}${path}`, { ...init, signal: controller.signal });
-    const body = await response.json();
+    const body = await response.json().catch(() => null);
+    if (body?.error === 'spending_cap') throw serviceLimit(body.resets_at);
+    if (response.status === 429 && !body) throw serviceLimit();
+    if (!body) throw new Error(`Request failed (${response.status}).`);
     if (!response.ok) throw new Error(body.message || (response.status === 429 ? 'Too many requests. Please try again shortly.' : `Request failed (${response.status}).`));
     return body;
   } catch (error) {

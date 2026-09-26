@@ -59,3 +59,7 @@
 @media(max-width:365px){.wordmark img{width:108px}.search-bar{gap:9px}.area-selector{width:75px;padding:0 7px;font-size:10px}.filter-row{gap:4px}.fuel-tabs{gap:3px}.fuel-tabs button{font-size:10px;padding:0 3px}.saved-button{width:32px}}
 
 .search-header{z-index:520}
+/* Daily database limit: saved details stay visible under a short notice with the donate link. */
+.limit-banner{margin:0 20px 12px;padding:10px 12px;border-radius:10px;background:#fff6e0;color:#6b4b12;font-size:12px;line-height:1.5}
+.limit-banner a{font-weight:600;color:#6b4b12}
+@media(max-width:760px){.limit-banner{margin:0 19px 9px;font-size:11px}}

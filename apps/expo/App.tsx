@@ -244,9 +244,15 @@ function OpenFuel() {
     const key = `${reportStation.id}:${reportFuel}:${milli}`;
     if (requestIdentity.current?.key !== key) requestIdentity.current = { key, id: Crypto.randomUUID() };
     try {
-      await submitReport({ station_id: reportStation.id, fuel_type: reportFuel, price_milli: milli, client_id: clientId.current, request_id: requestIdentity.current.id });
+      const { report } = await submitReport({ station_id: reportStation.id, fuel_type: reportFuel, price_milli: milli, client_id: clientId.current, request_id: requestIdentity.current.id });
       setReportStation(null); setNotice('Price shared. Community reports are unverified.');
-      if (currentArea.current) await loadArea(currentArea.current.point, currentArea.current.label, false);
+      // Show the confirmed report straight away; refetching the area would only cost another request.
+      setStations(list => list.map(station => station.id !== report.station_id ? station : {
+        ...station,
+        prices: { ...station.prices, [report.fuel_type]: report.price_milli },
+        observedAt: { ...station.observedAt, [report.fuel_type]: report.observed_at },
+        priceSources: { ...station.priceSources, [report.fuel_type]: 'community-unverified' },
+      }));
     } catch (cause) { setReportError(failure(cause)); }
     finally { setSending(false); }
   };

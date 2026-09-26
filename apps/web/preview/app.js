@@ -113,11 +113,22 @@ function normalize(records) {
     address:typeof s.address==='string' ? s.address : '', ages:s.ages||{}, observedAt:s.observedAt||{},
   }));
 }
+// Official builds can set a donation page for the database and map costs; without one no donate UI appears.
+const donateURL=document.querySelector('meta[name="openfuel-donate-url"]')?.content||'';
+document.querySelectorAll('.donate-link').forEach(link=>{if(donateURL){link.hidden=false;if(link.href!==undefined)link.href=donateURL;}});
+/** The database reached its daily allowance: the Worker's own cap, or Cloudflare's request limit page. */
+class ServiceLimit extends Error {
+  constructor(resetsAt) { super('OpenFuel reached its free daily database limit.'); this.name='ServiceLimit'; this.resetsAt=resetsAt; }
+}
+const nextUtcMidnight=()=>{const now=new Date();return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1));};
 async function api(path, options={}) {
   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),20000);
   try {
-    const response=await fetch(`/api/v1/${path}`,{...options,cache:'no-store',signal:controller.signal});
+    const response=await fetch(`/api/v1/${path}`,{...options,signal:controller.signal});
     const body=await response.json().catch(()=>null);
+    if (body?.error==='spending_cap') throw new ServiceLimit(new Date(body.resets_at||nextUtcMidnight()));
+    // Cloudflare answers the daily Worker request limit itself with a non-JSON 429 page (error 1027).
+    if (response.status===429 && !body) throw new ServiceLimit(nextUtcMidnight());
     if (!response.ok) throw Error(body?.message || (response.status===429 ? 'Too many requests. Wait a minute and try again.' : 'Could not reach OpenFuel. Try again.'));
     if (!body) throw Error('The response could not be read. Try again.');
     return body;
@@ -174,8 +185,11 @@ function renderStatus() {
   if (state.connection==='loading') text=state.loadedAt?'Saved station details · Refreshing…':'Finding real stations in this area…';
   if (state.connection==='online') text=`${count} station${count===1?'':'s'}${state.coverage?.truncated?' · Narrow the radius for all results':''} · Prices shown only when reported`;
   if (state.connection==='offline') text=state.loadedAt ? `Saved station details · Last updated ${new Date(state.loadedAt).toLocaleString()}` : 'Unable to load stations. Check your connection and refresh.';
+  if (state.connection==='limited') text=state.loadedAt ? `Saved station details · Last updated ${new Date(state.loadedAt).toLocaleString()}` : 'Live station details are paused for today.';
   $('connection-status').textContent=text;
-  $('connection-status').classList.toggle('offline',state.connection==='offline');
+  $('connection-status').classList.toggle('offline',state.connection==='offline'||state.connection==='limited');
+  $('limit-banner').hidden=state.connection!=='limited';
+  if(state.connection==='limited')$('limit-text').textContent=`OpenFuel's database reached its free daily limit, so live prices are paused until about ${state.limitResetsAt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}.${state.loadedAt?' Saved prices still show.':''}${donateURL?' Donations pay for more database capacity.':''}`;
 }
 function render() {
   renderStatus();
@@ -185,8 +199,8 @@ function render() {
   if (!state.center) return;
   const list=visibleStations();
   if (!list.length) {
-    const title=state.saved ? 'No saved stations in this area.' : state.connection==='loading' ? 'Finding fuel nearby…' : state.connection==='offline' ? 'No saved details for this area.' : 'No stations found here yet.';
-    const help=state.saved ? 'Open a station and save it to keep it handy.' : state.connection==='offline' ? 'Reconnect and refresh, or return to an area you already searched.' : 'Try a larger radius, move the map, or search another Canadian city.';
+    const title=state.saved ? 'No saved stations in this area.' : state.connection==='loading' ? 'Finding fuel nearby…' : state.connection==='offline' ? 'No saved details for this area.' : state.connection==='limited' ? 'Live prices are paused for today.' : 'No stations found here yet.';
+    const help=state.saved ? 'Open a station and save it to keep it handy.' : state.connection==='offline' ? 'Reconnect and refresh, or return to an area you already searched.' : state.connection==='limited' ? 'Areas you searched before still show their saved details.' : 'Try a larger radius, move the map, or search another Canadian city.';
     $('station-list').innerHTML=`<div class="empty-state"><span class="empty-icon">⌕</span><h2>${title}</h2><p>${help}</p></div>`;
   } else {
     $('station-list').innerHTML=list.map(s=>{
@@ -202,19 +216,21 @@ function render() {
     marker.getElement()?.setAttribute('aria-label',title);
   }
 }
-async function refreshStations() {
+async function refreshStations(fresh=false) {
   if (!state.center) return;
   const generation=++state.generation, reportVersion=state.reportVersion;
   const center={...state.center},radius=state.radius;
   state.connection='loading';render();
   try {
     const query=new URLSearchParams({lat:center.lat.toFixed(6),lon:center.lon.toFixed(6),radius:String(radius),fuel:state.fuel});
-    const response=await api(`stations?${query}`);
+    // Normal loads may reuse the browser's copy for 30 seconds; Refresh always asks again.
+    const response=await api(`stations?${query}`,fresh===true?{cache:'no-cache'}:{});
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (response.is_demo!==false || response.mode!=='live') throw Error('OpenFuel is still serving sample data. Please try again after the live update.');
     state.stations=normalize(response.stations);state.coverage=response.coverage;state.loadedAt=Date.now();state.connection='online';cacheCurrent();render();
   } catch (error) {
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
+    if (error instanceof ServiceLimit) { state.connection='limited';state.limitResetsAt=error.resetsAt;render();return; }
     state.connection='offline';render();toast(error.name==='AbortError' ? 'The request timed out. Try Refresh.' : error.message);
   }
 }
@@ -312,9 +328,10 @@ async function submitReport(event) {
     if(!response.ok||response.is_demo!==false||response.report?.id!==request.request_id||response.report?.station_id!==station.id||response.report?.fuel_type!==fuel||response.report?.price_milli!==value)throw Error('No confirmation received. Refresh before trying again.');
     state.reportVersion++;pendingReport=null;storage.write('pending-report',null);
     station.prices[fuel]=value;station.observedAt[fuel]=response.report.observed_at;station.ages[fuel]=0;state.fuel=fuel;
-    state.connection='online';cacheCurrent();$('report-dialog').close();render();toast('Price shared as an unverified community report.');refreshStations();
+    // The confirmed report is shown straight away; refetching the area would only cost another request.
+    state.connection='online';cacheCurrent();$('report-dialog').close();render();toast('Price shared as an unverified community report.');
   } catch(error) {
-    $('report-error').textContent=error.name==='AbortError'?'No confirmation received. Reconnect and retry; your request will not be duplicated.':error.message;
+    $('report-error').textContent=error.name==='AbortError'?'No confirmation received. Reconnect and retry; your request will not be duplicated.':error instanceof ServiceLimit?`OpenFuel reached its free daily database limit, so reports are paused until about ${error.resetsAt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}.${donateURL?' Donations pay for more capacity.':''}`:error.message;
     $('report-error').hidden=false;
   } finally {button.disabled=false;button.textContent='Share price';}
 }
@@ -342,7 +359,7 @@ $('place-search').addEventListener('input',()=>{searchGeneration++;closePlaceCho
 $('place-search').addEventListener('keydown',event=>{if(event.key==='Escape')closePlaceChoices();});
 $('locate-button').addEventListener('click',locate);$('empty-locate').addEventListener('click',locate);
 $('search-area').addEventListener('click',()=>{const center=visibleMapCenter();chooseLocation(center.lat,center.lng,`Map area · ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)}`,'map');});
-$('refresh-button').addEventListener('click',refreshStations);
+$('refresh-button').addEventListener('click',()=>refreshStations(true));
 $('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();refreshStations();}});
 $('sort').addEventListener('change',event=>{state.sort=event.target.value;render();});
 $('saved-button').addEventListener('click',()=>{state.saved=!state.saved;render();});
