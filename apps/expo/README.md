@@ -50,6 +50,8 @@ The default is `https://openfuel.ca/api/v1`. To use your own deployment, copy
 `.env.example` to `.env.local`, change `EXPO_PUBLIC_API_URL`, then restart Metro.
 This URL is intentionally public and is embedded in the JavaScript bundle. Never
 put Cloudflare tokens, database credentials or other secrets in `EXPO_PUBLIC_*`.
+`EXPO_PUBLIC_DONATE_URL` (optional, HTTPS) is added to the message shown when the
+API reports that its daily database limit was reached; see [running costs](../../docs/RUNNING_COSTS.md).
 
 For local API tests through the Android emulator, use
 `EXPO_PUBLIC_API_URL=http://10.0.2.2:8787/api/v1`. Keep test reports on a local or

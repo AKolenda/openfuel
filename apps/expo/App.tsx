@@ -112,6 +112,7 @@ function OpenFuel() {
   const [price, setPrice] = useState('');
   const [observed, setObserved] = useState(false);
   const [sending, setSending] = useState(false);
+  const cityAnswers = useRef(new Map<string, Array<Coordinates & { name: string }>>());
   const [reportError, setReportError] = useState('');
 
   const loadArea = useCallback(async (point: Coordinates, label: string, animate = true) => {
@@ -206,7 +207,11 @@ function OpenFuel() {
         }
       } catch { clientId.current ||= Crypto.randomUUID(); }
       if (!disposed && startupIntent === areaIntent.current) {
-        if (currentArea.current) void loadArea(currentArea.current.point, currentArea.current.label, false);
+        // With location already allowed, the fix decides the area, so fetch once for it instead of
+        // fetching the saved area and then the fix. Otherwise refresh the saved area.
+        const granted = await Location.getForegroundPermissionsAsync().then(result => result.granted).catch(() => false);
+        if (disposed || startupIntent !== areaIntent.current) return;
+        if (currentArea.current && !granted) void loadArea(currentArea.current.point, currentArea.current.label, false);
         void locate();
       }
     })();
@@ -215,11 +220,15 @@ function OpenFuel() {
 
   useEffect(() => {
     let active = true;
-    if (cityQuery.trim().length < 2) { setCityResults(CITIES); setCityError(''); return; }
+    const key = cityQuery.trim().toLowerCase();
+    if (key.length < 3) { setCityResults(CITIES.filter(city => !key || city.name.toLowerCase().includes(key))); setCityError(''); return; }
+    const known = cityAnswers.current.get(key);
+    if (known) { setCityResults(known); setCityError(known.length ? '' : 'No matching cities. Try a nearby city, then move the map.'); return; }
+    // Search after a typing pause; answers are kept for the session so edits don't repeat requests.
     const timer = setTimeout(() => {
-      searchCities(cityQuery).then(results => { if (active) { setCityResults(results); setCityError(results.length ? '' : 'No matching cities. Try a nearby city, then move the map.'); } })
+      searchCities(cityQuery).then(results => { cityAnswers.current.set(key, results); if (active) { setCityResults(results); setCityError(results.length ? '' : 'No matching cities. Try a nearby city, then move the map.'); } })
         .catch(() => { if (active) { setCityResults(CITIES.filter(city => city.name.toLowerCase().includes(cityQuery.toLowerCase()))); setCityError('City search is unavailable. Choose a city below or move the map.'); } });
-    }, 350);
+    }, 600);
     return () => { active = false; clearTimeout(timer); };
   }, [cityQuery]);
 
