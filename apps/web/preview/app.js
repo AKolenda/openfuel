@@ -36,6 +36,7 @@ const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, cente
 let clientId = storage.read('client-id', null);
 if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { clientId = crypto.randomUUID(); storage.write('client-id', clientId); }
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
+let markerFrame = 0;
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
 L.control.zoom({position:'bottomright'}).addTo(map);
 const tileOptions = {maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1};
@@ -205,8 +206,8 @@ function render() {
   renderStatus();
   document.querySelectorAll('[data-fuel]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.fuel===state.fuel)));
   $('saved-button').setAttribute('aria-pressed',String(state.saved));
-  markerLayer.clearLayers();
-  if (!state.center) return;
+  cancelAnimationFrame(markerFrame);
+  if (!state.center) { markerLayer.clearLayers();return; }
   const list=visibleStations();
   if (!list.length) {
     const title=state.saved ? 'No saved stations in this area.' : state.connection==='loading' ? 'Finding fuel nearby…' : state.connection==='offline' ? 'No saved details for this area.' : state.connection==='limited' ? 'Live prices are paused for today.' : 'No stations found here yet.';
@@ -218,13 +219,17 @@ function render() {
       return `<article class="station-card" data-station="${esc(s.id)}">${brandBadge(s)}<button class="station-main" data-detail="${esc(s.id)}" aria-label="View ${esc(s.name)}, ${esc(s.address||distanceLabel(s))}"><span class="station-name">${esc(s.name)}</span><span class="station-address">${esc(s.address||'Address not listed')}</span><span class="station-distance">${esc(distanceLabel(s))} · straight-line</span></button><button class="station-price" data-${price==null?'report':'detail'}="${esc(s.id)}" aria-label="${price==null?'Report a price for':`${cents(price)} cents per litre at`} ${esc(s.name)}">${price==null?'<strong class="missing">No price yet</strong><span class="report-label">Report price</span>':`<strong>${cents(price)}</strong><small>¢/L · ${esc(ageLabel(age))}</small><small>Unverified${age>=1440?' · stale':''}</small>`}</button></article>`;
     }).join('');
   }
-  for (const s of list) {
-    const price=s.prices[state.fuel], title=`${s.name}: ${price==null ? 'no reported price' : `${cents(price)} cents per litre, unverified`}`;
-    const badge=brandBadge(s,true),width=86;
-    const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${badge}<span>${price==null?'Fuel':cents(price)}</span></span>`,iconSize:[width,36],iconAnchor:[width/2,40]})});
-    marker.on('click',()=>openDetails(s.id));marker.addTo(markerLayer);
-    marker.getElement()?.setAttribute('aria-label',title);
-  }
+  // The list paints first; the map markers follow in the next frame.
+  markerFrame=requestAnimationFrame(()=>{
+    markerLayer.clearLayers();
+    for (const s of list) {
+      const price=s.prices[state.fuel], title=`${s.name}: ${price==null ? 'no reported price' : `${cents(price)} cents per litre, unverified`}`;
+      const badge=brandBadge(s,true),width=86;
+      const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${badge}<span>${price==null?'Fuel':cents(price)}</span></span>`,iconSize:[width,36],iconAnchor:[width/2,40]})});
+      marker.on('click',()=>openDetails(s.id));marker.addTo(markerLayer);
+      marker.getElement()?.setAttribute('aria-label',title);
+    }
+  });
 }
 async function refreshStations(fresh=false) {
   if (!state.center) return;
