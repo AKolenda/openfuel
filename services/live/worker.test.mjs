@@ -170,10 +170,15 @@ test('reviewed Tempo identities are served across the directory without moving s
   assert.match(bowTrail.correction_source_url, /^https:\/\/www.tempo.crs\//);
 });
 
-test('health and regions answer from bundled metadata without reading D1', async () => {
-  const env = {...database(), DB: {prepare: () => { throw new Error('D1 must not be read'); }, batch: () => { throw new Error('D1 must not be read'); }}};
-  assert.equal((await (await worker.fetch(get('/api/v1/health'), env)).json()).station_count, 12543);
+test('regions and city search never read D1; health only asks D1 to answer', async () => {
+  const queries = [];
+  const env = {...database(), DB: {prepare: query => { queries.push(query); return {all: async () => ({results: [{ok: 1}], meta: {rows_read: 0}})}; }, batch: () => { throw new Error('D1 must not be read'); }}};
   assert.equal((await (await worker.fetch(get('/api/v1/regions'), env)).json()).regions[0].station_count, 12543);
+  const cities = (await (await worker.fetch(get('/api/v1/geocode?q=edmonton'), env)).json()).results;
+  assert.match(cities[0].name, /^Edmonton,/);
+  assert.deepEqual(queries, []);
+  assert.equal((await (await worker.fetch(get('/api/v1/health'), env)).json()).station_count, 12543);
+  assert.deepEqual(queries, ['SELECT 1 AS ok']);
 });
 test('stations, prices and city searches are served from the area cache on repeat requests', async () => {
   const store = new Map();
@@ -225,4 +230,60 @@ test('a price reported through another isolate reaches readers within the versio
     Date.now = () => realNow() + 16_000;
     assert.equal((await (await worker.fetch(get(), env)).json()).stations.find(s => s.id === stationId).prices.regular, 1459);
   } finally { Date.now = realNow; delete globalThis.caches; }
+});
+
+function cacheStub() {
+  const store = new Map();
+  globalThis.caches = {default: {
+    match: async key => store.get(key.url)?.clone(),
+    put: async (key, response) => { store.set(key.url, response.clone()); },
+    delete: async key => store.delete(key.url),
+  }};
+  return () => { delete globalThis.caches; };
+}
+const priceOf = async (env, id = stationId, path = nearbyPath) =>
+  (await (await worker.fetch(get(path), env)).json()).stations.find(s => s.id === id)?.prices.regular;
+
+test('a report handled while a search waits on D1 neither breaks the search nor hides the new price', async () => {
+  const restore = cacheStub();
+  try {
+    const env = database(), batch = env.DB.batch;
+    let hold = null;
+    env.DB.batch = async queries => { if (hold) await hold; return batch(queries); };
+    // Cache one area near the station, then search the wider area while D1 is held.
+    await worker.fetch(get('/api/v1/stations?lat=53.55&lon=-113.45&radius=1000'), env);
+    let release; hold = new Promise(resolve => { release = resolve; });
+    const pending = worker.fetch(get(), env);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const reportDone = worker.fetch(post(), env);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    hold = null; release();
+    assert.equal((await reportDone).status, 201);
+    assert.equal((await pending).status, 200);
+    assert.equal(await priceOf(env), 1399);
+  } finally { restore(); }
+});
+test('changing or removing a price in D1 by hand reaches readers after the version check', async () => {
+  const restore = cacheStub(), realNow = Date.now;
+  try {
+    const env = database();
+    assert.equal((await worker.fetch(post(), env)).status, 201);
+    assert.equal(await priceOf(env), 1399);
+    await env.DB.prepare('UPDATE current_prices SET price_milli=?1 WHERE station_id=?2').bind(1455, stationId).run();
+    Date.now = () => realNow() + 16_000;
+    assert.equal(await priceOf(env), 1455);
+    await env.DB.prepare('DELETE FROM current_prices WHERE station_id=?1').bind(stationId).run();
+    Date.now = () => realNow() + 32_000;
+    assert.equal(await priceOf(env), null);
+  } finally { Date.now = realNow; restore(); }
+});
+test('far-north 50 km searches stay within Workers limits and still answer', async () => {
+  for (const lat of [70, 80, 86.9, 89.9]) {
+    const env = database(), prepare = env.DB.prepare;
+    let most = 0;
+    env.DB.prepare = query => { most = Math.max(most, (query.match(/\?\d+/g) || []).length); return prepare(query); };
+    const response = await worker.fetch(get(`/api/v1/stations?lat=${lat}&lon=-100&radius=50000`), env);
+    assert.equal(response.status, 200, `lat ${lat}`);
+    assert.ok(most <= 20, `lat ${lat}: ${most} bound parameters`);
+  }
 });

@@ -7,13 +7,30 @@ ALTER TABLE current_prices ADD COLUMN area INTEGER;
 UPDATE current_prices SET area=(SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER)
   FROM stations WHERE stations.id=current_prices.station_id);
 CREATE INDEX current_prices_area ON current_prices(area);
--- Each area's price version changes with every report, so cached prices stay valid until a price
--- in that area is actually updated. Areas without a row have never had a report (version 0).
+-- Each area's price version changes whenever a current price there is added, changed or removed,
+-- including by hand, so cached prices stay valid until a price in that area actually changes.
+-- Versions are random odd numbers that always change, so a restored database cannot reuse the
+-- cache entry of a different state. Areas without a row have never had a price (version 0).
 CREATE TABLE area_versions (
   area INTEGER PRIMARY KEY,
   version INTEGER NOT NULL
 ) WITHOUT ROWID;
-INSERT INTO area_versions(area,version) SELECT area,1 FROM current_prices WHERE area IS NOT NULL GROUP BY area;
+INSERT INTO area_versions(area,version)
+  SELECT area,(random() & 2147483647) | 1 FROM current_prices WHERE area IS NOT NULL GROUP BY area;
+CREATE TRIGGER current_prices_version_insert AFTER INSERT ON current_prices WHEN NEW.area IS NOT NULL BEGIN
+  INSERT INTO area_versions(area,version) VALUES(NEW.area,(random() & 2147483647) | 1)
+  ON CONFLICT(area) DO UPDATE SET version=((area_versions.version+1+(random() & 1073741823)) & 2147483647) | 1;
+END;
+CREATE TRIGGER current_prices_version_update AFTER UPDATE ON current_prices BEGIN
+  INSERT INTO area_versions(area,version) SELECT NEW.area,(random() & 2147483647) | 1 WHERE NEW.area IS NOT NULL
+  ON CONFLICT(area) DO UPDATE SET version=((area_versions.version+1+(random() & 1073741823)) & 2147483647) | 1;
+  INSERT INTO area_versions(area,version) SELECT OLD.area,(random() & 2147483647) | 1 WHERE OLD.area IS NOT NULL AND OLD.area IS NOT NEW.area
+  ON CONFLICT(area) DO UPDATE SET version=((area_versions.version+1+(random() & 1073741823)) & 2147483647) | 1;
+END;
+CREATE TRIGGER current_prices_version_delete AFTER DELETE ON current_prices WHEN OLD.area IS NOT NULL BEGIN
+  INSERT INTO area_versions(area,version) VALUES(OLD.area,(random() & 2147483647) | 1)
+  ON CONFLICT(area) DO UPDATE SET version=((area_versions.version+1+(random() & 1073741823)) & 2147483647) | 1;
+END;
 DROP TRIGGER publish_report;
 CREATE TRIGGER publish_report AFTER INSERT ON price_reports BEGIN
   INSERT INTO current_prices(station_id,fuel_type,price_milli,observed_at,source,area)
@@ -22,9 +39,6 @@ CREATE TRIGGER publish_report AFTER INSERT ON price_reports BEGIN
   ON CONFLICT(station_id,fuel_type) DO UPDATE SET
     price_milli=excluded.price_milli, observed_at=excluded.observed_at, source=excluded.source, area=excluded.area
   WHERE excluded.observed_at >= current_prices.observed_at;
-  INSERT INTO area_versions(area,version)
-  VALUES((SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) FROM stations WHERE id=NEW.station_id),1)
-  ON CONFLICT(area) DO UPDATE SET version=version+1;
 END;
 -- count(*) read every stored report on each insert; max(rowid) reads one. Reports are never deleted,
 -- so it equals the count, and it can only overestimate if they ever are.

@@ -13,13 +13,16 @@ Map tiles come from OpenFreeMap's free public service.
 - **Fresh prices.** Each Worker instance re-reads the versions (about one D1 row per area)
   at most every 15 seconds, and browsers may reuse a stations answer for 15 seconds. A new
   report therefore reaches everyone within about 15–30 seconds, and the reporter sees it at once.
-- **No database for static facts.** Health, regions and the Statistics Canada averages come
-  from the bundled snapshot files. City searches are cached for a day.
+- **No database for static facts.** Regions, city search and the Statistics Canada averages come
+  from the bundled snapshot files; health only asks D1 to answer (`SELECT 1`, no rows read).
+- **Hand edits and restores stay correct.** Any change to `current_prices`, including a manual
+  UPDATE or DELETE, gives its area a new random version, so caches never serve a removed price.
 - **Cheap writes.** The report capacity check reads one row, and re-seeding skips rows that did
   not change.
 
 Measured locally for an Edmonton 10 km search: 452 rows read on a cold cache (775–1,562
-before), and 0 rows for repeats until the next version check.
+before), 0 rows for repeats until the next version check, and about 10 ms per warm request.
+Searches cover at most 20 areas, which only trims 50 km searches in the far north.
 
 ## The daily cap
 
@@ -32,9 +35,10 @@ The Worker keeps its own daily D1 budget, below the Workers Free limits (5M rows
 | `D1_DAILY_WRITE_BUDGET` | 80,000 | Rows written per UTC day before reports pause |
 | `OPENFUEL_DONATE_URL` | none | Donate link included in the limit answer |
 
-When the budget, or Cloudflare's own D1 limit, is reached, the API answers
-`503 {"error":"spending_cap", "resets_at": ...}` until midnight UTC. Areas already in the
-cache keep working. The website shows saved prices under a notice with the donate link,
+When the read budget, or Cloudflare's own D1 read limit, is reached, the API answers
+`503 {"error":"spending_cap", "scope":"all", "resets_at": ...}` until midnight UTC. Areas already
+cached keep working with their last known prices, each shown with its age. A spent write budget
+(or D1's write limit) answers `"scope":"reports"` for new reports only; browsing continues. The website shows saved prices under a notice with the donate link,
 and Expo explains it in its error message. If Cloudflare's daily *request* limit is reached,
 Cloudflare itself answers with a non-JSON 429 page, which the apps treat the same way.
 

@@ -101,11 +101,10 @@ def generate(destination):
     for r in json.loads((DATA/'market-averages.json').read_text()):
         insert('market_averages',list(r),list(r.values()))
     insert('dataset_metadata',['id','data'],['canada',compact(json.loads((DATA/'metadata.json').read_text()))])
-    # Keep each price's area (migration 0002) in step with a station that moved in the new snapshot.
+    # Keep each price's area (migration 0002) in step with a station that moved in the new snapshot;
+    # the update trigger gives both the old and the new area a new price version.
     lines.append("UPDATE current_prices SET area=(SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) FROM stations WHERE stations.id=current_prices.station_id) "
                  "WHERE area IS NOT (SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) FROM stations WHERE stations.id=current_prices.station_id);")
-    # A moved station can change which area's prices it belongs to; new versions refresh every cache.
-    lines.append("INSERT INTO area_versions(area,version) SELECT area,1 FROM current_prices WHERE area IS NOT NULL GROUP BY area ON CONFLICT(area) DO UPDATE SET version=version+1;")
     path=Path(destination);path.parent.mkdir(parents=True,exist_ok=True);path.write_text('\n'.join(lines)+'\n')
     print(f'Wrote {len(lines)-1} seed statements to {path}')
 
