@@ -31,6 +31,10 @@ COMPONENTS = {'api': ROOT/'services/api', 'registry': ROOT/'services/registry', 
 SOURCE_DIRS = {'supabase','deploy','env','apps','services','packages','docs','tools','tests','evidence','LICENSES','.github'}
 ROOT_FILES = {'.env.example','.dev.vars.example','.node-version','.python-version','wrangler.jsonc','package.json','package-lock.json','README.md','LICENSE','NOTICE','LICENSE.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','.gitignore','.gitleaks.toml','.gitattributes','.editorconfig','Makefile','requirements-dev.txt','pyproject.toml','monorepo.json','compose.yaml','openfuel.code-workspace'}
 EXCLUDE_PARTS = {'.temp','.branches','.wrangler','.git','.venv','venv','node_modules','__pycache__','.pytest_cache','.mypy_cache','.ruff_cache','.gradle','.kotlin','.build','build','DerivedData','dist','.local','.idea','.swiftpm','.expo','.DS_Store'}
+# Workers static assets are limited to 25 MiB per file, including the source download.
+WORKERS_ASSET_LIMIT = 25 * 1024 * 1024
+# QA screenshots stay in the repository but not in the source download, which must fit the asset limit.
+EVIDENCE_IMAGE_SUFFIXES = {'.png','.jpg','.jpeg','.webp','.gif'}
 EXCLUDE_SUFFIXES = {'.pyc','.pyo','.apk','.aab','.jks','.keystore','.pem','.key','.p12','.pfx','.der','.crt','.cer','.credentials','.mobileprovision','.sqlite','.sqlite3','.db','.ttf','.otf','.woff','.woff2','.jar','.xcuserstate'}
 
 class ToolUnavailable(RuntimeError):
@@ -86,6 +90,7 @@ def source_files():
                 if p.is_symlink() or n in EXCLUDE_PARTS or is_private_build_input(p): continue
                 if p.suffix.lower() in EXCLUDE_SUFFIXES and p != ROOT/'apps/android/gradle/wrapper/gradle-wrapper.jar': continue
                 if n in {'local.properties','gradle.properties.local','Local.xcconfig'} or n.endswith(('-wal','-shm')): continue
+                if name == 'evidence' and p.suffix.lower() in EVIDENCE_IMAGE_SUFFIXES: continue
                 files.append(p)
     return sorted(set(files))
 
@@ -150,10 +155,13 @@ def build_site(*, include_source: bool=True) -> Path:
     from tools.public_config import emit_public_config
     emit_public_config(ROOT, site)
     if include_source:
-        (site/'downloads').mkdir();shutil.copyfile(package_source(),site/'downloads/openfuel-source.zip')
+        source=package_source()
+        if source.stat().st_size > WORKERS_ASSET_LIMIT:
+            raise RuntimeError('The source archive exceeds the Workers 25 MiB asset limit; exclude generated or binary files from it.')
+        (site/'downloads').mkdir();shutil.copyfile(source,site/'downloads/openfuel-source.zip')
     apk=Path(os.environ.get('OPENFUEL_ANDROID_APK', ROOT/'apps/android/app/build/outputs/apk/debug/app-debug.apk'))
     if apk.is_file():
-        if apk.stat().st_size > 25 * 1024 * 1024:
+        if apk.stat().st_size > WORKERS_ASSET_LIMIT:
             raise RuntimeError('The Android APK exceeds the Workers 25 MiB asset limit. Build the compact APK or set OPENFUEL_ANDROID_APK to a verified compact build.')
         downloads=site/'downloads';downloads.mkdir(exist_ok=True)
         shutil.copyfile(apk,downloads/'openfuel-android.apk')

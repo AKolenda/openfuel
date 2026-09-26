@@ -199,3 +199,11 @@ def test_map_style_is_generated_from_liberty_snapshot():
     assert json.loads(OUTPUT.read_text()) == build(json.loads(SNAPSHOT.read_text()))
     page=(ROOT/'apps/web/preview/index.html').read_text()
     assert 'https://tiles.openfreemap.org' in page and 'vendor/maplibre-gl.js' in page
+
+def test_source_archive_fits_workers_asset_limit(tmp_path):
+    archive=project.package_source(tmp_path/'source.zip')
+    assert archive.stat().st_size < project.WORKERS_ASSET_LIMIT
+    with ZipFile(archive) as z:
+        names=z.namelist()
+    assert 'openfuel/apps/web/preview/vendor/maplibre-gl.js' in names
+    assert not any(n.startswith('openfuel/evidence/') and n.endswith('.png') for n in names)
