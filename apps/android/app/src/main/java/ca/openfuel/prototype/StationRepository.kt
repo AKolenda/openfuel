@@ -83,7 +83,7 @@ class StationRepository(context: Context) {
         }
         // Migrate the whole snapshot, including distances that otherwise reveal a finer origin.
         if (!prefs.getBoolean("coarse-snapshot-v3", false)) cache(cached, point)
-        Snapshot(cached.map { it.copy(distanceMetres = approximateDistanceMetres(point, it.latitude!!, it.longitude!!)) }, true, point)
+        Snapshot(withOwnReports(cached.map { it.copy(distanceMetres = approximateDistanceMetres(point, it.latitude!!, it.longitude!!)) }), true, point)
     }.getOrElse { Snapshot(emptyList(), false) }
 
     fun rememberArea(point: SearchPoint) {
@@ -118,8 +118,9 @@ class StationRepository(context: Context) {
         }
         return background.async {
             val (asked, stations) = shared.await()
-            // An answer shared with another point in the cell is re-measured from this one.
-            if (asked == path) stations else stations.measuredFrom(point)
+            // An answer shared with another point in the cell is re-measured from this one. It may
+            // predate this device's latest reports, so they are shown over it.
+            withOwnReports(if (asked == path) stations else stations.measuredFrom(point))
         }
     }
 
@@ -147,14 +148,48 @@ class StationRepository(context: Context) {
         }
         val observedAt = runCatching { Instant.parse(report.getString("observed_at")).toEpochMilli() }.getOrNull()
             ?: throw IOException("The server did not confirm when this price was reported.")
-        val age = ((System.currentTimeMillis() - observedAt) / 60_000).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
-        val snapshot = initial()
-        val updated = snapshot.stations.map {
-            if (it.id == station.id) FuelCore.updatePrice(it, grade, price).copy(ages = it.ages + (grade to age)) else it
+        val confirmedAt = System.currentTimeMillis()
+        // Kept for OWN_REPORT_MS, so that answers from before it do not hide this report meanwhile.
+        synchronized(ownReportsLock) {
+            saveOwnReports(ownReports(confirmedAt).filterNot { it.stationId == station.id && it.grade == grade } +
+                OwnReport(station.id, grade, price, observedAt, confirmedAt))
         }
-        cache(updated, snapshot.point)
-        prefs.edit().remove("pending-report-key").remove("pending-report-id").putLong("reported-at", System.currentTimeMillis()).apply()
-        updated
+        val snapshot = initial()
+        cache(snapshot.stations, snapshot.point)
+        prefs.edit().remove("pending-report-key").remove("pending-report-id").putLong("reported-at", confirmedAt).apply()
+        snapshot.stations
+    }
+
+    /** Shows this device's reports from the last OWN_REPORT_MS over [stations] (see [FuelCore.withOwnReports]). */
+    private fun withOwnReports(stations: List<Station>): List<Station> {
+        val now = System.currentTimeMillis()
+        return FuelCore.withOwnReports(stations, ownReports(now), now)
+    }
+
+    /** This device's confirmed reports still within OWN_REPORT_MS. Older ones are removed from storage. */
+    private fun ownReports(now: Long): List<OwnReport> = synchronized(ownReportsLock) {
+        val text = prefs.getString("own-reports", null) ?: return emptyList()
+        val saved = runCatching {
+            val array = JSONArray(text)
+            (0 until array.length()).map { index ->
+                val r = array.getJSONObject(index)
+                val price = r.getInt("price_milli"); require(price in 500..3999)
+                OwnReport(r.getString("station_id"), Grade.valueOf(r.getString("grade")), price, r.getLong("observed_at"), r.getLong("confirmed_at"))
+            }
+        }.getOrNull()
+        val current = saved.orEmpty().filter { it.current(now) }
+        if (saved == null || current.size != saved.size) saveOwnReports(current)
+        current
+    }
+
+    private fun saveOwnReports(reports: List<OwnReport>) {
+        if (reports.isEmpty()) { prefs.edit().remove("own-reports").apply(); return }
+        val array = JSONArray()
+        reports.forEach { r ->
+            array.put(JSONObject().put("station_id", r.stationId).put("grade", r.grade.name).put("price_milli", r.price)
+                .put("observed_at", r.observedAt).put("confirmed_at", r.confirmedAt))
+        }
+        prefs.edit().putString("own-reports", array.toString()).apply()
     }
 
     private fun request(path: String, payload: JSONObject? = null, noCache: Boolean = false): JSONObject {
@@ -198,14 +233,15 @@ class StationRepository(context: Context) {
         val storedPoint = point.forStorage()
         val array = JSONArray()
         stations.forEach { s ->
-            val prices = JSONObject(); val ages = JSONObject(); val sources = JSONObject()
+            val prices = JSONObject(); val ages = JSONObject(); val sources = JSONObject(); val observed = JSONObject()
             s.prices.forEach { (grade, price) -> prices.put(grade.name.lowercase(Locale.ROOT), price) }
             s.ages.forEach { (grade, age) -> ages.put(grade.name.lowercase(Locale.ROOT), age) }
             s.priceSources.forEach { (grade, source) -> sources.put(grade.name.lowercase(Locale.ROOT), source) }
+            s.observedAt.forEach { (grade, at) -> observed.put(grade.name.lowercase(Locale.ROOT), Instant.ofEpochMilli(at).toString()) }
             array.put(JSONObject().put("id", s.id).put("name", s.name).put("brand", s.brand).put("address", s.address)
                 .put("distanceMetres", approximateDistanceMetres(storedPoint, s.latitude!!, s.longitude!!)).put("latitude", s.latitude).put("longitude", s.longitude)
                 .put("brandKey", s.brandKey ?: JSONObject.NULL).put("brandLogoUrl", s.brandLogoUrl ?: JSONObject.NULL)
-                .put("open", s.open ?: JSONObject.NULL).put("prices", prices).put("ages", ages).put("priceSources", sources).put("synthetic", false))
+                .put("open", s.open ?: JSONObject.NULL).put("prices", prices).put("ages", ages).put("observedAt", observed).put("priceSources", sources).put("synthetic", false))
         }
         rememberArea(storedPoint)
         prefs.edit().putString("stations", JSONObject().put("is_demo", false).put("stations", array).toString())
@@ -222,7 +258,7 @@ class StationRepository(context: Context) {
             require(!s.optBoolean("synthetic", true)) { "Sample station rejected." }
             val lat = s.getDouble("latitude"); val lon = s.getDouble("longitude")
             require(FuelCore.validStationPoint(lat, lon)) { "Invalid station coordinates." }
-            val prices = s.getJSONObject("prices"); val ages = s.optJSONObject("ages")
+            val prices = s.getJSONObject("prices"); val ages = s.optJSONObject("ages"); val observed = s.optJSONObject("observedAt")
             val gradePrices = Grade.entries.mapNotNull { grade ->
                 val key = grade.name.lowercase(Locale.ROOT)
                 if (!prices.has(key) || prices.isNull(key)) null else {
@@ -232,13 +268,18 @@ class StationRepository(context: Context) {
             val gradeAges = gradePrices.keys.associateWith { grade ->
                 ages?.optInt(grade.name.lowercase(Locale.ROOT), Int.MAX_VALUE)?.coerceAtLeast(0) ?: Int.MAX_VALUE
             }
+            // Report times let this device's own recent reports be compared with the listed prices.
+            val gradeObserved = gradePrices.keys.mapNotNull { grade ->
+                observed?.optString(grade.name.lowercase(Locale.ROOT))?.let { runCatching { grade to Instant.parse(it).toEpochMilli() }.getOrNull() }
+            }.toMap()
             val sources = gradePrices.keys.associateWith { "Community · unverified" }
             Station(s.getString("id"), s.getString("name"), s.optString("brand"), s.optString("address", "Address not listed"),
                 s.getInt("distanceMetres").coerceAtLeast(0), 0, 0f, 0f,
                 if (s.isNull("open") || !s.has("open")) null else s.getBoolean("open"), gradePrices, gradeAges,
                 latitude = lat, longitude = lon, priceSources = sources,
                 brandKey = s.optString("brandKey").takeIf { !s.isNull("brandKey") && it.matches(Regex("[a-z0-9-]{1,64}")) },
-                brandLogoUrl = s.optString("brandLogoUrl").takeIf { it.startsWith("https://") && it.length <= 1024 })
+                brandLogoUrl = s.optString("brandLogoUrl").takeIf { it.startsWith("https://") && it.length <= 1024 },
+                observedAt = gradeObserved)
         }
     }
 
@@ -247,6 +288,7 @@ class StationRepository(context: Context) {
         private const val REPORT_BYPASS_MS = 60_000L
         private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val stationRequests = SharedLoads<Pair<Double, Double>, Pair<String, List<Station>>>(background)
+        private val ownReportsLock = Any()
 
         /** Lets HttpURLConnection honour the API's Cache-Control: 15 s for stations, a day for city searches. */
         @Synchronized fun installHttpCache(context: Context) {

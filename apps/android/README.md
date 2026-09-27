@@ -26,6 +26,10 @@ retry IDs prevent duplicate writes. Suggestions remain clearly labelled local dr
 The saved area's fresh stations are requested as the app starts, before the map loads; a GPS fix
 in the same saved area moves only the location dot and distances. API answers are reused for as
 long as their Cache-Control allows (15 seconds for stations), except for Refresh and just after a report.
+For 30 seconds after the server confirms a report, station lists (fresh answers and the saved snapshot)
+show it wherever they have no price or an older one for that station and fuel, because other Worker
+instances and caches can still answer with the earlier price; a newer price from someone else is kept.
+The confirmed report is stored only for those 30 seconds, so it also survives a quick restart.
 When OpenFuel's database reaches its free daily limit, saved prices stay on screen under a notice
 giving the local time live prices return.
 

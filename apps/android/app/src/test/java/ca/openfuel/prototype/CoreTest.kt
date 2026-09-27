@@ -33,6 +33,58 @@ class CoreTest {
         assertEquals(unknown.id, visible.last().id)
         assertTrue(FuelCore.directionsUrl(unknown).contains("destination=53.54,-113.49"))
     }
+    @Test fun ownReportsShowOverOlderOrMissingPricesForThirtySeconds() {
+        val reportedAt = Instant.parse("2026-09-27T12:00:00Z").toEpochMilli()
+        val confirmedAt = reportedAt + 400
+        val priced = SampleData.stations().first().copy(id = "osm-node-3", prices = mapOf(Grade.REGULAR to 1459, Grade.DIESEL to 1529),
+            ages = mapOf(Grade.REGULAR to 90, Grade.DIESEL to 90), priceSources = emptyMap(),
+            observedAt = mapOf(Grade.REGULAR to reportedAt - 5_400_000, Grade.DIESEL to reportedAt - 5_400_000))
+        val unpriced = priced.copy(id = "osm-node-4", prices = emptyMap(), ages = emptyMap(), observedAt = emptyMap())
+        val untouched = priced.copy(id = "osm-node-5")
+        val list = listOf(priced, unpriced, untouched)
+        val reports = listOf(OwnReport("osm-node-3", Grade.REGULAR, 1429, reportedAt, confirmedAt),
+            OwnReport("osm-node-4", Grade.PREMIUM, 1639, reportedAt, confirmedAt))
+        val shown = FuelCore.withOwnReports(list, reports, confirmedAt + 29_999)
+        assertEquals(1429, shown[0].price(Grade.REGULAR))
+        assertEquals(0, shown[0].age(Grade.REGULAR))
+        assertEquals(reportedAt, shown[0].observedAt[Grade.REGULAR])
+        assertEquals("Community · unverified", shown[0].priceSources[Grade.REGULAR])
+        // Only the reported station and fuel change.
+        assertEquals(1529, shown[0].price(Grade.DIESEL))
+        assertEquals(90, shown[0].age(Grade.DIESEL))
+        assertEquals(1639, shown[1].price(Grade.PREMIUM))
+        assertNull(shown[1].price(Grade.REGULAR))
+        assertEquals(untouched, shown[2])
+        // The age counts from the server's observed_at, not from when this device heard back.
+        assertEquals(2, FuelCore.withOwnReports(list, reports.map { it.copy(confirmedAt = reportedAt + 150_000) }, reportedAt + 150_000)[0].age(Grade.REGULAR))
+        // After 30 s, or if the clock moved back before the confirmation, the answer is shown as is.
+        assertEquals(list, FuelCore.withOwnReports(list, reports, confirmedAt + 30_000))
+        assertEquals(list, FuelCore.withOwnReports(list, reports, confirmedAt - 1))
+    }
+    @Test fun newerPricesFromOthersWinOverOwnReports() {
+        val reportedAt = Instant.parse("2026-09-27T12:00:00Z").toEpochMilli()
+        val report = OwnReport("osm-node-3", Grade.REGULAR, 1429, reportedAt, reportedAt)
+        fun listed(observedAt: Long?) = SampleData.stations().first().copy(id = "osm-node-3", prices = mapOf(Grade.REGULAR to 1439),
+            ages = mapOf(Grade.REGULAR to 0), observedAt = if (observedAt == null) emptyMap() else mapOf(Grade.REGULAR to observedAt))
+        fun shown(station: Station) = FuelCore.withOwnReports(listOf(station), listOf(report), reportedAt + 5_000).single()
+        assertEquals(1439, shown(listed(reportedAt + 1)).price(Grade.REGULAR))
+        assertEquals(reportedAt + 1, shown(listed(reportedAt + 1)).observedAt[Grade.REGULAR])
+        // The server's copy of this report is kept as it is.
+        assertEquals(listed(reportedAt), shown(listed(reportedAt)))
+        assertEquals(1429, shown(listed(reportedAt - 1)).price(Grade.REGULAR))
+        // A snapshot saved before report times were kept counts as older.
+        assertEquals(1429, shown(listed(null)).price(Grade.REGULAR))
+    }
+    @Test fun theLatestOwnReportWinsWhateverTheOrder() {
+        val reportedAt = Instant.parse("2026-09-27T12:00:00Z").toEpochMilli()
+        val first = OwnReport("osm-node-3", Grade.REGULAR, 1449, reportedAt, reportedAt)
+        val second = OwnReport("osm-node-3", Grade.REGULAR, 1419, reportedAt + 10_000, reportedAt + 10_000)
+        val station = SampleData.stations().first().copy(id = "osm-node-3", observedAt = emptyMap())
+        for (reports in listOf(listOf(first, second), listOf(second, first)))
+            assertEquals(1419, FuelCore.withOwnReports(listOf(station), reports, reportedAt + 20_000).single().price(Grade.REGULAR))
+        // Once the first report's 30 s are over, the second still shows until its own end.
+        assertEquals(1419, FuelCore.withOwnReports(listOf(station), listOf(first, second), reportedAt + 35_000).single().price(Grade.REGULAR))
+    }
     @Test fun dailyLimitAnswersAreRecognised() {
         val now = Instant.parse("2026-09-26T19:30:00Z")
         val midnight = Instant.parse("2026-09-27T00:00:00Z")

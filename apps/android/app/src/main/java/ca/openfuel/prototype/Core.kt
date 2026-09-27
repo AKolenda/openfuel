@@ -17,7 +17,9 @@ data class Station(
     val latitude: Double? = null, val longitude: Double? = null,
     val priceSources: Map<Grade, String> = emptyMap(),
     val brandKey: String? = null,
-    val brandLogoUrl: String? = null
+    val brandLogoUrl: String? = null,
+    /** When each price was reported, in epoch milliseconds, where the list gave it. */
+    val observedAt: Map<Grade, Long> = emptyMap()
 ) {
     fun price(grade: Grade, members: Boolean = false): Int? = prices[grade]?.minus(if (members) memberDiscount else 0)
     fun age(grade: Grade): Int = ages[grade] ?: Int.MAX_VALUE
@@ -31,7 +33,14 @@ data class StationProposal(
     val state: String = "pending_review"
 )
 
+/** A price this device reported, as the server confirmed it. [confirmedAt] is this device's clock when it did. */
+data class OwnReport(val stationId: String, val grade: Grade, val price: Int, val observedAt: Long, val confirmedAt: Long) {
+    fun current(now: Long): Boolean = now - confirmedAt in 0 until FuelCore.OWN_REPORT_MS
+}
+
 object FuelCore {
+    // Other Worker instances may answer with the price from before a report for about 15 s, and an HTTP cache for 15 s more.
+    const val OWN_REPORT_MS = 30_000L
     // Integer thousandths of CAD/litre avoid floating-point price rounding.
     fun priceText(value: Int): String = "${value / 10}.${value % 10}"
     fun parsePrice(input: String): Int? {
@@ -67,6 +76,24 @@ object FuelCore {
     fun updatePrice(station: Station, grade: Grade, value: Int): Station {
         require(value in 500..3999)
         return station.copy(prices = station.prices + (grade to value), ages = station.ages + (grade to 0), priceSources = station.priceSources + (grade to "Community · unverified"))
+    }
+    /**
+     * Shows this device's current reports over [stations], which may be an answer from before them.
+     * A listed price stays if it was reported at or after the report; one without a time (a snapshot
+     * saved before times were kept) counts as older.
+     */
+    fun withOwnReports(stations: List<Station>, reports: List<OwnReport>, now: Long): List<Station> {
+        val byStation = reports.filter { it.current(now) }.groupBy { it.stationId }
+        if (byStation.isEmpty()) return stations
+        return stations.map { station ->
+            byStation[station.id].orEmpty().fold(station) { s, report ->
+                val listed = s.observedAt[report.grade]
+                if (s.prices[report.grade] != null && listed != null && listed >= report.observedAt) s
+                else updatePrice(s, report.grade, report.price).copy(
+                    ages = s.ages + (report.grade to ((now - report.observedAt) / 60_000).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()),
+                    observedAt = s.observedAt + (report.grade to report.observedAt))
+            }
+        }
     }
     // No vote-count shortcut: publication belongs to a future authenticated moderator service.
     fun newProposal(id: String, kind: ProposalKind, station: Station?, name: String, lat: Double?, lon: Double?, note: String): StationProposal {
