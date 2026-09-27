@@ -134,8 +134,11 @@ clients should act on `scope`. `donate_url` is the operator's donate link, or
 null. City search and regions read no database and keep working.
 
 When Cloudflare's daily Worker request limit is reached, Cloudflare answers
-itself with a non-JSON HTTP 429 page. Clients treat a 429 without a JSON body
-like `scope: "all"` until midnight UTC and keep saved stations on screen.
+itself with HTTP 429 and error 1027: an HTML page, or, for clients that send
+`Accept: application/json`, JSON with `"error_code": 1027` and
+`"error_name": "workers_daily_limit"`. Clients treat either like `scope: "all"`
+until midnight UTC and keep saved stations on screen. Other Cloudflare 429s,
+such as 1015 (rate limited), are not the daily limit.
 
 ## Health and coverage
 

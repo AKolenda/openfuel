@@ -188,7 +188,8 @@ class NativeScreensTest {
             assertTrue(stations.all { FuelCore.validStationPoint(it.latitude,it.longitude) })
             compose.waitUntil(40_000) { compose.onAllNodesWithText("Your location").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(40_000) { compose.onAllNodesWithTag("station-${stations.first().id}").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("© OpenStreetMap contributors").assertExists()
+            // The credit names OpenStreetMap on either base map (OpenFreeMap or the raster fallback).
+            compose.onNodeWithText("© OpenStreetMap contributors", substring = true).assertExists()
             screenshot("android-live-location")
             compose.onNodeWithTag("layout-cards").performClick()
             compose.onNodeWithTag("layout-list").performClick()

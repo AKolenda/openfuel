@@ -70,9 +70,11 @@ When the read budget, or Cloudflare's own D1 read limit, is reached, the API ans
 `503 {"error":"spending_cap", "scope":"all", "resets_at": ...}` until midnight UTC. Areas already
 cached keep working with their last known prices, each shown with its age. A spent write budget
 answers `"scope":"reports"` for new reports only; browsing continues. Cloudflare's own D1 write
-limit stops all queries, so once it is reached only areas already cached keep answering. The website shows saved prices under a notice with the donate link,
-and Expo explains it in its error message. If Cloudflare's daily *request* limit is reached,
-Cloudflare itself answers with a non-JSON 429 page, which the apps treat the same way.
+limit stops all queries, so once it is reached only areas already cached keep answering. The
+website shows saved prices under a notice with the donate link, and Expo explains it in its error
+message. If Cloudflare's daily *request* limit is reached, Cloudflare itself answers 429 with error
+1027: an HTML page, or JSON with `"error_code":1027` when the client asks for JSON. The apps treat
+it the same way until midnight UTC; other Cloudflare 429s, such as 1015, are not the daily limit.
 
 The count is kept per Worker instance, which reads the day's shared total along with its first D1
 query and adds its own usage to the `usage_budget` table after responding: rows written by a report
