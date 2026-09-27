@@ -10,7 +10,10 @@ struct FuelMenuView:View {
     @State private var amount=""
     @State private var observed=false
     @State private var proposalKind="addition"
-    @State private var name="",latitude="",longitude="",note=""
+    @State private var name=""
+    @State private var latitude=""
+    @State private var longitude=""
+    @State private var note=""
     var body:some View {
         VStack(spacing:0){
             HStack{Text(title).font(.system(size:24,weight:.bold));Spacer();Button{model.menu=nil}label:{Image(systemName:"xmark").font(.system(size:18)).frame(width:44,height:44)}.disabled(model.isReporting).accessibilityLabel(tr("close"))}.padding(.horizontal,22).padding(.top,24).padding(.bottom,12)
