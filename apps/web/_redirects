@@ -1,0 +1,5 @@
+# Downloads are GitHub release assets; links shared before the move keep working.
+/downloads/openfuel-android.apk https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-android.apk 302
+/downloads/openfuel-android.apk.sha256 https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-android.apk.sha256 302
+/downloads/openfuel-source.zip https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip 302
+/downloads/* https://github.com/AKolenda/openfuel/releases/latest 302
