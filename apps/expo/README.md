@@ -80,7 +80,7 @@ OpenStreetMap contributors under ODbL; attribution remains visible on the map.
 Opening directions hands the destination to Google Maps.
 
 Recognized station brands load their logos directly from the curated Wikimedia,
-Co-op and Shell hosts in [`packages/brands`](../../packages/brands/README.md).
+Co-op, Shell and Tempo hosts in [`packages/brands`](../../packages/brands/README.md).
 Logos appear in the list and map with initials as a fallback. No station logo
 binary is bundled in Expo or hosted by OpenFuel; ordinary device HTTP caching may
 reuse images. Those providers receive image requests and network metadata.
@@ -127,4 +127,6 @@ referrer are enabled. Tile prefetch and bulk/offline downloads are disabled.
 The community tile service follows the
 [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/)
 and has no availability guarantee. Choose a supported provider before large-scale use.
-The separate Kotlin APK uses native MapLibre. Neither project is a signed store release.
+The website and the separate Kotlin APK instead draw OpenFreeMap vector tiles with MapLibre
+inside Leaflet ([map style](../../packages/map-style/README.md)). Neither project is a signed
+store release.

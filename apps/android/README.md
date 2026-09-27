@@ -78,7 +78,7 @@ fails otherwise. When set, Settings and About show **Donate to cover the databas
 (opening the browser), and the daily-limit notice and report form get a Donate button. Without it
 no donate UI appears.
 
-Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.0-live (code 4), Android 8+
+Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.2-live (code 6), Android 8+
 (API 26), signed with the local Android debug key. This is a directly installable development
 APK; publishing to Google Play still requires a release signing process and store review.
 The default download build shrinks unused code/resources and compresses native libraries,
@@ -89,7 +89,7 @@ APK packaging can retain unused ZIP padding when switching from unshrunk to comp
 ## Verification
 
 `./gradlew :app:testDebugUnitTest` covers exact price parsing, null price visibility, sorting,
-and coordinate-based directions. `:app:connectedDebugAndroidTest -POPENFUEL_COMPACT_APK=false` tests real station parsing,
+coordinate-based directions and recognition of the daily-limit answers. `:app:connectedDebugAndroidTest -POPENFUEL_COMPACT_APK=false` tests real station parsing,
 rejects sample geography, verifies GPS, actual station UI and persistent cache. Set an emulator
 GPS fix in a seeded Canadian area first, e.g. `adb -s emulator-5554 emu geo fix -113.4938 53.5461`.
 The public build's instrumented checks make GET requests only and skip the report-writing test.
@@ -114,6 +114,9 @@ The 0.3.0 verification record and controlled-emulator screenshots are in
 [`release-0.3.0.json`](../../evidence/android-native/release-0.3.0.json). Eight unit tests passed;
 public HTTPS instrumentation ran five tests successfully, including the deliberately skipped
 local-only report test. The exact compact APK was installed and visually checked separately.
+The 0.3.2 record, [`release-0.3.2.json`](../../evidence/android-native/release-0.3.2.json), lists
+eight unit tests and six public HTTPS instrumentation tests passed, with the local-only report
+test skipped. Both records predate the OpenFreeMap base map and the daily-limit notice.
 
 Previous generated sample fixtures remain solely as isolated unit-test inputs and design
 reference assets. They are never selected by the app's startup or live repository.
