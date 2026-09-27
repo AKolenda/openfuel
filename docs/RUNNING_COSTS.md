@@ -33,9 +33,10 @@ the round trips per request as low as possible.
   run as one batch of 10–11 rows read, however many prices the area has, plus one row per report the
   same install made in the last hour (its hourly limit check). D1 keeps stations that later snapshots
   drop, which no search shows, so a report for a station not in the deployed snapshot (from an app's
-  old saved list, say) gets 404 before any D1 call. The Worker checks `data/stations/ids.json` (about
-  250 KB, read once per instance): reading and parsing it took about 1.5 ms and a lookup under 0.5 ms
-  in Node 22.
+  old saved list, say) gets 404 without the insert batch: at most a one-row lookup of its request ID,
+  so a retry of a report accepted before the snapshot changed still gets its receipt. The Worker
+  checks `data/stations/ids.json` (about 250 KB, read once per instance): reading and parsing it took
+  about 1.5 ms and a lookup under 0.5 ms in Node 22.
 - **No database for static facts.** Regions, city search and the Statistics Canada averages come
   from the bundled snapshot files; health only asks D1 to answer (`SELECT 1`, no rows read).
 - **Cheap writes.** The report capacity check reads one row, and re-seeding skips rows that did

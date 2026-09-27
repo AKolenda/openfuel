@@ -44,7 +44,8 @@ usage; consult [Workers pricing](https://developers.cloudflare.com/workers/platf
 and [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/). Monitor
 account-wide requests, D1 rows read/written and storage in the dashboard. Dataset
 imports consume writes. A nearby search covers at most 20 areas, returns at most
-200 stations and makes at most one D1 query.
+200 stations and makes at most one D1 query for prices; now and then a Worker instance also adds
+its usage to the daily budget table after responding (see RUNNING_COSTS.md).
 
 The Worker keeps its own daily D1 budget below the Workers Free limits. Once it is
 spent, the API answers `503 {"error":"spending_cap", ...}` until midnight UTC; the

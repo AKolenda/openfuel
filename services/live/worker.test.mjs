@@ -402,6 +402,22 @@ test('a report for a station D1 still has but the deployed snapshot dropped is r
   assert.equal(calls.length, 0);
   assert.equal((await env.DB.prepare('SELECT count(*) AS reports FROM price_reports').first()).reports, 0);
 });
+test('a retry of a report accepted before a new snapshot dropped its station still gets its receipt', async () => {
+  const env = database(), value = {...payload, request_id: 'request-before-drop-12345'};
+  assert.equal((await (await import('./worker.mjs?before-drop')).default.fetch(post(value), env)).status, 201);
+  // The next deploy's snapshot no longer lists the station.
+  const files = assets(), ids = JSON.parse(stationFiles.get('ids.json'));
+  for (const area in ids) ids[area] = ids[area].split(' ').filter(id => id !== stationId).join(' ');
+  const after = {...env, ASSETS: {fetch: request => new URL(request.url).pathname.endsWith('/ids.json') ? Promise.resolve(new Response(JSON.stringify(ids))) : files.fetch(request)}};
+  const dropped = (await import('./worker.mjs?after-drop')).default, calls = spy(after);
+  const retry = await dropped.fetch(post(value), after);
+  assert.equal(retry.status, 200);
+  assert.equal((await retry.json()).report.id, value.request_id);
+  assert.equal((await dropped.fetch(post({...value, price_milli: 1400}), after)).status, 409);
+  assert.equal((await dropped.fetch(post({...value, request_id: 'request-after-drop-123456'}), after)).status, 404);
+  assert.equal((await dropped.fetch(post(payload), after)).status, 404);
+  assert.equal(calls.length, 3, 'one lookup per retry with a request ID; none without one');
+});
 test('reports for snapshot stations, new and repeated, are still one D1 call each, and ids.json is read once', async () => {
   const fresh = (await import('./worker.mjs?snapshot-reports')).default, requests = [], env = {...database(), ASSETS: assets(requests)}, calls = spy(env);
   const value = {...payload, request_id: 'request-snapshot-123456'};

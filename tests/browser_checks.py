@@ -154,7 +154,7 @@ def main():
                         api['requests'].append({'path':parsed.path,'query':parse_qs(parsed.query),'method':route.request.method})
                         if api['offline']:route.abort();return
                         if parsed.path.endswith('/stations'):
-                            if api['reply']:route.fulfill(**api['reply']);return
+                            if api['reply']:reply=api['reply'];route.fulfill(**(reply(route) if callable(reply) else reply));return
                             body={'mode':'live','is_demo':False,'stations':api['stations'],'coverage':{'returned_count':2,'truncated':False}}
                             if api['hold']:api['held'].append(partial(route.fulfill,status=200,content_type='application/json',body=json.dumps(body)));return
                         elif parsed.path.endswith('/geocode'):
@@ -439,8 +439,15 @@ def main():
                 context,page=new_page(1440,1000)
                 api=API_STATES[id(context)]
                 load(page,'/preview/')
+                # Like Cloudflare, it answers with problem JSON only when the request asks for JSON, otherwise with an HTML page.
                 def cloudflare(code,name,title):
-                    return {'status':429,'content_type':'application/problem+json','body':json.dumps({'type':f'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-{code}/','title':f'Error {code}: {title}','status':429,'detail':title,'error_code':code,'error_name':name,'cloudflare_error':True})}
+                    def reply(route):
+                        accept=route.request.headers.get('accept','')
+                        if 'application/json' not in accept and 'application/problem+json' not in accept:
+                            return {'status':429,'content_type':'text/html','body':f'<!doctype html><title>Error {code}</title><h1>{title}</h1>'}
+                        return problem
+                    problem={'status':429,'content_type':'application/problem+json','body':json.dumps({'type':f'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-{code}/','title':f'Error {code}: {title}','status':429,'detail':title,'error_code':code,'error_name':name,'cloudflare_error':True})}
+                    return reply
                 api['reply']=cloudflare(1015,'rate_limited','You are being rate limited')
                 search_edmonton(page)
                 page.locator('#refresh-button:not([disabled])').wait_for()

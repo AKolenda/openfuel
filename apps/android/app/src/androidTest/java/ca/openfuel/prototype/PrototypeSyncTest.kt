@@ -48,6 +48,8 @@ class PrototypeSyncTest {
             compose.waitUntil(30_000) { compose.onAllNodesWithTag("submit-report").fetchSemanticsNodes().isEmpty() }
             compose.onNodeWithText("Community report · unverified").assertExists()
         }
+        // Without this device's own 30 s report overlay, the price below can only come from the server.
+        context.getSharedPreferences("openfuel-live-v2",Context.MODE_PRIVATE).edit().remove("own-reports").commit()
         val after = runBlocking { repository.refresh(SearchPoint.EDMONTON) }
         assertEquals(1429, after.first { it.id == station.id }.price(Grade.REGULAR))
         assertEquals(1429, StationRepository(context).initial().stations.first { it.id == station.id }.price(Grade.REGULAR))

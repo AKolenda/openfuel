@@ -209,9 +209,21 @@ async function report(request, env, ctx) {
     if (!success) throw new InputError('rate_limited', 'Too many reports. Try again in a minute.', 429);
   }
   checkBudget(env, 'write');
-  // A station outside the deployed snapshot (from an app's old saved list, say) costs no D1 call.
-  if (await snapshotArea(env, new URL(request.url).origin, body.station_id) === undefined) throw stationNotFound();
   const id = body.request_id || crypto.randomUUID(), observed_at = new Date().toISOString(), asked = Date.now();
+  const receipt = old => {
+    if (old.client_id !== body.client_id || old.station_id !== body.station_id || old.fuel_type !== body.fuel_type || old.price_milli !== body.price_milli) {
+      throw new InputError('report_conflict', 'Use a new request ID for a different report.', 409);
+    }
+    delete old.client_id;
+    return json({ok: true, report: old, is_demo: false, verification: 'unverified'}, 200);
+  };
+  // A station outside the deployed snapshot (from an app's old saved list, say) costs no D1 call, unless
+  // this is a retry that may already have been accepted before a new snapshot dropped the station.
+  if (await snapshotArea(env, new URL(request.url).origin, body.station_id) === undefined) {
+    const old = body.request_id && await env.DB.prepare('SELECT id, station_id, fuel_type, price_milli, client_id, observed_at FROM price_reports WHERE id = ?1').bind(id).first();
+    if (old) return receipt(old);
+    throw stationNotFound();
+  }
   // One D1 call: an earlier report with this request ID, the insert (only for a known station and a new
   // ID, so a concurrent retry cannot insert twice), and the station's area prices after the insert.
   const learn = budgetStatement(env), day = budget.day;
@@ -235,13 +247,7 @@ async function report(request, env, ctx) {
     remember(memo, place.area, entry);
     store(ctx, priceKey(new URL(request.url).origin, place.area), entry, PRICE_CACHE_SECONDS);
   }
-  if (old) {
-    if (old.client_id !== body.client_id || old.station_id !== body.station_id || old.fuel_type !== body.fuel_type || old.price_milli !== body.price_milli) {
-      throw new InputError('report_conflict', 'Use a new request ID for a different report.', 409);
-    }
-    delete old.client_id;
-    return json({ok: true, report: old, is_demo: false, verification: 'unverified'}, 200);
-  }
+  if (old) return receipt(old);
   return json({ok: true, report: {id, station_id: body.station_id, fuel_type: body.fuel_type, price_milli: body.price_milli, observed_at}, is_demo: false, verification: 'unverified'}, 201);
 }
 const radians = n => n * Math.PI / 180;

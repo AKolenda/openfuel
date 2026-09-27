@@ -352,6 +352,14 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 }
             }
         }
+        // Required attribution is a quiet edge label, not a floating map action. Without the theme's
+        // 0.5 sp letter spacing the OpenFreeMap credit (about 390 dp) stays on one line on a 412 dp screen.
+        // On narrower screens or larger text it wraps: the compact line height keeps two lines below the
+        // map buttons' 28 dp inset, and the buttons, drawn after it, keep their taps.
+        Text(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm),
+            fontSize = 9.sp, lineHeight = 11.sp, letterSpacing = 0.sp, color = Ink,
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().background(Color.White.copy(alpha = .85f))
+                .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp))
         if (stationSheet.currentValue != SheetValue.Expanded && stationSheet.targetValue != SheetValue.Expanded) {
             FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.align(Alignment.BottomEnd)
                 .navigationBarsPadding().padding(end = 14.dp, bottom = sheetInset + 28.dp).size(48.dp).testTag("use-location")) {
@@ -373,12 +381,6 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
             Icon(Icons.Default.KeyboardArrowUp, null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp)); Text("Show station list")
         }
-        // Required attribution is a quiet edge label, not a floating map action. Without the theme's
-        // 0.5 sp letter spacing the OpenFreeMap credit (about 390 dp) stays on one line on a 412 dp screen.
-        Text(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm),
-            fontSize = 9.sp, letterSpacing = 0.sp, color = Ink,
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().background(Color.White.copy(alpha = .85f))
-                .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp))
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
         title = { Text("Find fuel around you") },

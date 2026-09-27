@@ -135,8 +135,10 @@ function normalize(records) {
 }
 /** Shows this browser's reports from the last 30 seconds where the list has no price for that fuel or an older one. */
 function withOwnReports(stations) {
-  const now=Date.now();
+  const now=Date.now(), kept=ownReports.length;
   ownReports=ownReports.filter(r => r && typeof r.station_id==='string' && grades.includes(r.fuel_type) && Number.isInteger(r.price_milli) && now-r.confirmedAt>=0 && now-r.confirmedAt<OWN_REPORT_MS);
+  // An expired report is not kept in storage either.
+  if (ownReports.length!==kept) storage.write('own-reports',ownReports.length?ownReports:null);
   for (const report of ownReports) {
     const station=stations.find(s => s.id===report.station_id), fuel=report.fuel_type;
     // A price someone else observed after this report wins.
@@ -157,7 +159,8 @@ const nextUtcMidnight=()=>{const now=new Date();return new Date(Date.UTC(now.get
 async function api(path, options={}) {
   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),20000);
   try {
-    const response=await fetch(`/api/v1/${path}`,{...options,signal:controller.signal});
+    // Asking for JSON also gets Cloudflare's own errors as JSON, so its 1015 and 1027 can be told apart.
+    const response=await fetch(`/api/v1/${path}`,{...options,headers:{Accept:'application/json',...options.headers},signal:controller.signal});
     const body=await response.json().catch(()=>null);
     if (body?.error==='spending_cap') throw new ServiceLimit(new Date(body.resets_at||nextUtcMidnight()));
     // Cloudflare answers the daily Worker request limit itself (error 1027): as problem JSON when asked for
