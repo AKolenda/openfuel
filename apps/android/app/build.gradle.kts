@@ -72,6 +72,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     testImplementation("junit:junit:4.13.2")
+    // Android's org.json is only a stub in local unit tests; error answers are parsed as the app parses them.
+    testImplementation("org.json:json:20250517")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.04.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

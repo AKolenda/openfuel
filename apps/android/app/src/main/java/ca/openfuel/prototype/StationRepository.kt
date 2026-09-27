@@ -220,9 +220,8 @@ class StationRepository(context: Context) {
                     }; result.toString()
                 }.orEmpty()
             if (status !in 200..299) {
-                val error = runCatching { JSONObject(text) }.getOrNull()
-                val detail = error?.optString("message").orEmpty()
-                serviceLimit(status, error != null, error?.optString("error"), error?.optString("resets_at"), detail)?.let { throw it }
+                serviceLimit(status, text)?.let { throw it }
+                val detail = runCatching { JSONObject(text).optString("message") }.getOrNull().orEmpty()
                 throw PrototypeApiException(detail.takeIf { it.isNotBlank() } ?: "Station service unavailable ($status). Please try again.")
             }
             return JSONObject(text)
@@ -336,16 +335,20 @@ internal fun distanceMetres(fromLatitude: Double, fromLongitude: Double, latitud
 }
 
 /**
- * Recognises the daily-limit answers: the Worker's JSON `spending_cap` error (HTTP 503), and the
- * non-JSON 429 page Cloudflare serves once its daily request limit is reached. Other failures give null.
+ * Recognises the daily-limit answers in an error [body]: the Worker's JSON `spending_cap` error (HTTP 503),
+ * and Cloudflare's error 1027 once its daily request limit is reached. Cloudflare sends 1027 as JSON when
+ * asked for JSON, as this app does, and otherwise as a 429 page. Other failures, including Cloudflare's
+ * other 429s such as 1015, give null.
  */
-internal fun serviceLimit(status: Int, json: Boolean, error: String?, resetsAt: String?, message: String?,
-                          now: Instant = Instant.now()): ServiceLimitException? {
-    if (error != "spending_cap" && (status != 429 || json)) return null
+internal fun serviceLimit(status: Int, body: String, now: Instant = Instant.now()): ServiceLimitException? {
+    val json = runCatching { JSONObject(body) }.getOrNull()
+    val limited = if (json == null) status == 429 else json.optString("error") == "spending_cap" ||
+        json.optInt("error_code") == 1027 || json.optString("error_name") == "workers_daily_limit"
+    if (!limited) return null
     // Both daily limits reset at midnight UTC.
     val midnight = now.atZone(ZoneOffset.UTC).toLocalDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
-    val reset = resetsAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: midnight
-    return ServiceLimitException(reset, message?.takeIf { it.isNotBlank() } ?: "OpenFuel's database reached its free daily limit.")
+    val reset = json?.optString("resets_at")?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: midnight
+    return ServiceLimitException(reset, json?.optString("message")?.takeIf { it.isNotBlank() } ?: "OpenFuel's database reached its free daily limit.")
 }
 
 /** While a load for a key is running, later callers for that key share it instead of starting another. */

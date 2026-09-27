@@ -59,6 +59,20 @@ private val Muted = Color(DesignTokens.MUTED)
 private val Pale = Color(DesignTokens.SOFT)
 private val Rule = Color(DesignTokens.LINE)
 private enum class Menu { LOCATION, SETTINGS, SORT, ABOUT, DETAIL, PRICE, NEW_STATION, CORRECTION }
+/** How long stations loaded for the area on screen answer a location fix in the same cell. */
+internal const val FIX_RELOAD_MS = 60_000L
+
+/**
+ * Whether a location fix in the 0.01° cell on screen keeps its stations and only moves the search origin:
+ * while they load, for the silent fix at startup (its cell was just requested), for [FIX_RELOAD_MS] after
+ * they loaded ([loadedAt]), and until the daily limit resets. Otherwise the fix asks for the cell again.
+ */
+internal fun fixKeepsStations(syncing: Boolean, syncState: String, silent: Boolean, loadedAt: Long, limitResetsAt: Instant, now: Long): Boolean =
+    syncing || when (syncState) {
+        "connected" -> silent || now - loadedAt in 0 until FIX_RELOAD_MS
+        "limited" -> silent || now < limitResetsAt.toEpochMilli()
+        else -> false
+    }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,6 +119,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var refreshVersion by remember { mutableIntStateOf(0) }
     var locationVersion by remember { mutableIntStateOf(0) }
     var syncing by remember { mutableStateOf(false) }
+    var loadedAt by remember { mutableLongStateOf(0L) } // When the last load succeeded, in epoch milliseconds.
     var limitResetsAt by remember { mutableStateOf(Instant.EPOCH) } // Shown while syncState is "limited".
     var submitting by remember { mutableStateOf(false) }
     var reportError by remember { mutableStateOf<String?>(null) }
@@ -160,7 +175,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 val area = point
                 repository.cache(loaded, area)
                 stations = if (area.latitude == next.latitude && area.longitude == next.longitude) loaded else loaded.measuredFrom(area)
-                syncState = "connected"
+                syncState = "connected"; loadedAt = System.currentTimeMillis()
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: ServiceLimitException) {
                 // Saved stations stay on screen under the daily-limit notice.
@@ -184,12 +199,13 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 if (fix != null) {
                     devicePoint = fix; locationMessage = null
                     if (recenter && selectionVersion == selectedWhenStarted) {
-                        // A fix inside the area already loaded (or loading) moves the search origin, not the data.
-                        if (hasSearchArea && fix.sameCell(point) && (syncing || syncState == "connected" || syncState == "limited")) {
+                        // A fix inside the area on screen moves the search origin; its stations load again only when old.
+                        val sameCell = hasSearchArea && fix.sameCell(point)
+                        if (sameCell && fixKeepsStations(syncing, syncState, silent, loadedAt, limitResetsAt, System.currentTimeMillis())) {
                             point = fix; repository.rememberArea(fix); browsePoint = null
                             stations = stations.measuredFrom(fix)
-                            if (!silent) centerRequest++
                         } else refresh(fix, explicit = false)
+                        if (sameCell && !silent) centerRequest++
                     }
                 } else if (!silent && selectionVersion == selectedWhenStarted) {
                     locationMessage = "Location unavailable. Turn on device location or choose a city."; menu = Menu.LOCATION
@@ -357,9 +373,10 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
             Icon(Icons.Default.KeyboardArrowUp, null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp)); Text("Show station list")
         }
-        // Required attribution is a quiet edge label, not a floating map action.
-        Text(if (baseMap == "openfreemap") "OpenFreeMap © OpenMapTiles · Style after CARTO Voyager · © OpenStreetMap contributors"
-            else "© OpenStreetMap contributors", fontSize = 9.sp, color = Ink,
+        // Required attribution is a quiet edge label, not a floating map action. Without the theme's
+        // 0.5 sp letter spacing the OpenFreeMap credit (about 390 dp) stays on one line on a 412 dp screen.
+        Text(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm),
+            fontSize = 9.sp, letterSpacing = 0.sp, color = Ink,
             modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().background(Color.White.copy(alpha = .85f))
                 .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp))
     }

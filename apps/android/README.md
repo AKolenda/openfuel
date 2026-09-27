@@ -23,15 +23,19 @@ selection. Saved coordinates use two decimal places (about 1 km); cached distanc
 recomputed from that coarse area, and older snapshots are migrated. Precise GPS stays in memory.
 Offline states explicitly identify saved data. Failed or unacknowledged reports never change displayed prices;
 retry IDs prevent duplicate writes. Suggestions remain clearly labelled local drafts.
-The saved area's fresh stations are requested as the app starts, before the map loads; a GPS fix
-in the same saved area moves only the location dot and distances. API answers are reused for as
+The saved area's fresh stations are requested as the app starts, before the map loads; the GPS fix
+at startup in the same saved area moves only the location dot and distances. A later fix in the area
+on screen, such as Use my location, also asks for its stations again once they are more than a minute
+old, or once the daily limit has reset. API answers are reused for as
 long as their Cache-Control allows (15 seconds for stations), except for Refresh and just after a report.
 For 30 seconds after the server confirms a report, station lists (fresh answers and the saved snapshot)
 show it wherever they have no price or an older one for that station and fuel, because other Worker
 instances and caches can still answer with the earlier price; a newer price from someone else is kept.
 The confirmed report is stored only for those 30 seconds, so it also survives a quick restart.
 When OpenFuel's database reaches its free daily limit, saved prices stay on screen under a notice
-giving the local time live prices return.
+giving the local time live prices return. Cloudflare's daily request limit (error 1027, which it sends
+as JSON to this app and as a 429 page otherwise) gets the same notice until midnight UTC; its other
+429 answers, such as 1015, do not.
 
 The base map is OpenStreetMap data from OpenFreeMap's vector tiles, drawn by the bundled MapLibre in
 OpenFuel's style ([packages/map-style](../../packages/map-style/README.md)). Tiles load on demand with
