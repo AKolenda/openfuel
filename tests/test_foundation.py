@@ -12,7 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def test_public_defaults_use_live_api(tmp_path):
     c=read_public_config(tmp_path,{})
-    assert c == {'environment':'development','apiBaseURL':'/api/v1','sourceURL':'/downloads/openfuel-source.zip','mode':'live','writesEnabled':True}
+    assert c == {'environment':'development','apiBaseURL':'/api/v1','sourceURL':'https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip','mode':'live','writesEnabled':True}
 
 
 def test_public_build_never_serializes_private_env(tmp_path):

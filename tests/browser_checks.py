@@ -114,9 +114,8 @@ def main():
             connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
             connection.request('GET',path);r=connection.getresponse();body=r.read()
             check('HTTP route '+path,r.status==200 and len(body)>0);connection.close()
-        connection=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=5)
-        connection.request('GET','/downloads/openfuel-source.zip');r=connection.getresponse();raw=r.read();connection.close()
-        with ZipFile(BytesIO(raw)) as z:
+        # Downloads are GitHub release assets; the build still packages the source archive the release attaches.
+        with ZipFile(ROOT/'dist/openfuel-source.zip') as z:
             check('Source download contains all four apps',all('openfuel/'+name in z.namelist() for name in ['apps/web/index.html','apps/docs/index.html','apps/ios/project.yml','apps/android/settings.gradle.kts']))
             wrapper='openfuel/apps/android/gradle/wrapper/gradle-wrapper.jar'
             check('Source download has no app binaries, fonts or local data',not any((x.endswith(('.apk','.jar','.ttf','.woff2','.sqlite3')) and x!=wrapper) or '/.local/' in x or '/.git/' in x for x in z.namelist()))
@@ -220,13 +219,13 @@ def main():
                 load(page,'/')
                 check(prefix+'approved wordmark is used on landing',page.locator('.site-header .wordmark img').get_attribute('src')=='brand/openfuel-wordmark-light.svg')
                 check(prefix+'website no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
-                check(prefix+'website source and docs routes',page.locator('a[href="docs/"]').count()>=1 and page.locator('a[href="downloads/openfuel-source.zip"]').count()>=1)
+                check(prefix+'website source and docs routes',page.locator('a[href="docs/"]').count()>=1 and page.locator('a[href="https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip"]').count()>=1)
                 page.locator('#language').click();check(prefix+'French toggle',page.locator('html').get_attribute('lang')=='fr')
                 check(prefix+'French build status names the OpenFreeMap base map','tuiles vectorielles OpenFreeMap' in page.locator('[data-i18n="status-web"]').text_content())
                 page.locator('#language').click()
                 check(prefix+'build status names the OpenFreeMap base map','OpenFreeMap vector tiles' in page.locator('[data-i18n="status-web"]').text_content())
                 check(prefix+'primary app link opens the full application',page.locator('a[data-i18n="a-demo"]').get_attribute('href')=='/preview/')
-                check(prefix+'Android APK is a real download link',page.locator('a[data-i18n="a-build"]').get_attribute('href')=='/downloads/openfuel-android.apk')
+                check(prefix+'Android APK is a real download link',page.locator('a[data-i18n="a-build"]').get_attribute('href')=='https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-android.apk')
                 page.locator('.phone-play').click()
                 frame=open_iframe(page,'#demo-frame')
                 check(prefix+'website location denial has no sample fallback',frame.locator('.station-card').count()==0 and 'permission is off' in frame.locator('#location-status').inner_text())

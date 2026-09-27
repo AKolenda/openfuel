@@ -157,28 +157,28 @@ def build_site(*, include_source: bool=True) -> Path:
     # Station geography for the Worker, one file per 0.5 degree area, so stations requests do not read D1.
     from tools.import_live_data import write_areas
     write_areas(site/'data/stations')
-    if include_source:
-        source=package_source()
-        if source.stat().st_size > WORKERS_ASSET_LIMIT:
-            raise RuntimeError('The source archive exceeds the Workers 25 MiB asset limit; exclude generated or binary files from it.')
-        (site/'downloads').mkdir();shutil.copyfile(source,site/'downloads/openfuel-source.zip')
-    apk=Path(os.environ.get('OPENFUEL_ANDROID_APK', ROOT/'apps/android/app/build/outputs/apk/debug/app-debug.apk'))
-    if apk.is_file():
-        if apk.stat().st_size > WORKERS_ASSET_LIMIT:
-            raise RuntimeError('The Android APK exceeds the Workers 25 MiB asset limit. Build the compact APK or set OPENFUEL_ANDROID_APK to a verified compact build.')
-        downloads=site/'downloads';downloads.mkdir(exist_ok=True)
-        shutil.copyfile(apk,downloads/'openfuel-android.apk')
-        digest=hashlib.sha256(apk.read_bytes()).hexdigest()
-        (downloads/'openfuel-android.apk.sha256').write_text(digest+'  openfuel-android.apk\n')
-        (downloads/'release.json').write_text(json.dumps({
-            'product':'OpenFuel', 'channel':'public-alpha', 'data':'real OpenStreetMap stations; unverified community prices',
-            'android':{'path':'/downloads/openfuel-android.apk','bytes':apk.stat().st_size,
-                       'sha256':digest,'minimumAndroid':'8.0','signing':'debug'},
-            'source':'/downloads/openfuel-source.zip',
-            'ios':'SwiftUI source; macOS/Xcode required to build'
-        },indent=2)+'\n')
+    # Downloads (the Android APK and the source archive) are GitHub release assets, not part of the site;
+    # release-assets prepares them. The source archive is still built here, for the checks.
+    if include_source: package_source()
     print('Static website: dist/site/ — website /, handbook /docs/, station map /preview/')
     return site
+
+def release_assets() -> Path:
+    """Collects a GitHub release's downloads in dist/release: the Android APK, its checksum and the source archive.
+
+    The website links to https://github.com/AKolenda/openfuel/releases/latest/download/<name>, so a release
+    must attach exactly these names and must not be marked as a pre-release.
+    """
+    out=DIST/'release'
+    if out.exists(): shutil.rmtree(out)
+    out.mkdir(parents=True)
+    apk=Path(os.environ.get('OPENFUEL_ANDROID_APK', ROOT/'apps/android/app/build/outputs/apk/debug/app-debug.apk'))
+    if not apk.is_file(): raise RuntimeError('Build the Android APK first (python3 tools/project.py android-build) or set OPENFUEL_ANDROID_APK.')
+    shutil.copyfile(apk,out/'openfuel-android.apk')
+    (out/'openfuel-android.apk.sha256').write_text(hashlib.sha256(apk.read_bytes()).hexdigest()+'  openfuel-android.apk\n')
+    package_source(out/'openfuel-source.zip')
+    print(f'Release assets: {out.relative_to(ROOT)}/')
+    return out
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -280,7 +280,7 @@ def check_all(args):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
-    for name in ['doctor','site','api-seed','ios-core','android-core','android-build','ios-generate','ios-build']:sub.add_parser(name)
+    for name in ['doctor','site','release-assets','api-seed','ios-core','android-core','android-build','ios-generate','ios-build']:sub.add_parser(name)
     for name,port in [('serve',4173),('api',8000)]:
         p=sub.add_parser(name);p.add_argument('--host',default='127.0.0.1');p.add_argument('--port',type=int,default=port)
     p=sub.add_parser('package');p.add_argument('--output',type=Path)
@@ -288,7 +288,7 @@ def main():
         p=sub.add_parser(name);p.add_argument('--check',action='store_true')
     p=sub.add_parser('check');p.add_argument('--web',action='store_true');p.add_argument('--native-cores',action='store_true')
     args=parser.parse_args()
-    actions={'doctor':doctor,'site':build_site,'api-seed':api_seed,'ios-core':ios_core,'android-core':android_core,
+    actions={'doctor':doctor,'site':build_site,'release-assets':release_assets,'api-seed':api_seed,'ios-core':ios_core,'android-core':android_core,
       'android-build':android_build,'ios-generate':ios_generate,'ios-build':ios_build}
     if args.command in actions:actions[args.command]()
     elif args.command=='serve':serve(args)

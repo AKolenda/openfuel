@@ -104,7 +104,7 @@ def test_website_docs_preview_routes_and_source_links():
     page=(ROOT/'apps/web/index.html').read_text()
     tags=Tags(page).tags
     assert any(t=='a' and a.get('href')=='docs/' for t,a in tags)
-    assert any(t=='a' and a.get('href')=='downloads/openfuel-source.zip' for t,a in tags)
+    assert any(t=='a' and a.get('href')=='https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip' for t,a in tags)
     docs=(ROOT/'apps/docs/index.html').read_text()
     assert 'href="../#project"' in docs and 'href="../"' in docs
     assert 'REFERENCE=' not in (ROOT/'apps/docs/app.js').read_text()

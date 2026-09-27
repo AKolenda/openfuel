@@ -29,15 +29,25 @@ before deploying the Worker that uses them, and seed a changed snapshot before
 deploying, so the files and the table match. [Running costs](RUNNING_COSTS.md)
 gives the exact order.
 
-Build Android before the final web build so the APK and checksum included under
-`/downloads/` match the current app. The source ZIP uses an explicit allowlist
-and excludes credentials, build caches and local database state. The live API
-contract is published at `/openapi.json` when generated in `packages/contracts/`.
+Downloads are not part of the site. The website links to the latest
+[GitHub release](https://github.com/AKolenda/openfuel/releases), which attaches
+`openfuel-android.apk`, its `.sha256` checksum and `openfuel-source.zip`. To publish
+one, build Android, run `python3 tools/project.py release-assets` (it collects the
+three files in `dist/release/`), and create the release with those exact file names,
+not marked as a pre-release, so the `releases/latest/download/` links resolve to it:
+
+```sh
+gh release create v0.3.2 dist/release/* --title "OpenFuel 0.3.2" --notes "..."
+```
+
+The source ZIP uses an explicit allowlist and excludes credentials, build caches
+and local database state. The live API contract is published at `/openapi.json`
+when generated in `packages/contracts/`.
 
 ## Usage and operations
 
-The architecture uses Workers Static Assets (website, map code, station files and
-downloads) and D1 (current prices, reports and a daily usage count). Map tiles come
+The architecture uses Workers Static Assets (website, map code and station files)
+and D1 (current prices, reports and a daily usage count). Map tiles come
 from OpenFreeMap's free public service. It has no paid fuel-data feed or map
 subscription. Actual cost and capacity depend on the Cloudflare account plan and
 usage; consult [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
