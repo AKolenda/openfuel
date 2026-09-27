@@ -10,9 +10,11 @@ Cloudflare bills D1 by rows read and written, not by queries, so the design keep
 the round trips per request as low as possible.
 
 - **Station locations never touch D1.** The site build writes the station snapshot as one static
-  file per 0.5° area (`data/stations/<area>.json`, about 1,070 files, plus `index.json`). The Worker
-  reads the files it needs through its static-assets binding, keeps its 300 most recently used areas,
-  and skips areas without stations. D1's `stations` table, seeded from the same snapshot, only validates reports.
+  file per 0.5° area (`data/stations/<area>.json`, about 1,070 files), plus `index.json` listing the
+  areas that have stations and `ids.json` with the station ids that reports are checked against
+  before D1. The Worker reads the files it needs through its static-assets binding, keeps its 300
+  most recently used areas, and skips areas without stations. D1's `stations` table, seeded from the
+  same snapshot, only validates reports.
 - **One D1 query per stations request.** D1 keeps one `area_prices` row per area holding all of its
   current prices and a version. A search sends the versions it already has for all its areas in one
   query and gets a price list back only for areas whose version changed: about one or two rows read
@@ -109,16 +111,35 @@ All are optional; without them no donate UI appears.
 
 Use the wrangler login that owns openfuel.ca. On a machine with several logins, bind that
 profile to the repository once (`npx wrangler auth activate <profile>`) or add
-`--profile <profile>` to each command. Apply the D1 migration before deploying the Worker
-that uses it; a Worker deployed first answers every stations request with an error. If the
-station snapshot changed, seed D1 before deploying too, so the station files and D1's stations
-table match (otherwise new stations cannot be reported and moved stations lose their prices
-until they do):
+`--profile <profile>` to each command. Through npm it goes after `--`
+(`npm run db:remote -- --profile <profile>`, and the same for `db:seed:remote` and `deploy`);
+without the `--`, npm keeps `--profile` for itself and passes only the name on to wrangler.
+
+Apply the D1 migration before deploying the Worker that uses it. A Worker deployed first answers
+health, reports and any stations search that finds stations with 503 `temporarily_unavailable`,
+since those read the `area_prices` and `usage_budget` tables that migration 0002 creates; city
+search (geocode) and regions read no database and keep working.
+
+If the station snapshot changed, seed D1 after the migration and before deploying, so the station
+files and D1's stations table match (otherwise new stations cannot be reported and moved stations
+lose their prices until they do). The seed cannot go first: its last statement updates
+`current_prices.area`, which migration 0002 adds, so before the migration it fails with
+`no such column: area` and D1 returns to its previous state. A remote seed runs as a file import,
+and D1 is unavailable to serve queries until the import finishes, so the API cannot answer
+requests that need D1 until then (wrangler warns of this; the seed script passes `--yes`, so it
+does not ask). No seed is needed if production was last seeded from the current snapshot, that is
+when the `imported_at` stored in D1 matches the one in `packages/data/metadata.json`:
+
+```sh
+npx wrangler d1 execute openfuel-data --remote --command "SELECT json_extract(data,'$.imported_at') AS imported_at FROM dataset_metadata WHERE id='canada'"
+```
+
+Then:
 
 ```sh
 npx wrangler d1 migrations list openfuel-data --remote   # 0002 should be listed as not yet applied
 npm run db:remote        # applies services/live/migrations/0002_area_cache_and_budget.sql
-npm run db:seed:remote   # only if packages/data changed since the last seed
+npm run db:seed:remote   # only if the snapshot changed (see above), and only after db:remote
 npm run deploy           # builds the site (including the station files) and deploys the Worker
 ```
 

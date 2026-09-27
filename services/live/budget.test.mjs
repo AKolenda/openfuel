@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './worker.mjs';
 import {assets} from './test-assets.mjs';
+import contract from '../../packages/contracts/live-openapi.json' with {type: 'json'};
 
 const nearby = new Request('https://openfuel.test/api/v1/stations?lat=53.5461&lon=-113.4938&radius=10000');
 test('the D1 limit error becomes a spending_cap answer until midnight UTC', async () => {
@@ -15,6 +16,8 @@ test('the D1 limit error becomes a spending_cap answer until midnight UTC', asyn
   assert.equal(body.reason, 'd1_free_daily_read_limit');
   assert.ok(Date.parse(body.resets_at) > Date.now());
   assert.ok(Number(response.headers.get('retry-after')) >= 60);
+  // The published contract (/openapi.json) lists the same fields.
+  assert.deepEqual(Object.keys(body).sort(), [...contract.components.schemas.SpendingCap.required].sort());
   // Later requests in this isolate answer without touching D1.
   const again = await worker.fetch(nearby, {ASSETS: assets(), DB: {prepare: () => { throw new Error('D1 must not be read'); }}});
   assert.equal((await again.json()).error, 'spending_cap');

@@ -1,7 +1,5 @@
-# Historical prototype API
-
-This document records the earlier six-station sample service. The current public
-app uses [LIVE_API.md](LIVE_API.md) and real imported geography.
+> Historical: this records the earlier six-station sample service, not the deployed API. The
+> current API, with real imported geography, is described in [LIVE_API.md](LIVE_API.md).
 
 # Prototype API v1
 

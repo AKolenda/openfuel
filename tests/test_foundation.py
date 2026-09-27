@@ -136,6 +136,26 @@ def test_unknown_secret_loader_key_rejected(tmp_path):
     with pytest.raises(ValueError):credentials(tmp_path,{})
 
 
+@pytest.fixture
+def seed_database(monkeypatch):
+    # The script imports import_live_data as its neighbour, as when run from tools/.
+    monkeypatch.syspath_prepend(str(ROOT/'tools'))
+    import seed_database
+    return seed_database
+
+
+def test_seed_passes_wrangler_profile_to_explicit_target(seed_database):
+    command=seed_database.wrangler_command(seed_database.parse_args(['--remote','--profile','openfuel-owner_2']),'seed.sql')
+    assert command[1:5]==['d1','execute','openfuel-data','--remote'] and command[-1]=='--profile=openfuel-owner_2'
+    command=seed_database.wrangler_command(seed_database.parse_args(['--local']),'seed.sql')
+    assert '--local' in command and '--remote' not in command and not any(c.startswith('--profile') for c in command)
+
+
+@pytest.mark.parametrize('argv',[[],['--profile','owner'],['--local','--remote'],['--remote','--profile=--local'],['--remote','--profile','a b'],['--remote','--profile=']])
+def test_seed_requires_one_target_and_a_plain_profile_name(seed_database,argv):
+    with pytest.raises(SystemExit):seed_database.parse_args(argv)
+
+
 def test_only_one_active_migrations_directory():
     assert len(list((ROOT/'supabase/migrations').glob('*.sql')))==2
     assert not (ROOT/'services/registry/schema-draft.sql').exists()
