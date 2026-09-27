@@ -123,7 +123,9 @@ function ageLabel(age) {
   if (age === 0) return 'Just reported';
   if (age < 60) return `${Math.floor(age)} min ago`;
   if (age < 1440) return `${Math.floor(age/60)} hr ago`;
-  return `${Math.floor(age/1440)} days ago`;
+  // Older reports in days and hours, such as 13 days 3 hr, not a rounded-down day count.
+  const days=Math.floor(age/1440), hours=Math.floor(age%1440/60);
+  return `${days} ${days===1?'day':'days'}${hours?` ${hours} hr`:''} ago`;
 }
 function normalize(records) {
   if (!Array.isArray(records)) throw Error('Station data could not be read. Try refreshing.');

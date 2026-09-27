@@ -78,8 +78,9 @@ export function reportAge(observedAt: string | undefined, now = Date.now()): str
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes} min ago`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)} hr ago`;
-  const days = Math.floor(minutes / 1440);
-  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  // Older reports in days and hours, such as 13 days 3 hr, not a rounded-down day count.
+  const days = Math.floor(minutes / 1440), hours = Math.floor((minutes % 1440) / 60);
+  return `${days} ${days === 1 ? 'day' : 'days'}${hours ? ` ${hours} hr` : ''} ago`;
 }
 
 /** A report this device made, as the server confirmed it, and when the confirmation arrived on this device. */

@@ -33,6 +33,7 @@ test('unknown report timestamps are not described as fresh', () => {
   assert.equal(reportAge(undefined), 'Time unavailable');
   assert.equal(reportAge('invalid'), 'Time unavailable');
   assert.equal(reportAge('2026-09-10T12:00:00Z', Date.parse('2026-09-11T12:00:00Z')), '1 day ago');
+  assert.equal(reportAge('2026-09-10T12:00:00Z', Date.parse('2026-09-23T15:30:00Z')), '13 days 3 hr ago');
 });
 
 test('remote logo requests are confined to curated HTTPS providers', () => {
