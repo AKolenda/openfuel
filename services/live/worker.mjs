@@ -53,6 +53,11 @@ function checkBudget(env, kind = 'read', now = Date.now()) {
     throw new SpendingCap('daily_report_budget', budget.writeCappedUntil);
   }
 }
+/** Whether a report would be accepted now, by the same test checkBudget(env, 'write') applies. */
+function writesOpen(env, now = Date.now()) {
+  rollDay(now);
+  return !(budget.writeCappedUntil > now) && budget.written + budget.pendingWritten < limits(env).written;
+}
 function meter(results) {
   for (const result of [results].flat()) {
     budget.pendingRead += Number(result?.meta?.rows_read) || 0;
@@ -350,7 +355,7 @@ export default {
       if(url.pathname==='/api/v1/health') {
         checkBudget(env);
         meter(await env.DB.prepare('SELECT 1 AS ok').all());
-        body={ok:true,service:'openfuel',database:'cloudflare-d1',databaseConfigured:true,writesEnabled:!(budget.writeCappedUntil>Date.now()),mode:'live',is_demo:false,station_count:metadata.station_count};
+        body={ok:true,service:'openfuel',database:'cloudflare-d1',databaseConfigured:true,writesEnabled:writesOpen(env),mode:'live',is_demo:false,station_count:metadata.station_count};
         cacheControl='no-store';
       } else if(url.pathname==='/api/v1/stations') { body=await nearby(env,url.searchParams,url.origin,ctx); cacheControl='private, max-age=15'; }
       else if(url.pathname==='/api/v1/geocode') { body=geocode(url.searchParams); cacheControl='public, max-age=86400'; }
