@@ -4,6 +4,7 @@ package ca.openfuel.prototype
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.view.accessibility.AccessibilityManager
 import android.webkit.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -151,6 +152,17 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
         }
         view?.evaluateJavascript("window.setStations($payload);", null)
     } }
+    // While TalkBack explores by touch, the page's invisible station buttons take touches so a touched chip is read out.
+    val accessibility = remember { context.getSystemService(AccessibilityManager::class.java) }
+    var exploring by remember { mutableStateOf(accessibility?.isTouchExplorationEnabled == true) }
+    DisposableEffect(accessibility) {
+        val listener = AccessibilityManager.TouchExplorationStateChangeListener { exploring = it }
+        accessibility?.addTouchExplorationStateChangeListener(listener)
+        onDispose { accessibility?.removeTouchExplorationStateChangeListener(listener) }
+    }
+    LaunchedEffect(ready, exploring) {
+        if (ready) view?.evaluateJavascript("window.setTouchExploration&&window.setTouchExploration($exploring);", null)
+    }
     // A GPS update moves only the location dot; it does not rebuild every station marker.
     LaunchedEffect(ready, currentLocation) {
         if (ready) view?.evaluateJavascript("window.setLocation(" +

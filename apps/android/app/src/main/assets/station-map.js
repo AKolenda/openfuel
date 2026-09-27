@@ -35,7 +35,8 @@
   // The base map goes under the location dot once OpenFreeMap's tile index has loaded. A refused index (an HTTP
   // error or an unreadable index) switches to OpenStreetMap's raster tiles for the visit; a lost connection leaves
   // the map as it is and retries on the next move.
-  let pending=false,chosen=false;
+  // While the WebGL context is lost MapLibre has no style; changes wait until it is restored.
+  let pending=false,chosen=false,contextLost=false,shownLocation=null;
   function useBase(style,name){
    if(style.glyphs)map.setGlyphs(style.glyphs);
    if(style.sprite)map.setSprite(style.sprite);
@@ -50,10 +51,10 @@
    catch{for(const layer of mapStyle.layers)if(map.getLayer(layer.id))map.removeLayer(layer.id);if(map.getSource('openmaptiles'))map.removeSource('openmaptiles');raster();}
   }
   function startBase(){
-   if(pending||chosen)return;
+   if(pending||chosen||contextLost)return;
    pending=true;
    fetch(OPENFREEMAP_TILES).then(response=>response.ok?response.json().catch(()=>null):null)
-    .then(index=>index?vector(index):raster(),()=>{}).finally(()=>{pending=false;});
+    .then(index=>{if(!contextLost)index?vector(index):raster();},()=>{}).finally(()=>{pending=false;});
   }
 
   // Stations. Each distinct chip (price, logo or initial, highlight) is drawn once, at the map's pixel density,
@@ -70,11 +71,15 @@
    if(!logos.has(uri)){const image=new Image();image.src=uri;logos.set(uri,image.decode().then(()=>image,()=>null));}
    return logos.get(uri);
   }
+  // CanvasRenderingContext2D.roundRect needs WebView 99; MapLibre runs on older ones.
+  function roundedRect(g,x,y,w,h,r){
+   g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
+  }
   function drawChip(g,slot,s,logo){
    const known=s.price!=null,w=known?64:42,h=known?66:40,border=s.best?2:1,x=(slot%columns)*cw,y=Math.floor(slot/columns)*ch;
    g.setTransform(1,0,0,1,0,0);g.clearRect(x,y,cw,ch);
    g.setTransform(ratio,0,0,ratio,x+(anchor[0]-w/2)*ratio,y+(anchor[1]-h+20)*ratio);
-   g.beginPath();g.roundRect(border/2,border/2,w-border,h-border,13-border/2);
+   g.beginPath();roundedRect(g,border/2,border/2,w-border,h-border,13-border/2);
    g.save();g.shadowColor='#0003';g.shadowOffsetY=ratio;g.shadowBlur=3*ratio;g.fillStyle='white';g.fill();g.restore();
    g.lineWidth=border;g.strokeStyle='#285b43';g.stroke();
    g.fillStyle='#285b43';g.textAlign='center';g.textBaseline='middle';
@@ -101,10 +106,12 @@
    for(const item of added){const slot=atlas.free.pop();atlas.slots.set(item.chip,slot);drawChip(g,slot,item.s,images.get(item.logo));}
    atlas.version++;
   }
+  // Texture coordinates need high precision: the atlas is about 4000 texels wide, and where mediump is 16-bit
+  // (Mali and other mobile GPUs) chips in its right half would sample neighbouring texels.
   function setUp(gl){
    const program=gl.createProgram();
    for(const [type,source] of [[gl.VERTEX_SHADER,'attribute vec2 a_position,a_coordinate;uniform vec2 u_scale;varying vec2 v_coordinate;void main(){gl_Position=vec4(a_position*u_scale+vec2(-1,1),0,1);v_coordinate=a_coordinate;}'],
-    [gl.FRAGMENT_SHADER,'precision mediump float;uniform sampler2D u_image;varying vec2 v_coordinate;void main(){gl_FragColor=texture2D(u_image,v_coordinate);}']]){
+    [gl.FRAGMENT_SHADER,'#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\nuniform sampler2D u_image;varying vec2 v_coordinate;void main(){gl_FragColor=texture2D(u_image,v_coordinate);}']]){
     const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);gl.attachShader(program,shader);
    }
    gl.linkProgram(program);
@@ -142,9 +149,12 @@
    gl.drawArrays(gl.TRIANGLES,0,n*6);
    gl.disableVertexAttribArray(gpu.position);gl.disableVertexAttribArray(gpu.coordinate);
   }};
-  // MapLibre restores its own layers after a lost WebGL context, but not this one.
-  map.on('webglcontextlost',()=>{gpu=null;});
-  map.on('webglcontextrestored',()=>map.once('style.load',()=>{if(!map.getLayer('stations'))map.addLayer(stationLayer);}));
+  // MapLibre restores its own layers after a lost WebGL context, but not this one; the latest location and a
+  // base map not yet chosen are applied once its style is back.
+  map.on('webglcontextlost',()=>{gpu=null;contextLost=true;});
+  map.on('webglcontextrestored',()=>map.once('style.load',()=>{
+   contextLost=false;if(!map.getLayer('stations'))map.addLayer(stationLayer);showLocation();startBase();
+  }));
   // A tap selects the chip in front, the one drawn last.
   map.on('click',event=>{
    for(let i=placed.length-1;i>=0;i--){
@@ -152,12 +162,15 @@
     if(Math.abs(event.point.x-p.x)<=w/2&&event.point.y>=p.y-h+20&&event.point.y<=p.y+20)return OpenFuelMap.selected(s.id);
    }
   });
-  // Invisible buttons over the chips give TalkBack each station's label and action. They move once the map
-  // settles, never during a gesture, and let touches through to the map.
+  // Invisible buttons over the chips give TalkBack each station's label and action. Normally they move once
+  // the map settles and let touches through to the map. While TalkBack explores by touch (the app calls
+  // setTouchExploration), they take touches, so touching a chip reads its station, and follow the map.
   const labels=document.createElement('div');labels.className='station-labels';document.body.append(labels);
-  let generation=0;
+  let generation=0,exploring=false;
   function placeLabels(){for(const {at,w,h,button} of placed){const p=map.project(at);button.style.transform=`translate(${Math.round(p.x-w/2)}px,${Math.round(p.y-h+20)}px)`;}}
   map.on('moveend',placeLabels);
+  map.on('move',()=>{if(exploring)placeLabels();});
+  window.setTouchExploration=on=>{exploring=!!on;labels.classList.toggle('exploring',exploring);placeLabels();};
   window.setStations=async data=>{
    const run=++generation;
    const stations=data.stations.map(s=>{const logo=data.logos[s.logo]||null;return {s,logo,chip:JSON.stringify([s.price,logo?s.logo:s.name.slice(0,1).toUpperCase(),s.best])};});
@@ -174,7 +187,8 @@
    labels.replaceChildren(...placed.map(item=>item.button));placeLabels();
    map.triggerRepaint();
   };
-  window.setLocation=location=>{map.getSource('location').setData(location?{type:'Point',coordinates:[location.lon,location.lat]}:empty);};
+  function showLocation(){map.getSource('location')?.setData(shownLocation?{type:'Point',coordinates:[shownLocation.lon,shownLocation.lat]}:empty);}
+  window.setLocation=next=>{shownLocation=next;if(!contextLost)showLocation();};
   map.once('load',()=>{map.addLayer(stationLayer);map.on('moveend',startBase);startBase();OpenFuelMap.ready();});
  }
 }
