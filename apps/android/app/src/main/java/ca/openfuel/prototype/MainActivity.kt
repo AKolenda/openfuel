@@ -17,6 +17,8 @@ import androidx.activity.SystemBarStyle
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.*
@@ -39,6 +41,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import android.graphics.Bitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.contentDescription
@@ -119,6 +125,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var refreshVersion by remember { mutableIntStateOf(0) }
     var locationVersion by remember { mutableIntStateOf(0) }
     var syncing by remember { mutableStateOf(false) }
+    var pulled by remember { mutableStateOf(false) } // The list was pulled; its spinner shows until that load ends.
     var loadedAt by remember { mutableLongStateOf(0L) } // When the last load succeeded, in epoch milliseconds.
     var limitResetsAt by remember { mutableStateOf(Instant.EPOCH) } // Shown while syncState is "limited".
     var submitting by remember { mutableStateOf(false) }
@@ -291,7 +298,16 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     else if (syncState == "offline" || syncState == "cached") Text(
                         if (syncState == "offline") "Offline · showing saved stations" else "Showing saved stations",
                         Modifier.padding(horizontal = 18.dp, vertical = 4.dp).testTag("sync-status"), fontSize = 11.sp, color = Muted)
-                    PullToRefreshBox(isRefreshing = syncing, onRefresh = { if (hasSearchArea && !syncing) refresh(recenter = false, fresh = true) }, modifier = Modifier.weight(1f).semantics { stateDescription = if (syncing) "Refreshing" else "Idle" }.testTag("pull-refresh")) {
+                    // Only a pull shows the spinner; loads the app starts itself (startup, location, search) show in
+                    // the status line instead, so the indicator never pops into the list on its own.
+                    val pullState = rememberPullToRefreshState()
+                    LaunchedEffect(syncing) { if (!syncing) pulled = false }
+                    PullToRefreshBox(isRefreshing = pulled && syncing, onRefresh = { if (hasSearchArea && !syncing) { pulled = true; refresh(recenter = false, fresh = true) } },
+                        state = pullState, indicator = {
+                            PullToRefreshDefaults.Indicator(state = pullState, isRefreshing = pulled && syncing, modifier = Modifier.align(Alignment.TopCenter),
+                                containerColor = Color.White, color = Forest)
+                        },
+                        modifier = Modifier.weight(1f).semantics { stateDescription = if (syncing) "Refreshing" else "Idle" }.testTag("pull-refresh")) {
                     LazyColumn(Modifier.fillMaxSize().testTag("station-list"), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 52.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (visible.isEmpty()) item {
                             Text(stringResource(R.string.no_matches), Modifier.padding(20.dp), color = Muted)
@@ -321,7 +337,8 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 Column(Modifier.padding(16.dp)) {
                     Surface(shape = RoundedCornerShape(20.dp), shadowElevation = 5.dp) {
                         Row(Modifier.fillMaxWidth().height(60.dp).padding(start = 15.dp, end = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Image(androidx.compose.ui.res.painterResource(R.drawable.openfuel_mark), null, Modifier.size(27.dp))
+                            Image(androidx.compose.ui.res.painterResource(R.drawable.openfuel_mark), null, Modifier.size(30.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text("openfuel", fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
                             Spacer(Modifier.width(12.dp)); VerticalDivider(Modifier.height(24.dp))
                             androidx.compose.foundation.text.BasicTextField(query, { query = it }, singleLine = true,
@@ -352,14 +369,23 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 }
             }
         }
-        // Required attribution is a quiet edge label, not a floating map action. Without the theme's
-        // 0.5 sp letter spacing the OpenFreeMap credit (about 390 dp) stays on one line on a 412 dp screen.
-        // On narrower screens or larger text it wraps: the compact line height keeps two lines below the
-        // map buttons' 28 dp inset, and the buttons, drawn after it, keep their taps.
-        Text(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm),
+        // Required attribution is a quiet edge label on the map itself: it sits just above the station sheet
+        // and follows it as it moves, above the navigation bar when the sheet is hidden, and is not shown when
+        // the sheet covers the map. Without the theme's 0.5 sp letter spacing the OpenFreeMap credit (about
+        // 390 dp) stays on one line on a 412 dp screen. On narrower screens or larger text it wraps: the compact
+        // line height keeps two lines below the map buttons' 28 dp inset, and the buttons, drawn after it,
+        // keep their taps.
+        val density = LocalDensity.current
+        val mapBottom = with(density) { maxHeight.toPx() } - WindowInsets.navigationBars.getBottom(density)
+        var creditHeight by remember { mutableIntStateOf(0) }
+        if (stationSheet.currentValue != SheetValue.Expanded || stationSheet.targetValue != SheetValue.Expanded) Text(
+            stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm),
             fontSize = 9.sp, lineHeight = 11.sp, letterSpacing = 0.sp, color = Ink,
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().background(Color.White.copy(alpha = .85f))
-                .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp))
+            modifier = Modifier.align(Alignment.TopStart).offset {
+                val sheetTop = runCatching { stationSheet.requireOffset() }.getOrDefault(Float.MAX_VALUE)
+                IntOffset(0, (minOf(sheetTop, mapBottom) - creditHeight).roundToInt())
+            }.onSizeChanged { creditHeight = it.height }.background(Color.White.copy(alpha = .85f))
+                .clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }.padding(horizontal = 2.dp).testTag("map-credit"))
         if (stationSheet.currentValue != SheetValue.Expanded && stationSheet.targetValue != SheetValue.Expanded) {
             FilledTonalIconButton(onClick = { requestLocation() }, modifier = Modifier.align(Alignment.BottomEnd)
                 .navigationBarsPadding().padding(end = 14.dp, bottom = sheetInset + 28.dp).size(48.dp).testTag("use-location")) {
@@ -424,7 +450,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                         if (s.price(grade) != null) Text("Community report · unverified", fontSize = 12.sp, color = Muted)
                         Spacer(Modifier.height(18.dp))
                         Button(onClick = { go(s) }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)) {
-                            Icon(Icons.Default.Navigation, null); Spacer(Modifier.width(10.dp)); Text(stringResource(R.string.open_maps))
+                            Icon(Icons.Default.Directions, null); Spacer(Modifier.width(10.dp)); Text(stringResource(R.string.open_maps))
                         }
                         Text(stringResource(R.string.sample_handoff), fontSize = 11.sp, color = Muted, modifier = Modifier.padding(vertical = 12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -494,7 +520,7 @@ private fun StationRow(s: Station, grade: Grade, filters: Filters, cards: Boolea
                 if (!wide) GoButton(best, go)
             }
             if (wide) OutlinedButton(onClick = go, Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp), shape = RoundedCornerShape(10.dp)) {
-                Icon(Icons.Default.Navigation, null, Modifier.size(19.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.open_maps))
+                Icon(Icons.Default.Directions, null, Modifier.size(19.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.open_maps))
             }
         }
     }
@@ -512,12 +538,11 @@ private fun StationRow(s: Station, grade: Grade, filters: Filters, cards: Boolea
 }
 /** Local clock time in the user's 12/24-hour format. */
 private fun resetTime(context: Context, at: Instant): String = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date.from(at))
+/** Opens directions in the chosen maps app: the standard directions sign in a round button, filled for the best price. */
 @Composable private fun GoButton(best: Boolean, action: () -> Unit) {
-    Surface(onClick = action, color = if (best) Forest else Pale, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(48.dp)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(Icons.Default.Navigation, null, Modifier.size(20.dp), tint = if (best) Color.White else Forest)
-            Text(stringResource(R.string.go), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (best) Color.White else Forest)
-        }
+    FilledIconButton(onClick = action, modifier = Modifier.size(48.dp).testTag("directions"),
+        colors = IconButtonDefaults.filledIconButtonColors(containerColor = if (best) Forest else Pale, contentColor = if (best) Color.White else Forest)) {
+        Icon(Icons.Default.Directions, stringResource(R.string.directions), Modifier.size(24.dp))
     }
 }
 @Composable private fun Price(value: Int?, fontSize: Int) {
@@ -544,7 +569,14 @@ private fun resetTime(context: Context, at: Instant): String = android.text.form
 @Composable private fun gradeLabel(g: Grade) = stringResource(when (g) { Grade.REGULAR -> R.string.regular; Grade.PREMIUM -> R.string.premium; Grade.DIESEL -> R.string.diesel })
 @Composable private fun sortLabel(s: SortMode) = stringResource(when (s) { SortMode.BEST -> R.string.best_price; SortMode.PRICE -> R.string.lowest_price; SortMode.NEAREST -> R.string.nearest })
 @Composable private fun sortHelp(s: SortMode) = stringResource(when (s) { SortMode.BEST -> R.string.best_help; SortMode.PRICE -> R.string.price_help; SortMode.NEAREST -> R.string.nearest_help })
-@Composable private fun ageLabel(age: Int) = if (age == Int.MAX_VALUE) "No report yet" else if (age >= 60) stringResource(R.string.reported_hours, age / 60) else stringResource(R.string.reported_minutes, age)
+@Composable private fun ageLabel(age: Int) = when {
+    age == Int.MAX_VALUE -> "No report yet"
+    age < 60 -> stringResource(R.string.reported_minutes, age)
+    age < 1440 -> stringResource(R.string.reported_hours, age / 60)
+    // Older reports read in days and hours, such as 13 d 3 h, not 315 h.
+    age % 1440 < 60 -> stringResource(R.string.reported_days, age / 1440)
+    else -> stringResource(R.string.reported_days_hours, age / 1440, age % 1440 / 60)
+}
 
 private fun openMaps(context: Context, station: Station, provider: MapProvider): Boolean {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(FuelCore.directionsUrl(station)))
