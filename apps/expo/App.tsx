@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import * as Crypto from 'expo-crypto';
 import { API_URL, fetchStations, searchCities, submitReport } from './src/api';
-import { type Coordinates, type Fuel, type Station, fuels, areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './src/domain';
+import { type Coordinates, type Fuel, type OwnReport, type Station, fuels, areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse, withOwnReports, OWN_REPORT_MS } from './src/domain';
 
 const C = { green: '#245A43', pale: '#F0F5EA', muted: '#647366', ink: '#183328', white: '#FFFFFF', border: '#DCE5DB', red: '#C64032' };
 const KEYS = { cache: `openfuel.live.stations.v2:${API_URL}`, favorites: 'openfuel.favorites.v1', client: 'openfuel.installation.v1' };
@@ -84,6 +84,8 @@ function OpenFuel() {
   const clientId = useRef('');
   const currentArea = useRef<{ point: Coordinates; label: string } | null>(null);
   const requestIdentity = useRef<{ key: string; id: string } | null>(null);
+  // Reports confirmed in this session, kept over older station answers for 30 seconds by withOwnReports.
+  const ownReports = useRef<OwnReport[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [fuel, setFuel] = useState<Fuel>('regular');
   const [sort, setSort] = useState<'distance' | 'price'>('distance');
@@ -130,9 +132,10 @@ function OpenFuel() {
       const data = await fetchStations(point);
       if (sequence !== loadSequence.current) return;
       const timestamp = new Date().toISOString();
-      setStations(data.stations); setOffline(false); setSavedAt(timestamp);
+      const shown = { ...data, stations: withOwnReports(data.stations, ownReports.current) };
+      setStations(shown.stations); setOffline(false); setSavedAt(timestamp);
       setCoverage(typeof data.coverage?.message === 'string' ? data.coverage.message : '');
-      AsyncStorage.setItem(KEYS.cache, JSON.stringify(areaSnapshot(data, point, label, timestamp))).catch(() => setNotice('Stations loaded, but offline storage is unavailable.'));
+      AsyncStorage.setItem(KEYS.cache, JSON.stringify(areaSnapshot(shown, point, label, timestamp))).catch(() => setNotice('Stations loaded, but offline storage is unavailable.'));
     } catch (cause) {
       if (sequence !== loadSequence.current) return;
       setOffline(true); setError(failure(cause));
@@ -142,7 +145,7 @@ function OpenFuel() {
         if (sequence !== loadSequence.current) return;
         const cache = value ? JSON.parse(value) : null;
         if (cache && Math.abs(cache.point.latitude - point.latitude) < 0.01 && Math.abs(cache.point.longitude - point.longitude) < 0.01) {
-          setStations(validateResponse(cache.data).stations); setSavedAt(cache.timestamp);
+          setStations(withOwnReports(validateResponse(cache.data).stations, ownReports.current)); setSavedAt(cache.timestamp);
         } else { setStations([]); setSavedAt(null); }
       } catch { if (sequence === loadSequence.current) { setStations([]); setSavedAt(null); } }
     } finally {
@@ -256,12 +259,11 @@ function OpenFuel() {
       const { report } = await submitReport({ station_id: reportStation.id, fuel_type: reportFuel, price_milli: milli, client_id: clientId.current, request_id: requestIdentity.current.id });
       setReportStation(null); setNotice('Price shared. Community reports are unverified.');
       // Show the confirmed report straight away; refetching the area would only cost another request.
-      setStations(list => list.map(station => station.id !== report.station_id ? station : {
-        ...station,
-        prices: { ...station.prices, [report.fuel_type]: report.price_milli },
-        observedAt: { ...station.observedAt, [report.fuel_type]: report.observed_at },
-        priceSources: { ...station.priceSources, [report.fuel_type]: 'community-unverified' },
-      }));
+      // Any fetch in the next 30 seconds keeps it over an older answer.
+      const confirmedAt = Date.now();
+      ownReports.current = [...ownReports.current.filter(own => confirmedAt - own.confirmedAt < OWN_REPORT_MS),
+        { station_id: report.station_id, fuel_type: report.fuel_type, price_milli: report.price_milli, observed_at: report.observed_at, confirmedAt }];
+      setStations(list => withOwnReports(list, ownReports.current));
     } catch (cause) { setReportError(failure(cause)); }
     finally { setSending(false); }
   };

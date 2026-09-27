@@ -11,7 +11,7 @@ successful browser-network navigation. Browser policy is never disabled or chang
 from __future__ import annotations
 import base64
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from html import escape
 import http.client
@@ -345,6 +345,35 @@ def main():
                 before=len(API_STATES[id(context)]['requests'])
                 page.evaluate('window.__completeTestLocation()')
                 check('Late location permission response cannot replace a chosen city',page.locator('#location-status').inner_text()=='Edmonton, Alberta, Canada' and len(API_STATES[id(context)]['requests'])==before)
+                context.close()
+                # Another Worker instance or an HTTP cache can answer with the price from before this browser's
+                # report. For 30 seconds (page clock, not real waiting) the report stays over such answers.
+                context,page=new_page(1440,1000)
+                api=API_STATES[id(context)]
+                page.clock.install()
+                load(page,'/preview/')
+                page.get_by_role('searchbox').fill('Edmonton')
+                page.get_by_role('button',name='Search places',exact=True).click()
+                page.get_by_role('button',name='Edmonton, Alberta, Canada',exact=True).click()
+                page.get_by_role('button',name='Report a price for Tempo',exact=True).click()
+                page.locator('#report-price').fill('149.9');page.locator('#report-observed').check()
+                page.get_by_role('button',name='Share price',exact=True).click()
+                page.get_by_role('button',name='149.9 cents per litre at Tempo',exact=True).wait_for()
+                def answer(price,observed):
+                    api['stations']=deepcopy(STATIONS)
+                    api['stations'][0]['prices']['regular']=price;api['stations'][0]['observedAt']['regular']=observed.isoformat()
+                def refresh():
+                    before=len(api['requests'])
+                    page.get_by_role('button',name='Refresh',exact=True).click()
+                    page.locator('#refresh-button:not([disabled])').wait_for()
+                    return len(api['requests'])==before+1
+                answer(1459,datetime.now(timezone.utc)-timedelta(hours=1))
+                check('A stale stations answer within 30 s keeps the confirmed report',refresh() and page.get_by_role('button',name='149.9 cents per litre at Tempo',exact=True).count()==1 and 'Just reported' in page.locator('[data-station="osm-node-999521943"]').inner_text())
+                answer(1479,datetime.now(timezone.utc))
+                check('A price observed after the report replaces it',refresh() and page.get_by_role('button',name='147.9 cents per litre at Tempo',exact=True).count()==1)
+                answer(1459,datetime.now(timezone.utc)-timedelta(hours=1))
+                page.clock.fast_forward(31000)
+                check('After 30 s the stations answer is shown as it is',refresh() and page.get_by_role('button',name='145.9 cents per litre at Tempo',exact=True).count()==1)
                 context.close()
             context,page=new_page(1440,1000)
             load(page,'/designs/variant-b/')

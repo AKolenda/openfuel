@@ -24,7 +24,9 @@ the round trips per request as low as possible.
   sets or removes that one entry in its area's row and gives the area a new random version, so a
   replaced price is never served once an area is re-checked. The instance that took a report shows the
   new price at once; other instances within about 15 seconds, and browsers may reuse a stations answer
-  for 15 seconds more (the web app skips its copy for 15 seconds after its own report).
+  for 15 seconds more (the web app skips its copy for 15 seconds after its own report). For 30 seconds
+  after a confirmed report, the web and Expo apps show it over any stations answer with no price or an
+  older one for that station and fuel, so a refetch in that window cannot bring the old price back.
 - **One D1 call per report.** Checking the request ID, inserting, and reading the area's new prices
   run as one batch of 10–11 rows read, however many prices the area has, plus one row per report the
   same install made in the last hour (its hourly limit check). D1 keeps stations that later snapshots

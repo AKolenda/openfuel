@@ -40,6 +40,12 @@ let pendingReport = storage.read('pending-report', null), reportStation = null, 
 let pendingRequest = null, fixTimer = null, onlineTimer, markerFrame = 0, reportedAt = 0;
 // A snapshot this young is as current as the server's own short caches, so it is not asked for again.
 const FRESH_SNAPSHOT_MS = 30000;
+// Other Worker instances can answer with the price from before this browser's report for about 15 seconds,
+// and the HTTP cache for 15 more. For 30 seconds each confirmed report ({station_id, fuel_type, price_milli,
+// observed_at, confirmedAt}) is laid over every station list shown; it is kept across a page reload.
+const OWN_REPORT_MS = 30000;
+const savedReports = storage.read('own-reports', []);
+let ownReports = Array.isArray(savedReports) ? savedReports : [];
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
 L.control.zoom({position:'bottomright'}).addTo(map);
 const tileOptions = {maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1};
@@ -127,6 +133,19 @@ function normalize(records) {
     address:typeof s.address==='string' ? s.address : '', ages:s.ages||{}, observedAt:s.observedAt||{},
   }));
 }
+/** Shows this browser's reports from the last 30 seconds where the list has no price for that fuel or an older one. */
+function withOwnReports(stations) {
+  const now=Date.now();
+  ownReports=ownReports.filter(r => r && typeof r.station_id==='string' && grades.includes(r.fuel_type) && Number.isInteger(r.price_milli) && now-r.confirmedAt>=0 && now-r.confirmedAt<OWN_REPORT_MS);
+  for (const report of ownReports) {
+    const station=stations.find(s => s.id===report.station_id), fuel=report.fuel_type;
+    // A price someone else observed after this report wins.
+    if (!station || station.prices[fuel]!=null && Date.parse(station.observedAt[fuel])>=Date.parse(report.observed_at)) continue;
+    station.prices[fuel]=report.price_milli;station.observedAt[fuel]=report.observed_at;station.ages[fuel]=0;
+    station.priceSources={...station.priceSources,[fuel]:'community-unverified'};
+  }
+  return stations;
+}
 // Official builds can set a donation page for the database and map costs; without one no donate UI appears.
 const donateURL=document.querySelector('meta[name="openfuel-donate-url"]')?.content||'';
 document.querySelectorAll('.donate-link').forEach(link=>{if(donateURL){link.hidden=false;if(link.href!==undefined)link.href=donateURL;}});
@@ -169,7 +188,7 @@ function restoreArea() {
   const existing=storage.read('areas-v2', []);
   const area=Array.isArray(existing) && existing.find(a=>a.key===cacheKey());
   if (!area || !Number.isFinite(area.loadedAt)) return false;
-  try { state.stations=normalize(area.stations);state.loadedAt=area.loadedAt;state.coverage=area.coverage;return true; } catch { return false; }
+  try { state.stations=withOwnReports(normalize(area.stations));state.loadedAt=area.loadedAt;state.coverage=area.coverage;return true; } catch { return false; }
 }
 /** Shows the saved area and its snapshot without asking the server; the caller decides when to load it. */
 function restoreLastArea() {
@@ -257,7 +276,7 @@ async function refreshStations(fresh=false) {
     const response=await api(`stations?${query}`,fresh===true||Date.now()-reportedAt<15000?{cache:'no-cache'}:{});
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (response.is_demo!==false || response.mode!=='live') throw Error('OpenFuel is still serving sample data. Please try again after the live update.');
-    state.stations=normalize(response.stations);state.coverage=response.coverage;state.loadedAt=Date.now();state.loadFailed=false;state.connection='online';cacheCurrent();render();
+    state.stations=withOwnReports(normalize(response.stations));state.coverage=response.coverage;state.loadedAt=Date.now();state.loadFailed=false;state.connection='online';cacheCurrent();render();
   } catch (error) {
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     state.loadFailed=true;
@@ -371,7 +390,8 @@ async function submitReport(event) {
     const response=await api('reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
     if(!response.ok||response.is_demo!==false||response.report?.id!==request.request_id||response.report?.station_id!==station.id||response.report?.fuel_type!==fuel||response.report?.price_milli!==value)throw Error('No confirmation received. Refresh before trying again.');
     state.reportVersion++;reportedAt=Date.now();pendingReport=null;storage.write('pending-report',null);
-    station.prices[fuel]=value;station.observedAt[fuel]=response.report.observed_at;station.ages[fuel]=0;state.fuel=fuel;
+    ownReports=[...ownReports,{station_id:station.id,fuel_type:fuel,price_milli:value,observed_at:response.report.observed_at,confirmedAt:reportedAt}];
+    withOwnReports(state.stations);storage.write('own-reports',ownReports);state.fuel=fuel;
     // The confirmed report is shown straight away; refetching the area would only cost another request.
     state.connection='online';cacheCurrent();$('report-dialog').close();render();toast('Price shared as an unverified community report.');
   } catch(error) {
@@ -428,7 +448,7 @@ $('clear-local').addEventListener('click',()=>{
   try{Object.keys(localStorage).filter(key=>key.startsWith('openfuel-')).forEach(key=>localStorage.removeItem(key));}catch{}
   state.generation++;locationGeneration++;locatePending=false;$('locate-button').disabled=false;stopWaitingForFix();
   if(state.connection==='loading')state.connection='idle';
-  favorites.clear();pendingReport=null;clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
+  favorites.clear();pendingReport=null;ownReports=[];clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
 });
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}}));
 // Reconnecting reloads only when the last load failed or the data is over a minute old. A mobile

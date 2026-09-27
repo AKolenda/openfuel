@@ -66,6 +66,31 @@ export function reportAge(observedAt: string | undefined, now = Date.now()): str
   return `${days} ${days === 1 ? 'day' : 'days'} ago`;
 }
 
+/** A report this device made, as the server confirmed it, and when the confirmation arrived on this device. */
+export type OwnReport = { station_id: string; fuel_type: Fuel; price_milli: number; observed_at: string; confirmedAt: number };
+
+// Other Worker instances can answer with the price from before a report for about 15 seconds, and an
+// HTTP cache for 15 more, so for 30 seconds this device lays its confirmed reports over every station list.
+export const OWN_REPORT_MS = 30_000;
+
+/** Shows reports from the last 30 seconds where the list has no price for that fuel or an older one;
+ * a price someone else observed after the report wins. Without a recent report the list is returned as it is. */
+export function withOwnReports(stations: Station[], reports: OwnReport[], now = Date.now()): Station[] {
+  const recent = reports.filter(report => now - report.confirmedAt >= 0 && now - report.confirmedAt < OWN_REPORT_MS);
+  if (!recent.length) return stations;
+  return stations.map(station => recent.reduce((shown, report) => {
+    const fuel = report.fuel_type;
+    if (report.station_id !== shown.id ||
+      (shown.prices[fuel] !== null && Date.parse(shown.observedAt?.[fuel] ?? '') >= Date.parse(report.observed_at))) return shown;
+    return {
+      ...shown,
+      prices: { ...shown.prices, [fuel]: report.price_milli },
+      observedAt: { ...shown.observedAt, [fuel]: report.observed_at },
+      priceSources: { ...shown.priceSources, [fuel]: 'community-unverified' },
+    };
+  }, station));
+}
+
 export function sortedStations(stations: Station[], fuel: Fuel, sort: 'distance' | 'price'): Station[] {
   return [...stations].sort((a, b) => {
     if (sort === 'price') {

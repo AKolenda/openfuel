@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './domain.ts';
+import { areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse, withOwnReports } from './domain.ts';
 
 const station = (id, price, distanceMetres) => ({ id, name: 'Test station', latitude: 53, longitude: -113,
   distanceMetres, prices: { regular: price, premium: null, diesel: null }, synthetic: false });
@@ -53,4 +53,45 @@ test('warm snapshots discard precise query coordinates and device-relative dista
   assert.notEqual(cached.data.stations[0].distanceMetres, 17);
   assert.equal(data.stations[0].distanceMetres, 17);
   assert.equal(validateResponse(cached.data).stations[0].prices.regular, null);
+});
+
+test('own reports stay over older station answers for 30 seconds only', () => {
+  const confirmedAt = Date.parse('2026-09-27T12:00:05Z');
+  const report = { station_id: 'osm-node-1', fuel_type: 'regular', price_milli: 1499, observed_at: '2026-09-27T12:00:00.000Z', confirmedAt };
+  const answer = (price, observedAt) => [
+    { ...station('osm-node-1', price, 50), observedAt: observedAt ? { regular: observedAt } : {}, priceSources: observedAt ? { regular: 'community-unverified' } : {} },
+    { ...station('osm-node-2', 1389, 90), observedAt: { regular: '2026-09-27T11:00:00Z' }, priceSources: { regular: 'community-unverified' } },
+  ];
+  const unpriced = answer(null);
+  const shown = withOwnReports(unpriced, [report], confirmedAt + 29_999);
+  assert.equal(shown[0].prices.regular, 1499);
+  assert.equal(shown[0].observedAt.regular, report.observed_at);
+  assert.equal(shown[0].priceSources.regular, 'community-unverified');
+  assert.equal(shown[0].prices.premium, null);
+  assert.equal(shown[1], unpriced[1]);
+  assert.equal(unpriced[0].prices.regular, null);
+  // An older price, or one without a readable time, gives way to the report.
+  assert.equal(withOwnReports(answer(1459, '2026-09-27T11:00:00Z'), [report], confirmedAt)[0].prices.regular, 1499);
+  assert.equal(withOwnReports(answer(1459), [report], confirmedAt)[0].prices.regular, 1499);
+  // The same or a later observation, such as someone else's newer report, is shown as it is.
+  const newer = answer(1479, '2026-09-27T12:00:03Z');
+  assert.equal(withOwnReports(newer, [report], confirmedAt)[0], newer[0]);
+  const same = answer(1499, report.observed_at);
+  assert.equal(withOwnReports(same, [report], confirmedAt)[0], same[0]);
+  // Once 30 seconds have passed (or the clock went back), the answer is shown as it is.
+  const stale = answer(1459, '2026-09-27T11:00:00Z');
+  assert.equal(withOwnReports(stale, [report], confirmedAt + 30_000), stale);
+  assert.equal(withOwnReports(stale, [report], confirmedAt - 1), stale);
+});
+
+test('several own reports apply by observation time, also to saved snapshots', () => {
+  const confirmedAt = Date.parse('2026-09-27T12:00:10Z');
+  const first = { station_id: 'osm-node-1', fuel_type: 'regular', price_milli: 1499, observed_at: '2026-09-27T12:00:00Z', confirmedAt };
+  const second = { ...first, price_milli: 1489, observed_at: '2026-09-27T12:00:08Z' };
+  const diesel = { ...first, fuel_type: 'diesel', price_milli: 1699 };
+  const [shown] = withOwnReports([station('osm-node-1', null, 50)], [second, first, diesel], confirmedAt);
+  assert.equal(shown.prices.regular, 1489);
+  assert.equal(shown.prices.diesel, 1699);
+  const snapshot = areaSnapshot({ mode: 'live', is_demo: false, stations: [station('osm-node-1', null, 50)] }, { latitude: 53, longitude: -113 }, 'Edmonton', '2026-09-27T11:59:00Z');
+  assert.equal(withOwnReports(validateResponse(snapshot.data).stations, [first], confirmedAt)[0].prices.regular, 1499);
 });
