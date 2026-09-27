@@ -32,12 +32,13 @@ internal const val MAP_BACKGROUND = 0xFFEDF1EA
 
 // The bundled map page and its code are served from the APK as separate same-origin files, never from the
 // network, so Chromium can compile the large scripts off the UI thread and code-cache them between launches.
+// The page draws with MapLibre; Leaflet, base-map.js and station-map-leaflet.js load only without WebGL.
 private const val MAP_HOST = "openfuel.ca"
 private const val MAP_PATH = "/_native-map/"
 private val mapFiles = mapOf(
     "station-map.html" to "text/html", "station-map.js" to "text/javascript", "map-style.js" to "text/javascript",
-    "leaflet.js" to "text/javascript", "maplibre-gl.js" to "text/javascript", "leaflet-maplibre-gl.js" to "text/javascript",
-    "base-map.js" to "text/javascript", "leaflet.css" to "text/css", "maplibre-gl.css" to "text/css")
+    "maplibre-gl.js" to "text/javascript", "maplibre-gl.css" to "text/css", "station-map-leaflet.js" to "text/javascript",
+    "leaflet.js" to "text/javascript", "base-map.js" to "text/javascript", "leaflet.css" to "text/css")
 
 /** Called on a WebView background thread. Paths outside the bundled map files return null. */
 private fun mapFile(context: Context, path: String?): WebResourceResponse? {
@@ -46,10 +47,10 @@ private fun mapFile(context: Context, path: String?): WebResourceResponse? {
     val type = mapFiles[name] ?: return null
     fun asset(file: String): InputStream = context.assets.open(file)
     val body = when (name) {
-        // The page's CSP allows the same tile hosts that shouldInterceptRequest lets through.
+        // The page's CSP allows the same tile hosts that shouldInterceptRequest lets through, for images and,
+        // since MapLibre fetches raster tiles as well as vector tiles, for connections.
         "station-map.html" -> asset(name).bufferedReader().use { it.readText() }
-            .replace("MAP_TILE_ORIGIN", tileHosts.joinToString(" ") { "https://$it" })
-            .replace("MAP_CONNECT_SRC", "https://tiles.openfreemap.org").byteInputStream()
+            .replace("MAP_TILE_ORIGIN", tileHosts.joinToString(" ") { "https://$it" }).byteInputStream()
         // The shared style JSON, wrapped as a script without being copied into a string.
         "map-style.js" -> SequenceInputStream(Collections.enumeration(listOf(
             "const mapStyle=".byteInputStream(), asset("openfuel-style.json"), ";".byteInputStream())))

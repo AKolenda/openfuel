@@ -8,7 +8,7 @@ relief, and hides the base map's fuel-station icons because OpenFuel draws its o
 
 The map data, fonts and icons still come from OpenFreeMap's free public service
 (`tiles.openfreemap.org`); no key or account is needed. MapLibre GL JS draws the
-style inside the Leaflet map on the website and in the Android WebView.
+style inside the Leaflet map on the website, and on its own in the Android WebView.
 
 ## Files
 

@@ -1,6 +1,6 @@
 # Android · Kotlin / Jetpack Compose
 
-A Kotlin/Compose Android app with a bundled Leaflet and MapLibre map in an isolated WebView and real OpenStreetMap station
+A Kotlin/Compose Android app with a bundled MapLibre map (Leaflet without WebGL) in an isolated WebView and real OpenStreetMap station
 coordinates. On first arrival, the app explains location use and requests Android's foreground
 precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
 Declining permission offers Canadian city search. The current search area is always labelled;
@@ -45,7 +45,7 @@ Without WebGL, or if OpenFreeMap refuses its tiles, the map uses OpenStreetMap's
 have usage limits. There are no analytics.
 
 Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
-bundled or hosted by OpenFuel. The bundled map renderer anchors cached brand/price markers geographically and handles station taps. Camera movement reuses marker art within the same layer as the map tiles. Prices appear above the brand icon.
+bundled or hosted by OpenFuel. MapLibre draws the base map, the cached brand/price chips and the location dot in one WebGL frame and handles station taps; each distinct chip is drawn once, so a pinch or pan moves no page elements. Prices appear above the brand icon.
 
 The approved curved F is used in the launcher and header. The map shows a small
 location selector and Saved control; fuel grades, About and data-source details

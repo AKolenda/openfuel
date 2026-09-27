@@ -51,7 +51,7 @@ class NativeScreensTest {
         context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             compose.waitUntil(20_000) { evaluate(scenario, "typeof window.setStations") == "\"function\"" }
-            compose.waitUntil(40_000) { evaluate(scenario, "markers.size").toInt() > 0 }
+            compose.waitUntil(40_000) { evaluate(scenario, "document.querySelectorAll('.station-labels button').length").toInt() > 0 }
             compose.onNodeWithTag("layout-cards").performTouchInput { click() }
             compose.onNodeWithTag("layout-cards").assertIsSelected()
             compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
@@ -61,7 +61,7 @@ class NativeScreensTest {
             compose.onNodeWithTag("layout-list").assertIsSelected()
             compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
-            assertTrue("Map has a usable viewport: " + evaluate(scenario, "JSON.stringify(map.getSize())"), evaluate(scenario, "map.getSize().y").toDouble() > 200)
+            assertTrue("Map has a usable viewport: " + evaluate(scenario, "JSON.stringify([map.getContainer().clientWidth,map.getContainer().clientHeight])"), evaluate(scenario, "map.getContainer().clientHeight").toDouble() > 200)
             val before = evaluate(scenario, "map.getCenter().lng").toDouble()
             val previousIDs = StationRepository(context).initial().stations.map { it.id }.toSet()
             compose.onNodeWithTag("station-map").performTouchInput { swipe(start = Offset(width*.2f,height*.5f), end = Offset(width*.8f,height*.5f), durationMillis = 650) }
@@ -76,14 +76,15 @@ class NativeScreensTest {
             assertEquals(longitude, evaluate(scenario, "map.getCenter().lng").toDouble(), .00001)
             assertEquals(zoom, evaluate(scenario, "map.getZoom()").toDouble(), 0.0)
             compose.onNodeWithTag("show-stations").assertIsDisplayed()
-            // Test-only marker, never sent to the API: price is above the logo and the
-            // logo centre stays anchored throughout an animated pan and zoom.
-            evaluate(scenario, """window.probe=L.marker(map.getCenter(),{icon:stationIcon({name:'Test only',price:1499},null)}).addTo(map);true""")
-            assertEquals("true", evaluate(scenario, "window.probe.getElement().querySelector('.station-price').getBoundingClientRect().bottom <= window.probe.getElement().querySelector('.station-brand').getBoundingClientRect().top"))
-            evaluate(scenario, """window.maxDrift=0;window.trackAnchor=()=>{const p=map.latLngToContainerPoint(window.probe.getLatLng()),r=window.probe.getElement().querySelector('.station-brand').getBoundingClientRect(),m=map.getContainer().getBoundingClientRect();window.maxDrift=Math.max(window.maxDrift,Math.abs(r.x+r.width/2-m.x-p.x),Math.abs(r.y+r.height/2-m.y-p.y));};map.on('move',trackAnchor);map.panBy([100,50],{animate:true,duration:.4});true""")
-            compose.waitUntil(5_000) { evaluate(scenario, "!map._panAnim._inProgress") == "true" }
-            assertTrue("Marker follows the map frame", evaluate(scenario, "window.maxDrift").toDouble() <= 2.0)
+            // Chips are drawn in the map's own WebGL frame, so they cannot drift from it. After an animated pan, a
+            // tap on a station's logo centre, found from its TalkBack button, opens a station's details.
+            evaluate(scenario, "map.panBy([100,50],{duration:400});true")
+            compose.waitUntil(5_000) { evaluate(scenario, "map.isMoving()") == "false" }
             screenshot("android-pan-search-restorable-sheet")
+            evaluate(scenario, """(()=>{const c=map.getContainer().getBoundingClientRect(),r=[...document.querySelectorAll('.station-labels button')].map(b=>b.getBoundingClientRect())
+                .find(r=>r.left>c.left&&r.right<c.right&&r.top>c.top&&r.bottom<c.bottom);
+                map.getCanvasContainer().dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:r.left+r.width/2,clientY:r.bottom-20}));return true;})()""")
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(context.getString(R.string.open_maps)).fetchSemanticsNodes().isNotEmpty() }
         }
     }
 
@@ -92,7 +93,7 @@ class NativeScreensTest {
         context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             compose.waitUntil(20_000) { evaluate(scenario, "typeof window.setStations") == "\"function\"" }
-            compose.waitUntil(40_000) { evaluate(scenario, "markers.size").toInt() > 0 }
+            compose.waitUntil(40_000) { evaluate(scenario, "document.querySelectorAll('.station-labels button').length").toInt() > 0 }
             compose.onNodeWithTag("fuel-regular").assertDoesNotExist()
             compose.onNodeWithTag("map-info").assertDoesNotExist()
             compose.onNodeWithTag("search-map-area").assertDoesNotExist()
@@ -105,7 +106,7 @@ class NativeScreensTest {
             // The settings close action is the SheetTitle close control.
             androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("fuel-regular").fetchSemanticsNodes().isEmpty() }
-            val viewport = evaluate(scenario, "JSON.stringify(map.getSize())")
+            val viewport = evaluate(scenario, "JSON.stringify([map.getContainer().clientWidth,map.getContainer().clientHeight])")
             val camera = evaluate(scenario, "JSON.stringify(map.getCenter())")
             compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { click() }
             compose.waitForIdle()
@@ -114,7 +115,7 @@ class NativeScreensTest {
             compose.waitForIdle()
             val handleAfter = compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
             assertEquals("Scrolling rows does not drag the sheet", handleBefore, handleAfter, 1f)
-            assertEquals("Expanding/scrolling never resizes map tiles", viewport, evaluate(scenario, "JSON.stringify(map.getSize())"))
+            assertEquals("Expanding/scrolling never resizes map tiles", viewport, evaluate(scenario, "JSON.stringify([map.getContainer().clientWidth,map.getContainer().clientHeight])"))
             assertEquals(camera, evaluate(scenario, "JSON.stringify(map.getCenter())"))
             compose.onNodeWithTag("station-list").performScrollToIndex(0)
             compose.waitUntil(40_000) { compose.onNodeWithTag("pull-refresh").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] == "Idle" }
