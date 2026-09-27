@@ -11,7 +11,7 @@ successful browser-network navigation. Browser policy is never disabled or chang
 from __future__ import annotations
 import base64
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from html import escape
 import http.client
@@ -133,16 +133,20 @@ def main():
             probe.close()
             def new_page(width,height,location='denied'):
                 context=browser.new_context(viewport={'width':width,'height':height},device_scale_factor=1,service_workers='block')
-                api={'stations':deepcopy(STATIONS),'requests':[],'reports':[],'offline':False}
+                # A check can replace station answers ('reply': fulfil arguments) or hold them in 'held' until it calls them.
+                api={'stations':deepcopy(STATIONS),'requests':[],'reports':[],'offline':False,'reply':None,'hold':False,'held':[]}
                 API_STATES[id(context)]=api
                 # Never request the operator's location. Successful coordinates are
                 # the documented Edmonton city centre, injected only by this test.
                 location_action={
                     'denied':'error({code:1});',
                     'granted':'success({coords:{latitude:53.55014,longitude:-113.46871,accuracy:25}});',
-                    'pending':'window.__completeTestLocation=()=>success({coords:{latitude:49.2827,longitude:-123.1207,accuracy:25}});',
+                    'pending':'window.__completeTestLocation=(latitude=49.2827,longitude=-123.1207)=>success({coords:{latitude,longitude,accuracy:25}});',
                 }[location]
-                context.add_init_script("Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(success,error){"+location_action+"}}})")
+                # Each request's options are kept in __locationOptions; __stationAnswers counts the station answers the page
+                # has read, so a check can wait for one it expects the app to discard.
+                context.add_init_script("window.__locationOptions=[];Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(success,error,options){window.__locationOptions.push(options);"+location_action+"}}});"
+                    "const json=Response.prototype.json;Response.prototype.json=function(){const read=json.call(this);if(this.url.includes('/api/v1/stations'))read.finally(()=>{window.__stationAnswers=(window.__stationAnswers||0)+1;}).catch(()=>{});return read;};")
                 def guard(route):
                     url=route.request.url
                     parsed=urlparse(url)
@@ -150,7 +154,9 @@ def main():
                         api['requests'].append({'path':parsed.path,'query':parse_qs(parsed.query),'method':route.request.method})
                         if api['offline']:route.abort();return
                         if parsed.path.endswith('/stations'):
+                            if api['reply']:reply=api['reply'];route.fulfill(**(reply(route) if callable(reply) else reply));return
                             body={'mode':'live','is_demo':False,'stations':api['stations'],'coverage':{'returned_count':2,'truncated':False}}
+                            if api['hold']:api['held'].append(partial(route.fulfill,status=200,content_type='application/json',body=json.dumps(body)));return
                         elif parsed.path.endswith('/geocode'):
                             body={'results':[{'name':'Edmonton, Alberta, Canada','latitude':53.55014,'longitude':-113.46871}]}
                         elif parsed.path.endswith('/reports'):
@@ -166,6 +172,13 @@ def main():
                     elif parsed.hostname=='tile.openstreetmap.org':
                         MAP_TILES.append(url)
                         route.fulfill(status=200,content_type='image/png',body=TILE)
+                    elif parsed.hostname=='tiles.openfreemap.org':
+                        # OpenFreeMap base map: tile index, empty vector tiles, glyphs and sprites.
+                        MAP_TILES.append(url)
+                        if parsed.path=='/planet':route.fulfill(status=200,content_type='application/json',body=json.dumps({'tiles':['https://tiles.openfreemap.org/planet/test/{z}/{x}/{y}.pbf'],'minzoom':0,'maxzoom':14}))
+                        elif parsed.path.endswith('.json'):route.fulfill(status=200,content_type='application/json',body='{}')
+                        elif parsed.path.endswith('.png'):route.fulfill(status=200,content_type='image/png',body=TILE)
+                        else:route.fulfill(status=200,content_type='application/x-protobuf',body=b'')
                     elif parsed.hostname=='thumb.wikimedia.org':
                         BRAND_REQUESTS.append(url)
                         if 'missing' in parsed.path:route.abort()
@@ -182,6 +195,18 @@ def main():
                 else:
                     page.goto('about:blank');page.set_content(inline_document(path),wait_until='domcontentloaded',timeout=10000)
                 page.wait_for_timeout(90)
+            def release(page,api):
+                """Answers the oldest held station request and waits until the page has read the answer."""
+                for _ in range(250):
+                    if api['held']:break
+                    page.wait_for_timeout(20)
+                read=page.evaluate('window.__stationAnswers||0')
+                api['held'].pop(0)()
+                page.wait_for_function('read=>window.__stationAnswers>read',arg=read)
+            def search_edmonton(page):
+                page.get_by_role('searchbox').fill('Edmonton')
+                page.get_by_role('button',name='Search places',exact=True).click()
+                page.get_by_role('button',name='Edmonton, Alberta, Canada',exact=True).click()
             def open_iframe(page,selector):
                 iframe=page.locator(selector)
                 path=iframe.get_attribute('src')
@@ -197,7 +222,9 @@ def main():
                 check(prefix+'website no horizontal overflow',page.evaluate('document.documentElement.scrollWidth<=innerWidth'))
                 check(prefix+'website source and docs routes',page.locator('a[href="docs/"]').count()>=1 and page.locator('a[href="downloads/openfuel-source.zip"]').count()>=1)
                 page.locator('#language').click();check(prefix+'French toggle',page.locator('html').get_attribute('lang')=='fr')
+                check(prefix+'French build status names the OpenFreeMap base map','tuiles vectorielles OpenFreeMap' in page.locator('[data-i18n="status-web"]').text_content())
                 page.locator('#language').click()
+                check(prefix+'build status names the OpenFreeMap base map','OpenFreeMap vector tiles' in page.locator('[data-i18n="status-web"]').text_content())
                 check(prefix+'primary app link opens the full application',page.locator('a[data-i18n="a-demo"]').get_attribute('href')=='/preview/')
                 check(prefix+'Android APK is a real download link',page.locator('a[data-i18n="a-build"]').get_attribute('href')=='/downloads/openfuel-android.apk')
                 page.locator('.phone-play').click()
@@ -238,7 +265,11 @@ def main():
                 load(page,'/preview/')
                 check(prefix+'approved wordmark is used in the app header',page.locator('.search-header .wordmark img').get_attribute('src')=='/brand/openfuel-wordmark-light.svg')
                 check(prefix+'app offers an installable web manifest',page.locator('link[rel=manifest]').get_attribute('href')=='manifest.webmanifest')
-                check(prefix+'real map has attribution',page.get_by_role('link',name='OpenStreetMap contributors').count()==1)
+                # The base map (and its credit) starts once the centre is known, or after 2.5 s without one.
+                credit=page.get_by_role('link',name='OpenStreetMap contributors')
+                try:credit.first.wait_for(timeout=10000)
+                except PlaywrightError:pass
+                check(prefix+'real map has attribution',credit.count()==1)
                 check(prefix+'no fictional station fallback',page.locator('.station-card').count()==0)
                 check(prefix+'no station branding appears without station records',page.locator('img[data-brand-logo]').count()==0)
                 check(prefix+'manual search remains available',page.get_by_role('searchbox',name='Search Canadian city or coordinates').count()==1)
@@ -339,6 +370,109 @@ def main():
                 page.evaluate('window.__completeTestLocation()')
                 check('Late location permission response cannot replace a chosen city',page.locator('#location-status').inner_text()=='Edmonton, Alberta, Canada' and len(API_STATES[id(context)]['requests'])==before)
                 context.close()
+                # Another Worker instance or an HTTP cache can answer with the price from before this browser's
+                # report. For 30 seconds (page clock, not real waiting) the report stays over such answers.
+                context,page=new_page(1440,1000)
+                api=API_STATES[id(context)]
+                page.clock.install()
+                load(page,'/preview/')
+                page.get_by_role('searchbox').fill('Edmonton')
+                page.get_by_role('button',name='Search places',exact=True).click()
+                page.get_by_role('button',name='Edmonton, Alberta, Canada',exact=True).click()
+                page.get_by_role('button',name='Report a price for Tempo',exact=True).click()
+                page.locator('#report-price').fill('149.9');page.locator('#report-observed').check()
+                page.get_by_role('button',name='Share price',exact=True).click()
+                page.get_by_role('button',name='149.9 cents per litre at Tempo',exact=True).wait_for()
+                def answer(price,observed):
+                    api['stations']=deepcopy(STATIONS)
+                    api['stations'][0]['prices']['regular']=price;api['stations'][0]['observedAt']['regular']=observed.isoformat()
+                def refresh():
+                    before=len(api['requests'])
+                    page.get_by_role('button',name='Refresh',exact=True).click()
+                    page.locator('#refresh-button:not([disabled])').wait_for()
+                    return len(api['requests'])==before+1
+                answer(1459,datetime.now(timezone.utc)-timedelta(hours=1))
+                check('A stale stations answer within 30 s keeps the confirmed report',refresh() and page.get_by_role('button',name='149.9 cents per litre at Tempo',exact=True).count()==1 and 'Just reported' in page.locator('[data-station="osm-node-999521943"]').inner_text())
+                answer(1479,datetime.now(timezone.utc))
+                check('A price observed after the report replaces it',refresh() and page.get_by_role('button',name='147.9 cents per litre at Tempo',exact=True).count()==1)
+                answer(1459,datetime.now(timezone.utc)-timedelta(hours=1))
+                page.clock.fast_forward(31000)
+                check('After 30 s the stations answer is shown as it is',refresh() and page.get_by_role('button',name='145.9 cents per litre at Tempo',exact=True).count()==1)
+                context.close()
+                # Returning to a radius whose snapshot is under 30 s old shows it without a request; the answer for
+                # the radius just left, still on its way, must neither replace it nor be cached under its radius.
+                context,page=new_page(1440,1000)
+                api=API_STATES[id(context)]
+                load(page,'/preview/')
+                search_edmonton(page)
+                page.locator('.station-card').first.wait_for()
+                api['stations'][1]['prices']['regular']=1459;api['stations'][1]['observedAt']['regular']=datetime.now(timezone.utc).isoformat()
+                api['hold']=True
+                page.locator('#radius').select_option('25000')
+                page.locator('#radius').select_option('10000')
+                release(page,api)
+                cached=page.evaluate('JSON.parse(localStorage.getItem("openfuel-live-v1:areas-v2")).find(a=>a.key==="53.55,-113.47:10000").stations.find(s=>s.id==="osm-node-638176403").prices.regular')
+                check('A fresh snapshot shown again outranks the other radius\'s answer',api['requests'][-1]['query']['radius']==['25000'] and page.get_by_role('button',name='Report a price for Hughes',exact=True).count()==1 and cached is None)
+                context.close()
+                # A station request sent before this browser's confirmed report is discarded when it answers, so a
+                # device fix in the same area afterwards asks again instead of waiting for that request.
+                context,page=new_page(1440,1000,location='pending')
+                api=API_STATES[id(context)]
+                page.clock.install()
+                load(page,'/preview/')
+                search_edmonton(page)
+                page.locator('.station-card').first.wait_for()
+                page.clock.fast_forward(31000)
+                api['hold']=True
+                page.get_by_role('button',name='Refresh',exact=True).click()
+                page.get_by_role('button',name='Report a price for Tempo',exact=True).click()
+                page.locator('#report-price').fill('149.9');page.locator('#report-observed').check()
+                page.get_by_role('button',name='Share price',exact=True).click()
+                page.get_by_role('button',name='149.9 cents per litre at Tempo',exact=True).wait_for()
+                api['hold']=False
+                api['stations'][1]['prices']['regular']=1459;api['stations'][1]['observedAt']['regular']=datetime.now(timezone.utc).isoformat()
+                before=sum(r['path'].endswith('/stations') for r in api['requests'])
+                page.locator('#locate-button').click()
+                page.evaluate('window.__completeTestLocation(53.55014,-113.46871)')
+                page.locator('#refresh-button:not([disabled])').wait_for()
+                check('A same-area device fix after a confirmed report asks for stations again',sum(r['path'].endswith('/stations') for r in api['requests'])==before+1 and page.get_by_role('button',name='145.9 cents per litre at Hughes',exact=True).count()==1)
+                release(page,api)
+                check('The request sent before the report cannot replace the newer answer',page.get_by_role('button',name='145.9 cents per litre at Hughes',exact=True).count()==1 and page.get_by_role('button',name='149.9 cents per litre at Tempo',exact=True).count()==1)
+                context.close()
+                # Cloudflare's own 429 answers, as problem JSON: 1027 is the daily Worker limit, 1015 only rate limiting.
+                context,page=new_page(1440,1000)
+                api=API_STATES[id(context)]
+                load(page,'/preview/')
+                # Like Cloudflare, it answers with problem JSON only when the request asks for JSON, otherwise with an HTML page.
+                def cloudflare(code,name,title):
+                    def reply(route):
+                        accept=route.request.headers.get('accept','')
+                        if 'application/json' not in accept and 'application/problem+json' not in accept:
+                            return {'status':429,'content_type':'text/html','body':f'<!doctype html><title>Error {code}</title><h1>{title}</h1>'}
+                        return problem
+                    problem={'status':429,'content_type':'application/problem+json','body':json.dumps({'type':f'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-{code}/','title':f'Error {code}: {title}','status':429,'detail':title,'error_code':code,'error_name':name,'cloudflare_error':True})}
+                    return reply
+                api['reply']=cloudflare(1015,'rate_limited','You are being rate limited')
+                search_edmonton(page)
+                page.locator('#refresh-button:not([disabled])').wait_for()
+                check('Cloudflare rate limiting (1015) is not taken for the daily limit',page.locator('#limit-banner').is_hidden() and 'Too many requests' in page.locator('#toast').inner_text())
+                api['reply']=cloudflare(1027,'workers_daily_limit','This website has been temporarily rate limited')
+                page.get_by_role('button',name='Refresh',exact=True).click()
+                page.locator('#refresh-button:not([disabled])').wait_for()
+                reset=page.evaluate("(()=>{const now=new Date();return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1)).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});})()")
+                check('Cloudflare daily limit JSON (1027) pauses live prices until the next UTC midnight',page.locator('#limit-banner').is_visible() and reset in page.locator('#limit-text').inner_text() and page.locator('#connection-status').inner_text()=='Live station details are paused for today.')
+                context.close()
+            # Only the automatic request on entry may accept a five-minute-old fix; a tap is labelled as the
+            # current location, so it accepts one at most a minute old.
+            context,page=new_page(1440,1000)
+            load(page,'/preview/')
+            page.wait_for_function('window.__locationOptions.length===1')
+            page.locator('#empty-locate').click()
+            page.locator('#locate-button').click()
+            page.locator('#area-selector').click();page.get_by_role('button',name='Use my device location',exact=True).click()
+            options=page.evaluate('window.__locationOptions')
+            check('Only the automatic location request accepts a five-minute-old fix',len(options)==4 and options[0]['maximumAge']==300000 and all(o['maximumAge']<=60000 for o in options[1:]))
+            context.close()
             context,page=new_page(1440,1000)
             load(page,'/designs/variant-b/')
             check('Retained design B loads','public' in page.title().lower())

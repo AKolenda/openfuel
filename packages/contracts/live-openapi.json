@@ -28,12 +28,27 @@
               }
             }
           },
+          "429": {
+            "$ref": "#/components/responses/CloudflareLimit"
+          },
           "503": {
-            "description": "Database unavailable",
+            "description": "The database is unavailable (temporarily_unavailable), or OpenFuel's daily database limit is reached (spending_cap with scope all, until resets_at; Retry-After gives the seconds left)",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SpendingCap"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
                 }
               }
             }
@@ -111,6 +126,31 @@
                 }
               }
             }
+          },
+          "429": {
+            "$ref": "#/components/responses/CloudflareLimit"
+          },
+          "503": {
+            "description": "The database is unavailable (temporarily_unavailable), or OpenFuel's daily database limit is reached (spending_cap with scope all, until resets_at; Retry-After gives the seconds left). Over the limit, a search still answers 200 when the Worker instance or its data centre already holds prices for every area it needs, each price with its age.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SpendingCap"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -150,6 +190,9 @@
                 }
               }
             }
+          },
+          "429": {
+            "$ref": "#/components/responses/CloudflareLimit"
           }
         }
       }
@@ -167,6 +210,9 @@
                 }
               }
             }
+          },
+          "429": {
+            "$ref": "#/components/responses/CloudflareLimit"
           }
         }
       }
@@ -293,23 +339,194 @@
             }
           },
           "429": {
-            "description": "Report rate or capacity limit reached",
+            "description": "Too many reports: rate_limited from the Worker (a per-IP limit of 20 a minute with Retry-After 60, or 30 an hour per client_id with Retry-After 3600), or report_capacity when the report archive is full; browsing continues. Cloudflare can also answer 429 itself (CloudflareError): error 1027 is the daily request limit until the next midnight UTC, error 1015 is not.",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CloudflareError"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloudflareError"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
           },
           "503": {
-            "description": "Database unavailable",
+            "description": "The database is unavailable (temporarily_unavailable), or OpenFuel's daily database limit is reached (spending_cap with scope all or reports, until resets_at; Retry-After gives the seconds left)",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/Retry-After"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SpendingCap"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    }
+                  ]
                 }
               }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "not": {
+              "const": "spending_cap"
+            },
+            "description": "Error code, such as invalid_report, rate_limited or temporarily_unavailable"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "SpendingCap": {
+        "type": "object",
+        "description": "OpenFuel's daily database limit (HTTP 503): its own D1 budget, kept below Cloudflare's Workers Free limits, or Cloudflare's D1 daily limit. It lasts until midnight UTC.",
+        "required": [
+          "error",
+          "reason",
+          "scope",
+          "resets_at",
+          "message",
+          "donate_url"
+        ],
+        "properties": {
+          "error": {
+            "const": "spending_cap"
+          },
+          "reason": {
+            "type": "string",
+            "description": "The specific limit, such as daily_database_budget, daily_report_budget or d1_free_daily_read_limit; clients should act on scope"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "all",
+              "reports"
+            ],
+            "description": "all pauses database reads; reports pauses new reports only, and browsing continues"
+          },
+          "resets_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The next midnight UTC"
+          },
+          "message": {
+            "type": "string"
+          },
+          "donate_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "The operator's donate link, or null"
+          }
+        }
+      },
+      "CloudflareError": {
+        "type": "object",
+        "description": "Cloudflare's own error, sent instead of a Worker answer: RFC 9457 problem details when the request accepts application/json or application/problem+json, an HTML page otherwise. Cloudflare adds further members such as error_category, retryable, retry_after and ray_id.",
+        "required": [
+          "status",
+          "error_code",
+          "cloudflare_error"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "error_code": {
+            "type": "integer",
+            "description": "1027 (error_name workers_daily_limit) is the daily Workers request limit, until the next midnight UTC. Other codes, such as 1015 (rate_limited, a Cloudflare rate limiting rule), are not the daily limit."
+          },
+          "error_name": {
+            "type": "string"
+          },
+          "cloudflare_error": {
+            "const": true
+          }
+        }
+      }
+    },
+    "headers": {
+      "Retry-After": {
+        "description": "Seconds to wait before retrying",
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "responses": {
+      "CloudflareLimit": {
+        "description": "Cloudflare's own limit, answered without the Worker. Error 1027 (workers_daily_limit): the daily Workers request limit is reached, and every API request fails until the next midnight UTC; no Retry-After is sent. Error 1015 (rate_limited) comes from a Cloudflare rate limiting rule, sends Retry-After, and is not the daily limit.",
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/Retry-After"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CloudflareError"
+            }
+          },
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/CloudflareError"
+            }
+          },
+          "text/html": {
+            "schema": {
+              "type": "string"
             }
           }
         }

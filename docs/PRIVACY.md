@@ -31,13 +31,20 @@ The web browser keeps up to four searched-area station snapshots. Native and Exp
 clients retain a recent station snapshot and selected area on the device. Saved
 station IDs, preferences and random report identifiers also remain in browser/app
 storage. Cached information can reveal searched areas and may be outdated.
+The API marks station answers `Cache-Control: private, max-age=15` and city
+searches `public, max-age=86400`, so the browser's HTTP cache and the Android
+app's 4 MiB API cache can also hold these answers, with the searched coordinates
+or city name in their URLs, until the cache discards them.
 Clearing browser/app data removes local state; the web map also offers a local
-clearing action. Clearing local state does not delete reports accepted by D1.
+clearing action, which does not empty the browser's HTTP cache. Clearing local
+state does not delete reports accepted by D1.
 
 ## Maps, logos and hosting
 
-OpenStreetMap receives tile requests for the viewed area in the web app, Kotlin
-bundled Leaflet WebView map and Expo Leaflet WebView. The tile provider receives ordinary
+OpenFreeMap (`tiles.openfreemap.org`) receives the map requests for the viewed area in
+the web app and the Kotlin WebView map: its tile index, vector tiles, fonts and icons. Without
+WebGL, or if OpenFreeMap refuses its tiles, OpenStreetMap's tile servers receive raster tile
+requests instead. The Expo Leaflet WebView requests OpenStreetMap tiles. The tile provider receives ordinary
 connection metadata and can infer the viewed area from tile URLs. Web map tile
 requests send the site origin as referrer. Swift uses Apple MapKit, which receives
 map requests through the platform SDK. Map tiles may use normal browser/platform
@@ -45,9 +52,9 @@ HTTP caches; OpenFuel does not bulk-download offline map areas, and the web
 service worker does not cache map tiles or API/location queries.
 
 Station logos load **directly from remote providers**: `thumb.wikimedia.org`,
-`www.fuel.crs` and `www.shell.ca`. The public API returns optional image URLs from
-an allowlisted catalog. No station logo binaries are bundled in the source or
-apps, stored on OpenFuel’s server, or served through an OpenFuel image proxy.
+`www.fuel.crs`, `www.shell.ca` and `www.tempo.crs`. The public API returns optional
+image URLs from an allowlisted catalog. No station logo binaries are bundled in the
+source or apps, stored on OpenFuel’s server, or served through an OpenFuel image proxy.
 Missing or failed logos show text initials. OpenFuel’s own approved F identity is
 bundled as a separate first-party asset.
 

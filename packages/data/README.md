@@ -80,6 +80,11 @@ not insert, overwrite or delete community price reports. It does not prune
 stations removed from a later upstream snapshot; removals need a deliberate
 review and migration that preserves report history.
 
+Nearby searches do not read stations from D1. `npm run build` writes the station
+snapshot as one static file per 0.5° area (`data/stations/`), which the Worker
+reads; D1's `stations` table only validates reports. Seed D1 before deploying a
+changed snapshot so both match; see [running costs](../../docs/RUNNING_COSTS.md).
+
 ## Directory review, September 2026
 
 The snapshot's recent download date is not a verification date for each station.

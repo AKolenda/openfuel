@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: AGPL-3.0-only
  * Real station map. Leaflet 1.9.4 is bundled with its BSD-2-Clause licence.
- * OSM tiles are fetched only for the visible map and use normal HTTP caching.
+ * Map tiles are fetched only for the visible map and use normal HTTP caching.
  * Prices are integer thousandths of CAD/litre; shown as Canadian cents/litre.
  */
 (() => {
@@ -24,28 +24,59 @@ function logoURL(value) {
   try { const url=new URL(value);return url.protocol==='https:'&&logoHosts.has(url.hostname)&&!url.username&&!url.password ? url.href : null; } catch { return null; }
 }
 function brandBadge(station,marker=false) {
+  // Brands without a curated logo show their initials, on the map as in the list.
   const url=logoURL(station.brandLogoUrl),fallback=esc(station.name.slice(0,2).toUpperCase());
-  if(marker&&!url)return '';
   return `<span class="${marker?'marker-brand':'station-initial'} brand-badge" aria-hidden="true"><span class="brand-fallback">${fallback}</span>${url&&!failedLogos.has(url)?`<img data-brand-logo src="${esc(url)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:''}</span>`;
 }
 document.addEventListener('load',event=>{if(event.target.matches?.('img[data-brand-logo]'))event.target.parentElement.classList.add('logo-loaded');},true);
 document.addEventListener('error',event=>{if(event.target.matches?.('img[data-brand-logo]')){failedLogos.add(event.target.src);event.target.remove();}},true);
 const saved = storage.read('favorites', []);
 const favorites = new Set(Array.isArray(saved) ? saved.filter(id => typeof id === 'string') : []);
-const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, center:null, user:null, source:null, label:'', stations:[], selected:null, loadedAt:0, connection:'idle', generation:0, reportVersion:0, coverage:null};
+const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, center:null, user:null, source:null, label:'', stations:[], selected:null, loadedAt:0, loadFailed:false, connection:'idle', generation:0, reportVersion:0, coverage:null};
 let clientId = storage.read('client-id', null);
 if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { clientId = crypto.randomUUID(); storage.write('client-id', clientId); }
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
+// pendingRequest is the station request on its way ({generation, reportVersion, key}); fixTimer runs while a return visit waits for the device fix.
+let pendingRequest = null, fixTimer = null, onlineTimer, markerFrame = 0, reportedAt = 0;
+// A snapshot this young is as current as the server's own short caches, so it is not asked for again.
+const FRESH_SNAPSHOT_MS = 30000;
+// Other Worker instances can answer with the price from before this browser's report for about 15 seconds,
+// and the HTTP cache for 15 more. For 30 seconds each confirmed report ({station_id, fuel_type, price_milli,
+// observed_at, confirmedAt}) is laid over every station list shown; it is kept across a page reload.
+const OWN_REPORT_MS = 30000;
+const savedReports = storage.read('own-reports', []);
+let ownReports = Array.isArray(savedReports) ? savedReports : [];
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
 L.control.zoom({position:'bottomright'}).addTo(map);
+const tileOptions = {maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1};
+// Map tiles are not stored in our service worker, bulk downloaded, or prefetched.
+function watchTiles(layer) {
+  const warn = failed => { $('tile-warning').hidden = !failed; };
+  const gl = layer.getMaplibreMap?.();
+  if (gl) {
+    gl.on('error', () => warn(true));
+    gl.on('sourcedata', event => { if (event.tile) warn(false); });
+  } else {
+    layer.on('tileerror', () => warn(true));
+    layer.on('tileload', () => warn(false));
+  }
+  return layer;
+}
+// The base map starts once the first centre is known: a saved area, the device location or its refusal
+// (the Canada overview), or a search. A first visit then does not download the overview it immediately
+// leaves; until then the map shows its background colour. An unanswered permission prompt gets the
+// overview after 2.5 seconds.
+let baseMapStarted = false;
+const baseMapTimer = setTimeout(startBaseMap, 2500);
+function startBaseMap() {
+  if (baseMapStarted) return;
+  baseMapStarted = true;clearTimeout(baseMapTimer);
+  baseMapLayer(map, 'map/openfuel-style.json', tileOptions, (layer, name) => {
+    watchTiles(layer);
+    $('tile-provider').textContent = name === 'openfreemap' ? 'OpenFreeMap' : 'OpenStreetMap';
+  });
+}
 L.control.scale({position:'bottomleft', imperial:false}).addTo(map);
-const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom:19, minZoom:3, updateWhenIdle:true, keepBuffer:1,
-  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
-}).addTo(map);
-// Public OSM tiles are not stored in our service worker, bulk downloaded, or prefetched.
-tiles.on('tileerror', () => { $('tile-warning').hidden = false; });
-tiles.on('tileload', () => { $('tile-warning').hidden = true; });
 const markerLayer = L.layerGroup().addTo(map), locationLayer = L.layerGroup().addTo(map);
 function mapFocusPoint() {
   const size=map.getSize(),panel=document.querySelector('.results-panel').getBoundingClientRect();
@@ -92,7 +123,9 @@ function ageLabel(age) {
   if (age === 0) return 'Just reported';
   if (age < 60) return `${Math.floor(age)} min ago`;
   if (age < 1440) return `${Math.floor(age/60)} hr ago`;
-  return `${Math.floor(age/1440)} days ago`;
+  // Older reports in days and hours, such as 13 days 3 hr, not a rounded-down day count.
+  const days=Math.floor(age/1440), hours=Math.floor(age%1440/60);
+  return `${days} ${days===1?'day':'days'}${hours?` ${hours} hr`:''} ago`;
 }
 function normalize(records) {
   if (!Array.isArray(records)) throw Error('Station data could not be read. Try refreshing.');
@@ -102,11 +135,39 @@ function normalize(records) {
     address:typeof s.address==='string' ? s.address : '', ages:s.ages||{}, observedAt:s.observedAt||{},
   }));
 }
+/** Shows this browser's reports from the last 30 seconds where the list has no price for that fuel or an older one. */
+function withOwnReports(stations) {
+  const now=Date.now(), kept=ownReports.length;
+  ownReports=ownReports.filter(r => r && typeof r.station_id==='string' && grades.includes(r.fuel_type) && Number.isInteger(r.price_milli) && now-r.confirmedAt>=0 && now-r.confirmedAt<OWN_REPORT_MS);
+  // An expired report is not kept in storage either.
+  if (ownReports.length!==kept) storage.write('own-reports',ownReports.length?ownReports:null);
+  for (const report of ownReports) {
+    const station=stations.find(s => s.id===report.station_id), fuel=report.fuel_type;
+    // A price someone else observed after this report wins.
+    if (!station || station.prices[fuel]!=null && Date.parse(station.observedAt[fuel])>=Date.parse(report.observed_at)) continue;
+    station.prices[fuel]=report.price_milli;station.observedAt[fuel]=report.observed_at;station.ages[fuel]=0;
+    station.priceSources={...station.priceSources,[fuel]:'community-unverified'};
+  }
+  return stations;
+}
+// Official builds can set a donation page for the database and map costs; without one no donate UI appears.
+const donateURL=document.querySelector('meta[name="openfuel-donate-url"]')?.content||'';
+document.querySelectorAll('.donate-link').forEach(link=>{if(donateURL){link.hidden=false;if(link.href!==undefined)link.href=donateURL;}});
+/** The database reached its daily allowance: the Worker's own cap, or Cloudflare's daily request limit. */
+class ServiceLimit extends Error {
+  constructor(resetsAt) { super('OpenFuel reached its free daily database limit.'); this.name='ServiceLimit'; this.resetsAt=resetsAt; }
+}
+const nextUtcMidnight=()=>{const now=new Date();return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1));};
 async function api(path, options={}) {
   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),20000);
   try {
-    const response=await fetch(`/api/v1/${path}`,{...options,cache:'no-store',signal:controller.signal});
+    // Asking for JSON also gets Cloudflare's own errors as JSON, so its 1015 and 1027 can be told apart.
+    const response=await fetch(`/api/v1/${path}`,{...options,headers:{Accept:'application/json',...options.headers},signal:controller.signal});
     const body=await response.json().catch(()=>null);
+    if (body?.error==='spending_cap') throw new ServiceLimit(new Date(body.resets_at||nextUtcMidnight()));
+    // Cloudflare answers the daily Worker request limit itself (error 1027): as problem JSON when asked for
+    // JSON, otherwise as a non-JSON 429 page. Its other 429s, such as 1015 rate limiting, are not the limit.
+    if (response.status===429 && (!body || body.error_code===1027 || body.error_name==='workers_daily_limit')) throw new ServiceLimit(nextUtcMidnight());
     if (!response.ok) throw Error(body?.message || (response.status===429 ? 'Too many requests. Wait a minute and try again.' : 'Could not reach OpenFuel. Try again.'));
     if (!body) throw Error('The response could not be read. Try again.');
     return body;
@@ -133,16 +194,27 @@ function restoreArea() {
   const existing=storage.read('areas-v2', []);
   const area=Array.isArray(existing) && existing.find(a=>a.key===cacheKey());
   if (!area || !Number.isFinite(area.loadedAt)) return false;
-  try { state.stations=normalize(area.stations);state.loadedAt=area.loadedAt;state.coverage=area.coverage;return true; } catch { return false; }
+  try { state.stations=withOwnReports(normalize(area.stations));state.loadedAt=area.loadedAt;state.coverage=area.coverage;return true; } catch { return false; }
 }
+/** Shows the saved area and its snapshot without asking the server; the caller decides when to load it. */
 function restoreLastArea() {
   const last=storage.read('last-area',null);
-  if(!last||!Number.isFinite(last.lat)||Math.abs(last.lat)>90||!Number.isFinite(last.lon)||Math.abs(last.lon)>180||![5000,10000,25000,50000].includes(last.radius))return;
+  if(!last||!Number.isFinite(last.lat)||Math.abs(last.lat)>90||!Number.isFinite(last.lon)||Math.abs(last.lon)>180||![5000,10000,25000,50000].includes(last.radius))return false;
   state.radius=last.radius;state.fuel=grades.includes(last.fuel)?last.fuel:'regular';$('radius').value=String(state.radius);
   const label=typeof last.label==='string'&&last.label.length<=160?last.label:'Your last searched area';
   const center=coarseCenter(last);
-  chooseLocation(center.lat,center.lon,`${label} · saved area`,'previous',false);
+  chooseLocation(center.lat,center.lon,`${label} · saved area`,'previous',false,false);
+  return true;
 }
+const snapshotFresh=()=>{const age=Date.now()-state.loadedAt;return age>=0&&age<FRESH_SNAPSHOT_MS;};
+/** Loads the chosen area unless its snapshot is fresh enough to show as it is. */
+function loadArea() {
+  if(!snapshotFresh()){refreshStations();return;}
+  // An answer still on its way (for the radius just left, say) must not replace this snapshot.
+  state.generation++;pendingRequest=null;
+  stopWaitingForFix();state.connection='online';state.loadFailed=false;render();
+}
+function stopWaitingForFix() { clearTimeout(fixTimer);fixTimer=null; }
 function visibleStations() {
   return state.stations.filter(s => !state.saved || favorites.has(s.id)).sort((a,b) => {
     if (state.sort==='price') {
@@ -163,19 +235,22 @@ function renderStatus() {
   if (state.connection==='loading') text=state.loadedAt?'Saved station details · Refreshing…':'Finding real stations in this area…';
   if (state.connection==='online') text=`${count} station${count===1?'':'s'}${state.coverage?.truncated?' · Narrow the radius for all results':''} · Prices shown only when reported`;
   if (state.connection==='offline') text=state.loadedAt ? `Saved station details · Last updated ${new Date(state.loadedAt).toLocaleString()}` : 'Unable to load stations. Check your connection and refresh.';
+  if (state.connection==='limited') text=state.loadedAt ? `Saved station details · Last updated ${new Date(state.loadedAt).toLocaleString()}` : 'Live station details are paused for today.';
   $('connection-status').textContent=text;
-  $('connection-status').classList.toggle('offline',state.connection==='offline');
+  $('connection-status').classList.toggle('offline',state.connection==='offline'||state.connection==='limited');
+  $('limit-banner').hidden=state.connection!=='limited';
+  if(state.connection==='limited')$('limit-text').textContent=`OpenFuel's database reached its free daily limit, so live prices are paused until about ${state.limitResetsAt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}.${state.loadedAt?' Saved prices still show.':''}${donateURL?' Donations pay for more database capacity.':''}`;
 }
 function render() {
   renderStatus();
   document.querySelectorAll('[data-fuel]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.fuel===state.fuel)));
   $('saved-button').setAttribute('aria-pressed',String(state.saved));
-  markerLayer.clearLayers();
-  if (!state.center) return;
+  cancelAnimationFrame(markerFrame);
+  if (!state.center) { markerLayer.clearLayers();return; }
   const list=visibleStations();
   if (!list.length) {
-    const title=state.saved ? 'No saved stations in this area.' : state.connection==='loading' ? 'Finding fuel nearby…' : state.connection==='offline' ? 'No saved details for this area.' : 'No stations found here yet.';
-    const help=state.saved ? 'Open a station and save it to keep it handy.' : state.connection==='offline' ? 'Reconnect and refresh, or return to an area you already searched.' : 'Try a larger radius, move the map, or search another Canadian city.';
+    const title=state.saved ? 'No saved stations in this area.' : state.connection==='loading' ? 'Finding fuel nearby…' : state.connection==='offline' ? 'No saved details for this area.' : state.connection==='limited' ? 'Live prices are paused for today.' : 'No stations found here yet.';
+    const help=state.saved ? 'Open a station and save it to keep it handy.' : state.connection==='offline' ? 'Reconnect and refresh, or return to an area you already searched.' : state.connection==='limited' ? 'Areas you searched before still show their saved details.' : 'Try a larger radius, move the map, or search another Canadian city.';
     $('station-list').innerHTML=`<div class="empty-state"><span class="empty-icon">⌕</span><h2>${title}</h2><p>${help}</p></div>`;
   } else {
     $('station-list').innerHTML=list.map(s=>{
@@ -183,28 +258,40 @@ function render() {
       return `<article class="station-card" data-station="${esc(s.id)}">${brandBadge(s)}<button class="station-main" data-detail="${esc(s.id)}" aria-label="View ${esc(s.name)}, ${esc(s.address||distanceLabel(s))}"><span class="station-name">${esc(s.name)}</span><span class="station-address">${esc(s.address||'Address not listed')}</span><span class="station-distance">${esc(distanceLabel(s))} · straight-line</span></button><button class="station-price" data-${price==null?'report':'detail'}="${esc(s.id)}" aria-label="${price==null?'Report a price for':`${cents(price)} cents per litre at`} ${esc(s.name)}">${price==null?'<strong class="missing">No price yet</strong><span class="report-label">Report price</span>':`<strong>${cents(price)}</strong><small>¢/L · ${esc(ageLabel(age))}</small><small>Unverified${age>=1440?' · stale':''}</small>`}</button></article>`;
     }).join('');
   }
-  for (const s of list) {
-    const price=s.prices[state.fuel], title=`${s.name}: ${price==null ? 'no reported price' : `${cents(price)} cents per litre, unverified`}`;
-    const badge=brandBadge(s,true),width=badge?86:58;
-    const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${badge}<span>${price==null?'Fuel':cents(price)}</span></span>`,iconSize:[width,36],iconAnchor:[width/2,40]})});
-    marker.on('click',()=>openDetails(s.id));marker.addTo(markerLayer);
-    marker.getElement()?.setAttribute('aria-label',title);
-  }
+  // The list paints first; the map markers follow in the next frame.
+  markerFrame=requestAnimationFrame(()=>{
+    markerLayer.clearLayers();
+    for (const s of list) {
+      const price=s.prices[state.fuel], title=`${s.name}: ${price==null ? 'no reported price' : `${cents(price)} cents per litre, unverified`}`;
+      const badge=brandBadge(s,true),width=86;
+      const marker=L.marker([s.latitude,s.longitude],{title,alt:title,icon:L.divIcon({className:`fuel-marker${price==null?' unknown':''}`,html:`<span class="marker-pill">${badge}<span>${price==null?'Fuel':cents(price)}</span></span>`,iconSize:[width,36],iconAnchor:[width/2,40]})});
+      marker.on('click',()=>openDetails(s.id));marker.addTo(markerLayer);
+      marker.getElement()?.setAttribute('aria-label',title);
+    }
+  });
 }
-async function refreshStations() {
+async function refreshStations(fresh=false) {
   if (!state.center) return;
+  stopWaitingForFix();
   const generation=++state.generation, reportVersion=state.reportVersion;
   const center={...state.center},radius=state.radius;
+  pendingRequest={generation,reportVersion,key:cacheKey(center)};
   state.connection='loading';render();
   try {
     const query=new URLSearchParams({lat:center.lat.toFixed(6),lon:center.lon.toFixed(6),radius:String(radius),fuel:state.fuel});
-    const response=await api(`stations?${query}`);
+    // Normal loads may reuse the browser's copy for 15 seconds; Refresh, and loads within 15 seconds
+    // of this browser's own report, always ask again so the copy cannot hide the new price.
+    const response=await api(`stations?${query}`,fresh===true||Date.now()-reportedAt<15000?{cache:'no-cache'}:{});
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (response.is_demo!==false || response.mode!=='live') throw Error('OpenFuel is still serving sample data. Please try again after the live update.');
-    state.stations=normalize(response.stations);state.coverage=response.coverage;state.loadedAt=Date.now();state.connection='online';cacheCurrent();render();
+    state.stations=withOwnReports(normalize(response.stations));state.coverage=response.coverage;state.loadedAt=Date.now();state.loadFailed=false;state.connection='online';cacheCurrent();render();
   } catch (error) {
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
+    state.loadFailed=true;
+    if (error instanceof ServiceLimit) { state.connection='limited';state.limitResetsAt=error.resetsAt;render();return; }
     state.connection='offline';render();toast(error.name==='AbortError' ? 'The request timed out. Try Refresh.' : error.message);
+  } finally {
+    if (pendingRequest?.generation===generation) pendingRequest=null;
   }
 }
 function closePlaceChoices() {
@@ -216,11 +303,16 @@ function showAreaChoices() {
   $('search-results').innerHTML='<p class="search-message">Choose where to find fuel.</p><button class="search-result" data-area-action="city">Search a Canadian city or coordinates</button><button class="search-result" data-area-action="device">Use my device location</button><button class="search-result" data-area-action="map">Use the visible map area</button>';
   $('search-results').hidden=false;$('area-selector').setAttribute('aria-expanded','true');
 }
-function chooseLocation(lat,lon,label,source='search',remember=true) {
+function chooseLocation(lat,lon,label,source='search',remember=true,load=true) {
   if (!Number.isFinite(lat)||Math.abs(lat)>90||!Number.isFinite(lon)||Math.abs(lon)>180) return;
   // A city or map choice wins over an earlier, still-pending device request.
-  locationGeneration++;searchGeneration++;locatePending=false;$('locate-button').disabled=false;
-  state.generation++;state.center={lat,lon};state.source=source;state.label=label;state.stations=[];state.loadedAt=0;state.selected=null;state.coverage=null;
+  locationGeneration++;searchGeneration++;locatePending=false;$('locate-button').disabled=false;stopWaitingForFix();
+  // A choice in the same area as the station request already on its way (a device fix in the saved
+  // area, for example) keeps that request instead of sending another, unless this browser's report was
+  // confirmed since it was sent: its answer is then discarded.
+  const requested=pendingRequest?.generation===state.generation&&pendingRequest.reportVersion===state.reportVersion&&pendingRequest.key===cacheKey({lat,lon});
+  if(!requested)state.generation++;
+  state.center={lat,lon};state.source=source;state.label=label;state.stations=[];state.loadedAt=0;state.selected=null;state.coverage=null;
   $('location-status').textContent=label;
   const shortLabel=source==='device'?'Nearby':source==='search'?label.split(',')[0]:source==='previous'?'Saved area':'Map area';
   $('area-label').textContent=shortLabel;$('area-selector').setAttribute('aria-label',`Choose location, currently ${shortLabel}`);$('area-selector').title=label;
@@ -228,14 +320,19 @@ function chooseLocation(lat,lon,label,source='search',remember=true) {
   map.setView([lat,lon],13,{animate:false});
   map.panBy(map.getSize().divideBy(2).subtract(mapFocusPoint()),{animate:false});$('search-area').hidden=true;
   if(remember)rememberArea();
-  restoreArea();refreshStations();
+  restoreArea();
+  if(load&&!requested)loadArea();else render();
+  // After the station request, so the prices go out first.
+  startBaseMap();
 }
-function locate() {
+function locate(automatic=false) {
   if (locatePending) return;
-  if (!navigator.geolocation) { $('location-status').textContent='Location is unavailable in this browser. Search a city instead.';return; }
+  if (!navigator.geolocation) { $('location-status').textContent='Location is unavailable in this browser. Search a city instead.';startBaseMap();return; }
   const generation=++locationGeneration;
   locatePending=true;$('locate-button').disabled=true;
   $('location-status').textContent=state.center?`${state.label} · Checking device location…`:'Your browser will ask for location. You can search a city instead.';
+  // Station areas are kilometres wide, so a coarse fix is enough and arrives sooner. The automatic fix
+  // on entry may be up to five minutes old; a tap asks for the current location, at most a minute old.
   navigator.geolocation.getCurrentPosition(position=>{
     if(generation!==locationGeneration)return;
     locatePending=false;$('locate-button').disabled=false;
@@ -250,7 +347,10 @@ function locate() {
     locatePending=false;$('locate-button').disabled=false;
     const reason=error.code===1?'Location permission is off. Search a city, or enable location in your browser.':error.code===3?'Location took too long. Try again or search a city.':'Could not find your device location. Try again or search a city.';
     $('location-status').textContent=state.center ? `${state.label} · ${error.code===1?'Device location off':'Device location unavailable'}` : reason;
-  },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+    // Without a fix a return visit loads its saved area now, and a first visit shows the Canada overview.
+    if(fixTimer)loadArea();
+    startBaseMap();
+  },{enableHighAccuracy:false,timeout:15000,maximumAge:automatic?300000:60000});
 }
 async function searchPlaces(event) {
   event.preventDefault();const query=$('place-search').value.trim(), generation=++searchGeneration;
@@ -299,11 +399,13 @@ async function submitReport(event) {
   try {
     const response=await api('reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
     if(!response.ok||response.is_demo!==false||response.report?.id!==request.request_id||response.report?.station_id!==station.id||response.report?.fuel_type!==fuel||response.report?.price_milli!==value)throw Error('No confirmation received. Refresh before trying again.');
-    state.reportVersion++;pendingReport=null;storage.write('pending-report',null);
-    station.prices[fuel]=value;station.observedAt[fuel]=response.report.observed_at;station.ages[fuel]=0;state.fuel=fuel;
-    state.connection='online';cacheCurrent();$('report-dialog').close();render();toast('Price shared as an unverified community report.');refreshStations();
+    state.reportVersion++;reportedAt=Date.now();pendingReport=null;storage.write('pending-report',null);
+    ownReports=[...ownReports,{station_id:station.id,fuel_type:fuel,price_milli:value,observed_at:response.report.observed_at,confirmedAt:reportedAt}];
+    withOwnReports(state.stations);storage.write('own-reports',ownReports);state.fuel=fuel;
+    // The confirmed report is shown straight away; refetching the area would only cost another request.
+    state.connection='online';cacheCurrent();$('report-dialog').close();render();toast('Price shared as an unverified community report.');
   } catch(error) {
-    $('report-error').textContent=error.name==='AbortError'?'No confirmation received. Reconnect and retry; your request will not be duplicated.':error.message;
+    $('report-error').textContent=error.name==='AbortError'?'No confirmation received. Reconnect and retry; your request will not be duplicated.':error instanceof ServiceLimit?`OpenFuel reached its free daily database limit, so reports are paused until about ${error.resetsAt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}.${donateURL?' Donations pay for more capacity.':''}`:error.message;
     $('report-error').hidden=false;
   } finally {button.disabled=false;button.textContent='Share price';}
 }
@@ -329,10 +431,10 @@ document.addEventListener('click',event=>{if(!event.target.closest('.search-head
 $('search-form').addEventListener('submit',searchPlaces);
 $('place-search').addEventListener('input',()=>{searchGeneration++;closePlaceChoices();});
 $('place-search').addEventListener('keydown',event=>{if(event.key==='Escape')closePlaceChoices();});
-$('locate-button').addEventListener('click',locate);$('empty-locate').addEventListener('click',locate);
+$('locate-button').addEventListener('click',()=>locate());$('empty-locate').addEventListener('click',()=>locate());
 $('search-area').addEventListener('click',()=>{const center=visibleMapCenter();chooseLocation(center.lat,center.lng,`Map area · ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)}`,'map');});
-$('refresh-button').addEventListener('click',refreshStations);
-$('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();refreshStations();}});
+$('refresh-button').addEventListener('click',()=>refreshStations(true));
+$('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();loadArea();}});
 $('sort').addEventListener('change',event=>{state.sort=event.target.value;render();});
 $('saved-button').addEventListener('click',()=>{state.saved=!state.saved;render();});
 $('report-form').addEventListener('submit',submitReport);
@@ -354,17 +456,34 @@ $('sheet-toggle').addEventListener('pointercancel',()=>{sheetPointer=null;});
 $('sheet-toggle').addEventListener('click',event=>{if(suppressSheetClick){event.stopImmediatePropagation();suppressSheetClick=false;}},true);
 $('clear-local').addEventListener('click',()=>{
   try{Object.keys(localStorage).filter(key=>key.startsWith('openfuel-')).forEach(key=>localStorage.removeItem(key));}catch{}
-  state.generation++;locationGeneration++;locatePending=false;$('locate-button').disabled=false;
+  state.generation++;locationGeneration++;locatePending=false;$('locate-button').disabled=false;stopWaitingForFix();
   if(state.connection==='loading')state.connection='idle';
-  favorites.clear();pendingReport=null;clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
+  favorites.clear();pendingReport=null;ownReports=[];clientId=crypto.randomUUID();storage.write('client-id',clientId);state.saved=false;render();toast('Saved stations and cached areas cleared from this browser.');
 });
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}}));
-addEventListener('online',refreshStations);
-addEventListener('offline',()=>{if(state.center){state.generation++;state.connection='offline';render();}});
+// Reconnecting reloads only when the last load failed or the data is over a minute old. A mobile
+// connection can drop and return several times in a row, so the check waits for it to settle.
+addEventListener('online',()=>{clearTimeout(onlineTimer);onlineTimer=setTimeout(()=>{
+  if(!state.center||state.connection==='loading')return;
+  if(state.loadFailed||Date.now()-state.loadedAt>60000)refreshStations();
+  else if(state.connection==='offline'){state.connection='online';render();}
+},2000);});
+addEventListener('offline',()=>{clearTimeout(onlineTimer);if(state.center){if(state.connection==='loading')state.loadFailed=true;state.generation++;state.connection='offline';render();}});
 setInterval(()=>{if(!document.hidden&&state.center)render();},60000);
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+function locationGranted() {
+  try { return navigator.permissions.query({name:'geolocation'}).then(status=>status.state==='granted',()=>false); } catch { return Promise.resolve(false); }
+}
 // A one-shot request on entry lets the browser own the permission decision.
 // Denial never substitutes a fictional location or a bundled sample station.
-restoreLastArea();
-requestAnimationFrame(()=>locate());
+// A return visit shows its saved area at once and sends one station request. With location already
+// granted it waits up to 3 seconds for the fix and loads that area (the saved one when the fix rounds
+// to it); otherwise it loads the saved area. A snapshot under 30 seconds old is not asked for again.
+if(!restoreLastArea())requestAnimationFrame(()=>locate(true));
+else locationGranted().then(granted=>{
+  if(state.source!=='previous')return;
+  if(granted&&!snapshotFresh()){state.connection='loading';render();fixTimer=setTimeout(loadArea,3000);}
+  else loadArea();
+  requestAnimationFrame(()=>locate(true));
+});
 })();

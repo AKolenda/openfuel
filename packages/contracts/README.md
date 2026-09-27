@@ -1,8 +1,11 @@
 # API contracts
 
-`prototype-openapi.json` describes the deployed Cloudflare API used by website, Android and iOS.
-The website publishes it at `/openapi.json`. See docs/PROTOTYPE_API.md for examples and units.
+`live-openapi.json` describes the deployed Cloudflare API used by the website, Android, Expo and iOS.
+The website publishes it at `/openapi.json`. See docs/LIVE_API.md for examples, units, errors and
+the daily limit answer.
 
-`openapi.json` is generated from the retained FastAPI service, not the deployed prototype.
+`prototype-openapi.json` describes the earlier synthetic-station prototype API and is historical.
+
+`openapi.json` is generated from the retained FastAPI service, not the deployed API.
 Run `python3 tools/project.py contracts` to regenerate that reference or `contracts --check`
-to verify it. Native prototype clients use the Cloudflare contract.
+to verify it.

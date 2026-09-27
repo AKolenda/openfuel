@@ -76,7 +76,8 @@ def test_android_source_privacy_boundary():
     assert 'settings.setGeolocationEnabled(false)' in map_source
     assert 'MIXED_CONTENT_NEVER_ALLOW' in map_source
     assert 'override fun shouldOverrideUrlLoading' in map_source
-    assert 'uri.host == "tile.openstreetmap.org"' in map_source
+    assert 'uri.host in tileHosts' in map_source
+    assert 'tileHosts = listOf("tiles.openfreemap.org", "tile.openstreetmap.org")' in map_source
     assert 'ModalBottomSheet(' in source
 
 def test_ios_configuration_uses_real_generator():
@@ -192,3 +193,20 @@ def test_live_map_uses_curated_remote_brand_metadata_without_bundled_images():
     assert 'https://tile.openstreetmap.org' in page
     assert 'geolocation=(self)' in (ROOT/'apps/web/_headers').read_text()
     assert 'strict-origin-when-cross-origin' in page
+
+def test_map_style_is_generated_from_liberty_snapshot():
+    from tools.map_style import OUTPUT, SNAPSHOT, build
+    assert json.loads(OUTPUT.read_text()) == build(json.loads(SNAPSHOT.read_text()))
+    page=(ROOT/'apps/web/preview/index.html').read_text()
+    # MapLibre loads on demand from the base map script; the service worker keeps it for return visits.
+    assert 'https://tiles.openfreemap.org' in page and 'vendor/maplibre-gl.js' not in page
+    assert 'vendor/maplibre-gl.js' in (ROOT/'apps/web/preview/map/base-map.js').read_text()
+    assert './vendor/maplibre-gl.js' in (ROOT/'apps/web/preview/sw.js').read_text()
+
+def test_source_archive_fits_workers_asset_limit(tmp_path):
+    archive=project.package_source(tmp_path/'source.zip')
+    assert archive.stat().st_size < project.WORKERS_ASSET_LIMIT
+    with ZipFile(archive) as z:
+        names=z.namelist()
+    assert 'openfuel/apps/web/preview/vendor/maplibre-gl.js' in names
+    assert not any(n.startswith('openfuel/evidence/') and n.endswith('.png') for n in names)

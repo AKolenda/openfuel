@@ -56,14 +56,56 @@ export function validateResponse(input: unknown): StationResponse {
   return data as StationResponse;
 }
 
+/** When an API answer means OpenFuel reached its free daily allowance, the time that allowance resets; otherwise null.
+ * That is the Worker's own spending cap, or Cloudflare's daily request limit (error 1027): a 429 whose JSON names
+ * error 1027 when the client asks for JSON, and a 429 page otherwise. Other Cloudflare 429s, such as its rate
+ * limiting (1015), and OpenFuel's own JSON 429s are not the daily limit. Both limits reset at midnight UTC. */
+export function dailyLimitReset(status: number, body: unknown, now = Date.now()): Date | null {
+  const answer = body && typeof body === 'object' ? body as Record<string, unknown> : null;
+  const midnight = new Date(now);
+  midnight.setUTCHours(24, 0, 0, 0);
+  if (answer?.error === 'spending_cap') {
+    const resetsAt = typeof answer.resets_at === 'string' ? Date.parse(answer.resets_at) : NaN;
+    return Number.isFinite(resetsAt) ? new Date(resetsAt) : midnight;
+  }
+  if (status !== 429) return null;
+  return !answer || answer.error_code === 1027 || answer.error_name === 'workers_daily_limit' ? midnight : null;
+}
+
 export function reportAge(observedAt: string | undefined, now = Date.now()): string {
   if (!observedAt || !Number.isFinite(Date.parse(observedAt))) return 'Time unavailable';
   const minutes = Math.max(0, Math.floor((now - Date.parse(observedAt)) / 60_000));
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes} min ago`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)} hr ago`;
-  const days = Math.floor(minutes / 1440);
-  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  // Older reports in days and hours, such as 13 days 3 hr, not a rounded-down day count.
+  const days = Math.floor(minutes / 1440), hours = Math.floor((minutes % 1440) / 60);
+  return `${days} ${days === 1 ? 'day' : 'days'}${hours ? ` ${hours} hr` : ''} ago`;
+}
+
+/** A report this device made, as the server confirmed it, and when the confirmation arrived on this device. */
+export type OwnReport = { station_id: string; fuel_type: Fuel; price_milli: number; observed_at: string; confirmedAt: number };
+
+// Other Worker instances can answer with the price from before a report for about 15 seconds, and an
+// HTTP cache for 15 more, so for 30 seconds this device lays its confirmed reports over every station list.
+export const OWN_REPORT_MS = 30_000;
+
+/** Shows reports from the last 30 seconds where the list has no price for that fuel or an older one;
+ * a price someone else observed after the report wins. Without a recent report the list is returned as it is. */
+export function withOwnReports(stations: Station[], reports: OwnReport[], now = Date.now()): Station[] {
+  const recent = reports.filter(report => now - report.confirmedAt >= 0 && now - report.confirmedAt < OWN_REPORT_MS);
+  if (!recent.length) return stations;
+  return stations.map(station => recent.reduce((shown, report) => {
+    const fuel = report.fuel_type;
+    if (report.station_id !== shown.id ||
+      (shown.prices[fuel] !== null && Date.parse(shown.observedAt?.[fuel] ?? '') >= Date.parse(report.observed_at))) return shown;
+    return {
+      ...shown,
+      prices: { ...shown.prices, [fuel]: report.price_milli },
+      observedAt: { ...shown.observedAt, [fuel]: report.observed_at },
+      priceSources: { ...shown.priceSources, [fuel]: 'community-unverified' },
+    };
+  }, station));
 }
 
 export function sortedStations(stations: Station[], fuel: Fuel, sort: 'distance' | 'price'): Station[] {

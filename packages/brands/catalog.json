@@ -172,6 +172,28 @@
       "logoUrl": "https://www.tempo.crs/TempoThemeStatic/themes/TempoTheme/images/tempo-logo-blue.png",
       "sourceUrl": "https://www.tempo.crs/sites/tempo",
       "website": "https://www.tempo.crs/"
+    },
+    {
+      "key": "domo",
+      "name": "Domo",
+      "aliases": [
+        "Domo",
+        "Domo Gasoline",
+        "Domo Gas"
+      ],
+      "logoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/DOMO_Gasoline_Logo.svg/250px-DOMO_Gasoline_Logo.svg.png",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:DOMO_Gasoline_Logo.svg",
+      "website": "https://www.domo.ca/"
+    },
+    {
+      "key": "eko",
+      "name": "EKO",
+      "aliases": [
+        "EKO"
+      ],
+      "logoUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Logoeko.jpg/250px-Logoeko.jpg.png",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Logoeko.jpg",
+      "website": "https://eko.ca/"
     }
   ]
 }

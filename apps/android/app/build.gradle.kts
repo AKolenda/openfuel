@@ -19,6 +19,15 @@ require(!emulatorTest || gradle.startParameter.taskNames.none { it.contains("rel
 require((parsedApi.scheme == "https" || localTestHost) && parsedApi.host != null && parsedApi.userInfo == null && parsedApi.query == null && parsedApi.fragment == null) {
     "OPENFUEL_API_BASE_URL must be a public HTTPS base URL without credentials or query parameters."
 }
+// Optional donation page for the database and map costs. Without it the app shows no donate UI.
+val donateUrl = providers.gradleProperty("OPENFUEL_DONATE_URL")
+    .orElse(providers.environmentVariable("OPENFUEL_DONATE_URL"))
+    .getOrElse("")
+val parsedDonate = runCatching { URI(donateUrl) }.getOrNull()
+require(donateUrl.isEmpty() || (parsedDonate != null && parsedDonate.scheme == "https" && !parsedDonate.host.isNullOrEmpty() &&
+    parsedDonate.userInfo == null && donateUrl.none { it.isWhitespace() || it in "\"'\\" })) {
+    "OPENFUEL_DONATE_URL must be an HTTPS URL without credentials, quotes or whitespace."
+}
 val dataMode = providers.gradleProperty("OPENFUEL_DATA_MODE").getOrElse("live")
 require(dataMode == "live") { "This app uses real station geography." }
 android {
@@ -32,10 +41,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"$publicApiBase\"")
         buildConfigField("String", "DATA_MODE", "\"$dataMode\"")
+        buildConfigField("String", "DONATE_URL", "\"$donateUrl\"")
         versionCode = 6
         versionName = "0.3.2-live"
     }
     sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/vendor"))
+    sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/map"))
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
@@ -61,6 +72,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     testImplementation("junit:junit:4.13.2")
+    // Android's org.json is only a stub in local unit tests; error answers are parsed as the app parses them.
+    testImplementation("org.json:json:20250517")
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.04.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

@@ -9,6 +9,7 @@ import argparse
 import csv
 import io
 import json
+import math
 from pathlib import Path
 import unicodedata
 import zipfile
@@ -89,9 +90,11 @@ def quote(value):
 def generate(destination):
     lines=['-- Real public geography and monthly references. Does not modify community reports.']
     def insert(table, columns, values):
-        # Updating source snapshots leaves user reports untouched.
+        # Updating source snapshots leaves user reports untouched. Unchanged rows are not rewritten,
+        # so a re-seed costs D1 writes only for what actually changed.
         updates=','.join(f'{c}=excluded.{c}' for c in columns[1:])
-        lines.append(f"INSERT INTO {table}({','.join(columns)}) VALUES({','.join(quote(v) for v in values)}) ON CONFLICT DO UPDATE SET {updates};")
+        changed=' OR '.join(f'{table}.{c} IS NOT excluded.{c}' for c in columns[1:])
+        lines.append(f"INSERT INTO {table}({','.join(columns)}) VALUES({','.join(quote(v) for v in values)}) ON CONFLICT DO UPDATE SET {updates} WHERE {changed};")
     for line in (DATA/'canada-stations.jsonl').read_text().splitlines():
         r=json.loads(line); insert('stations',['id','latitude','longitude','data'],[r['id'],r['latitude'],r['longitude'],compact(r)])
     for r in json.loads((DATA/'canada-cities.json').read_text()):
@@ -99,14 +102,47 @@ def generate(destination):
     for r in json.loads((DATA/'market-averages.json').read_text()):
         insert('market_averages',list(r),list(r.values()))
     insert('dataset_metadata',['id','data'],['canada',compact(json.loads((DATA/'metadata.json').read_text()))])
+    # Keep each price's area (migration 0002) in step with a station that moved in the new snapshot;
+    # the update trigger gives both the old and the new area a new price version.
+    lines.append("UPDATE current_prices SET area=(SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) FROM stations WHERE stations.id=current_prices.station_id) "
+                 "WHERE area IS NOT (SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) FROM stations WHERE stations.id=current_prices.station_id);")
     path=Path(destination);path.parent.mkdir(parents=True,exist_ok=True);path.write_text('\n'.join(lines)+'\n')
     print(f'Wrote {len(lines)-1} seed statements to {path}')
+
+def area_id(latitude, longitude):
+    """The 0.5 degree area of a point, as migration 0002 and the Worker compute it."""
+    return math.floor((latitude+90)*2)*1000+math.floor((longitude+180)*2)
+
+def write_areas(destination):
+    """Write the station snapshot as one static file per area, which the Worker reads instead of D1.
+
+    index.json lists the areas that have stations, so the Worker never asks for an empty one.
+    ids.json gives each area's station ids as one space-separated string, so the Worker can refuse a
+    report for a station outside the snapshot without asking D1: the D1 stations table is seeded from
+    the same snapshot but keeps stations that later snapshots drop.
+    """
+    areas={}
+    for line in (DATA/'canada-stations.jsonl').read_text().splitlines():
+        r=json.loads(line); areas.setdefault(area_id(r['latitude'],r['longitude']),[]).append(r)
+    folder=Path(destination)
+    folder.mkdir(parents=True,exist_ok=True)
+    # Replace earlier area files only; anything else in the folder is left alone.
+    for old in folder.glob('*.json'):
+        if old.stem in ('index','ids') or old.stem.isdigit(): old.unlink()
+    for area,records in areas.items(): (folder/f'{area}.json').write_text(compact(records))
+    metadata=json.loads((DATA/'metadata.json').read_text())
+    (folder/'index.json').write_text(compact({'imported_at':metadata['imported_at'],'source':metadata['station_source'],
+        'license':metadata['station_license'],'areas':sorted(areas)}))
+    (folder/'ids.json').write_text(compact({area:' '.join(r['id'] for r in areas[area]) for area in sorted(areas)}))
+    return len(areas)
 
 if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--refresh-from',type=Path)
     parser.add_argument('--sql',type=Path)
+    parser.add_argument('--areas',type=Path,help='write per-area station files to this folder')
     args=parser.parse_args()
     if args.refresh_from: refresh(args.refresh_from)
     if args.sql: generate(args.sql)
-    if not args.refresh_from and not args.sql: parser.error('choose --sql PATH or --refresh-from PATH')
+    if args.areas: print(f'Wrote {write_areas(args.areas)} area files to {args.areas}')
+    if not args.refresh_from and not args.sql and not args.areas: parser.error('choose --sql PATH, --areas PATH or --refresh-from PATH')

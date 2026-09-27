@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import * as Crypto from 'expo-crypto';
 import { API_URL, fetchStations, searchCities, submitReport } from './src/api';
-import { type Coordinates, type Fuel, type Station, fuels, areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse } from './src/domain';
+import { type Coordinates, type Fuel, type OwnReport, type Station, fuels, areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse, withOwnReports, OWN_REPORT_MS } from './src/domain';
 
 const C = { green: '#245A43', pale: '#F0F5EA', muted: '#647366', ink: '#183328', white: '#FFFFFF', border: '#DCE5DB', red: '#C64032' };
 const KEYS = { cache: `openfuel.live.stations.v2:${API_URL}`, favorites: 'openfuel.favorites.v1', client: 'openfuel.installation.v1' };
@@ -84,6 +84,8 @@ function OpenFuel() {
   const clientId = useRef('');
   const currentArea = useRef<{ point: Coordinates; label: string } | null>(null);
   const requestIdentity = useRef<{ key: string; id: string } | null>(null);
+  // Reports confirmed in this session, kept over older station answers for 30 seconds by withOwnReports.
+  const ownReports = useRef<OwnReport[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
   const [fuel, setFuel] = useState<Fuel>('regular');
   const [sort, setSort] = useState<'distance' | 'price'>('distance');
@@ -112,6 +114,7 @@ function OpenFuel() {
   const [price, setPrice] = useState('');
   const [observed, setObserved] = useState(false);
   const [sending, setSending] = useState(false);
+  const cityAnswers = useRef(new Map<string, Array<Coordinates & { name: string }>>());
   const [reportError, setReportError] = useState('');
 
   const loadArea = useCallback(async (point: Coordinates, label: string, animate = true) => {
@@ -129,9 +132,10 @@ function OpenFuel() {
       const data = await fetchStations(point);
       if (sequence !== loadSequence.current) return;
       const timestamp = new Date().toISOString();
-      setStations(data.stations); setOffline(false); setSavedAt(timestamp);
+      const shown = { ...data, stations: withOwnReports(data.stations, ownReports.current) };
+      setStations(shown.stations); setOffline(false); setSavedAt(timestamp);
       setCoverage(typeof data.coverage?.message === 'string' ? data.coverage.message : '');
-      AsyncStorage.setItem(KEYS.cache, JSON.stringify(areaSnapshot(data, point, label, timestamp))).catch(() => setNotice('Stations loaded, but offline storage is unavailable.'));
+      AsyncStorage.setItem(KEYS.cache, JSON.stringify(areaSnapshot(shown, point, label, timestamp))).catch(() => setNotice('Stations loaded, but offline storage is unavailable.'));
     } catch (cause) {
       if (sequence !== loadSequence.current) return;
       setOffline(true); setError(failure(cause));
@@ -141,7 +145,7 @@ function OpenFuel() {
         if (sequence !== loadSequence.current) return;
         const cache = value ? JSON.parse(value) : null;
         if (cache && Math.abs(cache.point.latitude - point.latitude) < 0.01 && Math.abs(cache.point.longitude - point.longitude) < 0.01) {
-          setStations(validateResponse(cache.data).stations); setSavedAt(cache.timestamp);
+          setStations(withOwnReports(validateResponse(cache.data).stations, ownReports.current)); setSavedAt(cache.timestamp);
         } else { setStations([]); setSavedAt(null); }
       } catch { if (sequence === loadSequence.current) { setStations([]); setSavedAt(null); } }
     } finally {
@@ -149,10 +153,21 @@ function OpenFuel() {
     }
   }, []);
 
-  const locate = useCallback(async () => {
-    const intent = ++areaIntent.current;
+  /** Loads the area around a location fix. At startup `saved` is the restored area: it loads when no fix
+   * arrives within 3 seconds or none can be had, and a fix that arrives later still replaces it. */
+  const locate = useCallback(async (saved?: { point: Coordinates; label: string }) => {
+    let intent = ++areaIntent.current;
     const sequence = ++locationSequence.current;
     const isCurrent = () => intent === areaIntent.current && sequence === locationSequence.current;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+    const loadSaved = () => {
+      clearTimeout(fallback);
+      if (!saved || !isCurrent()) return;
+      void loadArea(saved.point, saved.label, false);
+      // loadArea claims the area choice; take over its claim so a later fix can still replace the saved area.
+      intent = areaIntent.current; saved = undefined;
+    };
+    if (saved) fallback = setTimeout(() => { loadSaved(); if (isCurrent()) setLocating(true); }, 3000);
     setLocating(true); setError(''); setNotice('');
     try {
       const result = await Location.requestForegroundPermissionsAsync();
@@ -175,10 +190,14 @@ function OpenFuel() {
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Could not get a GPS fix. Try outside or choose a city.')), 20_000); }),
       ]).finally(() => clearTimeout(timer));
       if (!isCurrent()) return;
+      clearTimeout(fallback); saved = undefined;
       setDeviceLocation(position.coords);
       await loadArea(position.coords, 'Near your location');
     } catch (cause) { if (isCurrent()) setNotice(failure(cause)); }
-    finally { if (sequence === locationSequence.current) setLocating(false); }
+    finally {
+      loadSaved();
+      if (sequence === locationSequence.current) setLocating(false);
+    }
   }, [loadArea]);
 
   useEffect(() => {
@@ -206,8 +225,14 @@ function OpenFuel() {
         }
       } catch { clientId.current ||= Crypto.randomUUID(); }
       if (!disposed && startupIntent === areaIntent.current) {
-        if (currentArea.current) void loadArea(currentArea.current.point, currentArea.current.label, false);
-        void locate();
+        // With location already allowed, a fix within 3 seconds decides the area, so fetch once for it instead
+        // of fetching the saved area and then the fix; locate() loads the saved area when no fix comes in time.
+        // Otherwise refresh the saved area now.
+        const granted = await Location.getForegroundPermissionsAsync().then(result => result.granted).catch(() => false);
+        if (disposed || startupIntent !== areaIntent.current) return;
+        const saved = currentArea.current ?? undefined;
+        if (saved && !granted) void loadArea(saved.point, saved.label, false);
+        void locate(granted ? saved : undefined);
       }
     })();
     return () => { disposed = true; ++areaIntent.current; ++loadSequence.current; ++locationSequence.current; };
@@ -215,11 +240,15 @@ function OpenFuel() {
 
   useEffect(() => {
     let active = true;
-    if (cityQuery.trim().length < 2) { setCityResults(CITIES); setCityError(''); return; }
+    const key = cityQuery.trim().toLowerCase();
+    if (key.length < 3) { setCityResults(CITIES.filter(city => !key || city.name.toLowerCase().includes(key))); setCityError(''); return; }
+    const known = cityAnswers.current.get(key);
+    if (known) { setCityResults(known); setCityError(known.length ? '' : 'No matching cities. Try a nearby city, then move the map.'); return; }
+    // Search after a typing pause; answers are kept for the session so edits don't repeat requests.
     const timer = setTimeout(() => {
-      searchCities(cityQuery).then(results => { if (active) { setCityResults(results); setCityError(results.length ? '' : 'No matching cities. Try a nearby city, then move the map.'); } })
+      searchCities(cityQuery).then(results => { cityAnswers.current.set(key, results); if (active) { setCityResults(results); setCityError(results.length ? '' : 'No matching cities. Try a nearby city, then move the map.'); } })
         .catch(() => { if (active) { setCityResults(CITIES.filter(city => city.name.toLowerCase().includes(cityQuery.toLowerCase()))); setCityError('City search is unavailable. Choose a city below or move the map.'); } });
-    }, 350);
+    }, 600);
     return () => { active = false; clearTimeout(timer); };
   }, [cityQuery]);
 
@@ -244,9 +273,14 @@ function OpenFuel() {
     const key = `${reportStation.id}:${reportFuel}:${milli}`;
     if (requestIdentity.current?.key !== key) requestIdentity.current = { key, id: Crypto.randomUUID() };
     try {
-      await submitReport({ station_id: reportStation.id, fuel_type: reportFuel, price_milli: milli, client_id: clientId.current, request_id: requestIdentity.current.id });
+      const { report } = await submitReport({ station_id: reportStation.id, fuel_type: reportFuel, price_milli: milli, client_id: clientId.current, request_id: requestIdentity.current.id });
       setReportStation(null); setNotice('Price shared. Community reports are unverified.');
-      if (currentArea.current) await loadArea(currentArea.current.point, currentArea.current.label, false);
+      // Show the confirmed report straight away; refetching the area would only cost another request.
+      // Any fetch in the next 30 seconds keeps it over an older answer.
+      const confirmedAt = Date.now();
+      ownReports.current = [...ownReports.current.filter(own => confirmedAt - own.confirmedAt < OWN_REPORT_MS),
+        { station_id: report.station_id, fuel_type: report.fuel_type, price_milli: report.price_milli, observed_at: report.observed_at, confirmedAt }];
+      setStations(list => withOwnReports(list, ownReports.current));
     } catch (cause) { setReportError(failure(cause)); }
     finally { setSending(false); }
   };

@@ -50,6 +50,8 @@ The default is `https://openfuel.ca/api/v1`. To use your own deployment, copy
 `.env.example` to `.env.local`, change `EXPO_PUBLIC_API_URL`, then restart Metro.
 This URL is intentionally public and is embedded in the JavaScript bundle. Never
 put Cloudflare tokens, database credentials or other secrets in `EXPO_PUBLIC_*`.
+`EXPO_PUBLIC_DONATE_URL` (optional, HTTPS) is added to the message shown when the
+API reports that its daily database limit was reached; see [running costs](../../docs/RUNNING_COSTS.md).
 
 For local API tests through the Android emulator, use
 `EXPO_PUBLIC_API_URL=http://10.0.2.2:8787/api/v1`. Keep test reports on a local or
@@ -78,7 +80,7 @@ OpenStreetMap contributors under ODbL; attribution remains visible on the map.
 Opening directions hands the destination to Google Maps.
 
 Recognized station brands load their logos directly from the curated Wikimedia,
-Co-op and Shell hosts in [`packages/brands`](../../packages/brands/README.md).
+Co-op, Shell and Tempo hosts in [`packages/brands`](../../packages/brands/README.md).
 Logos appear in the list and map with initials as a fallback. No station logo
 binary is bundled in Expo or hosted by OpenFuel; ordinary device HTTP caching may
 reuse images. Those providers receive image requests and network metadata.
@@ -125,4 +127,6 @@ referrer are enabled. Tile prefetch and bulk/offline downloads are disabled.
 The community tile service follows the
 [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/)
 and has no availability guarantee. Choose a supported provider before large-scale use.
-The separate Kotlin APK uses native MapLibre. Neither project is a signed store release.
+The website and the separate Kotlin APK instead draw OpenFreeMap vector tiles with MapLibre
+inside Leaflet ([map style](../../packages/map-style/README.md)). Neither project is a signed
+store release.

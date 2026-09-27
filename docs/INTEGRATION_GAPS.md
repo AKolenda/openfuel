@@ -1,3 +1,6 @@
+> Historical: written for the six-station prototype, whose map, stations and prices were fictional.
+> The current app uses real OpenStreetMap stations through the API in [LIVE_API.md](LIVE_API.md).
+
 # Remaining integration and release gates
 
 The prototype website and API are deployed on Cloudflare, and the shared D1 database is provisioned

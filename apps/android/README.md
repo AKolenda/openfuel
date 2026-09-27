@@ -1,13 +1,13 @@
 # Android · Kotlin / Jetpack Compose
 
-A Kotlin/Compose Android app with a bundled Leaflet map in an isolated WebView and real OpenStreetMap station
+A Kotlin/Compose Android app with a bundled MapLibre map (Leaflet without WebGL) in an isolated WebView and real OpenStreetMap station
 coordinates. On first arrival, the app explains location use and requests Android's foreground
 precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
 Declining permission offers Canadian city search. The current search area is always labelled;
 a chosen city or cached area never masquerades as GPS. Pan/zoom and tap **Search this area**
 to load another part of the map, or tap the location button to recenter.
 
-Fresh installs show a Canada overview until you grant location access or choose an area.
+Fresh installs load no map, and request no tiles, until you grant location access or choose an area.
 No city is silently selected. Nearby searches round coordinates to three decimal places
 (roughly 100 m) before sending them to the API.
 
@@ -23,14 +23,29 @@ selection. Saved coordinates use two decimal places (about 1 km); cached distanc
 recomputed from that coarse area, and older snapshots are migrated. Precise GPS stays in memory.
 Offline states explicitly identify saved data. Failed or unacknowledged reports never change displayed prices;
 retry IDs prevent duplicate writes. Suggestions remain clearly labelled local drafts.
+The saved area's fresh stations are requested as the app starts, before the map loads; the GPS fix
+at startup in the same saved area moves only the location dot and distances. A later fix in the area
+on screen, such as Use my location, also asks for its stations again once they are more than a minute
+old, or once the daily limit has reset. API answers are reused for as
+long as their Cache-Control allows (15 seconds for stations), except for Refresh and just after a report.
+For 30 seconds after the server confirms a report, station lists (fresh answers and the saved snapshot)
+show it wherever they have no price or an older one for that station and fuel, because other Worker
+instances and caches can still answer with the earlier price; a newer price from someone else is kept.
+The confirmed report is stored only for those 30 seconds, so it also survives a quick restart.
+When OpenFuel's database reaches its free daily limit, saved prices stay on screen under a notice
+giving the local time live prices return. Cloudflare's daily request limit (error 1027, which it sends
+as JSON to this app and as a 429 page otherwise) gets the same notice until midnight UTC; its other
+429 answers, such as 1015, do not.
 
-Map tiles are fetched on demand from OpenStreetMap, with visible attribution, an app-specific
-User-Agent and HTTP caching. A one-tile viewport buffer is used; bulk/offline downloading is not enabled. This
-community tile service has usage limits and no availability guarantee; plan a supported tile
-provider or self-hosting before large-scale adoption. There are no paid map keys or analytics.
+The base map is OpenStreetMap data from OpenFreeMap's vector tiles, drawn by the bundled MapLibre in
+OpenFuel's style ([packages/map-style](../../packages/map-style/README.md)). Tiles load on demand with
+visible attribution, an app-specific User-Agent and HTTP caching; bulk/offline downloading is not enabled.
+OpenFreeMap is free and has no usage limits, but is donation-funded with no availability guarantee.
+Without WebGL, or if OpenFreeMap refuses its tiles, the map uses OpenStreetMap's raster tiles, which
+have usage limits. There are no analytics.
 
 Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
-bundled or hosted by OpenFuel. The bundled map renderer anchors cached brand/price markers geographically and handles station taps. Camera movement reuses marker art within the same layer as the map tiles. Prices appear above the brand icon.
+bundled or hosted by OpenFuel. MapLibre draws the base map, the cached brand/price chips and the location dot in one WebGL frame and handles station taps; each distinct chip is drawn once, so a pinch or pan moves no page elements. Prices appear above the brand icon.
 
 The approved curved F is used in the launcher and header. The map shows a small
 location selector and Saved control; fuel grades, About and data-source details
@@ -57,10 +72,17 @@ wrapper downloads Gradle 8.11.1. No Cloudflare secrets belong in this app.
 ./gradlew :app:clean :app:assembleDebug
 # Use your own HTTPS deployment:
 ./gradlew :app:assembleDebug -POPENFUEL_API_BASE_URL=https://your-worker.workers.dev/api/v1
+# Optional donate link (Gradle property or environment variable):
+./gradlew :app:assembleDebug -POPENFUEL_DONATE_URL=https://example.org/donate
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.0-live (code 4), Android 8+
+`OPENFUEL_DONATE_URL` must be an HTTPS URL without credentials, quotes or whitespace; the build
+fails otherwise. When set, Settings and About show **Donate to cover the database and map costs**
+(opening the browser), and the daily-limit notice and report form get a Donate button. Without it
+no donate UI appears.
+
+Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.2-live (code 6), Android 8+
 (API 26), signed with the local Android debug key. This is a directly installable development
 APK; publishing to Google Play still requires a release signing process and store review.
 The default download build shrinks unused code/resources and compresses native libraries,
@@ -71,7 +93,7 @@ APK packaging can retain unused ZIP padding when switching from unshrunk to comp
 ## Verification
 
 `./gradlew :app:testDebugUnitTest` covers exact price parsing, null price visibility, sorting,
-and coordinate-based directions. `:app:connectedDebugAndroidTest -POPENFUEL_COMPACT_APK=false` tests real station parsing,
+coordinate-based directions and recognition of the daily-limit answers. `:app:connectedDebugAndroidTest -POPENFUEL_COMPACT_APK=false` tests real station parsing,
 rejects sample geography, verifies GPS, actual station UI and persistent cache. Set an emulator
 GPS fix in a seeded Canadian area first, e.g. `adb -s emulator-5554 emu geo fix -113.4938 53.5461`.
 The public build's instrumented checks make GET requests only and skip the report-writing test.
@@ -96,10 +118,15 @@ The 0.3.0 verification record and controlled-emulator screenshots are in
 [`release-0.3.0.json`](../../evidence/android-native/release-0.3.0.json). Eight unit tests passed;
 public HTTPS instrumentation ran five tests successfully, including the deliberately skipped
 local-only report test. The exact compact APK was installed and visually checked separately.
+The 0.3.2 record, [`release-0.3.2.json`](../../evidence/android-native/release-0.3.2.json), lists
+eight unit tests and six public HTTPS instrumentation tests passed, with the local-only report
+test skipped. Both records predate the OpenFreeMap base map and the daily-limit notice.
 
 Previous generated sample fixtures remain solely as isolated unit-test inputs and design
 reference assets. They are never selected by the app's startup or live repository.
 
 Map/data attribution: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
-ODbL. [Leaflet](https://leafletjs.com/) is bundled with its BSD-2-Clause licence.
+ODbL; [OpenFreeMap](https://openfreemap.org) and [OpenMapTiles](https://www.openmaptiles.org/).
+[Leaflet](https://leafletjs.com/) (BSD-2-Clause), [MapLibre GL JS](https://maplibre.org/) (BSD-3-Clause)
+and its Leaflet binding (ISC) are bundled with their licences.
 [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/).

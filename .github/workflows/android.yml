@@ -21,6 +21,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The runner's current sdkmanager no longer has the retired 'tools' package the action installs by default.
+          packages: platform-tools
       - name: Install SDK components
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4

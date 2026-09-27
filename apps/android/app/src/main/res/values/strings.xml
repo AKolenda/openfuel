@@ -12,9 +12,10 @@
   <string name="settings">Filters &amp; preferences</string>
   <string name="saved">Saved stations</string>
   <string name="about">About OpenFuel Canada</string>
-  <string name="map_demo">© OpenStreetMap contributors</string>
+  <string name="map_credit">OpenFreeMap © OpenMapTiles · Style after CARTO Voyager · Data © OpenStreetMap contributors</string>
+  <string name="map_credit_osm">© OpenStreetMap contributors</string>
   <string name="sort_stations">Sort stations</string>
-  <string name="about_body">Open-source fuel prices for Canada.\n\nReal station locations from OpenStreetMap contributors (ODbL). Unknown prices stay unknown until someone reports a price. Community prices are unverified; confirm at the pump.\n\nOptional foreground location finds nearby stations. Search coordinates are sent to OpenFuel; tiles are fetched from OpenStreetMap. No background tracking, advertising or analytics.\n\nThis native Kotlin / Compose app uses a bundled Leaflet map. Cloudflare stores shared price reports. A random installation ID accompanies reports for rate limiting.\n\nFavorites, search-area snapshots and suggestion drafts stay on this device. Suggestions are local drafts and are not published. Maps opens directions to the actual station coordinates.\n\nSource: AGPL-3.0-only. Station/map data: OpenStreetMap contributors, ODbL. openfuel.ca</string>
+  <string name="about_body">Open-source fuel prices for Canada.\n\nReal station locations from OpenStreetMap contributors (ODbL). Unknown prices stay unknown until someone reports a price. Community prices are unverified; confirm at the pump.\n\nOptional foreground location finds nearby stations. Search coordinates are sent to OpenFuel; tiles are fetched from OpenFreeMap, or OpenStreetMap when OpenFreeMap is unavailable. No background tracking, advertising or analytics.\n\nThis native Kotlin / Compose app draws its map with bundled MapLibre (Leaflet when WebGL is unavailable). Cloudflare stores shared price reports. A random installation ID accompanies reports for rate limiting.\n\nFavorites, search-area snapshots and suggestion drafts stay on this device. Suggestions are local drafts and are not published. Maps opens directions to the actual station coordinates.\n\nSource: AGPL-3.0-only. Station data: OpenStreetMap contributors, ODbL. openfuel.ca</string>
   <string name="drafts_count">%1$d local suggestions awaiting review</string>
   <string name="open_maps">Open in Maps</string>
   <string name="sample_handoff">Directions use this station’s real coordinates. Verify the reported price at the pump.</string>
@@ -23,7 +24,7 @@
   <string name="save">Save station</string>
   <string name="suggest_correction">Suggest a correction or closure</string>
   <string name="member_price">Member price</string>
-  <string name="go">Go</string>
+  <string name="directions">Directions</string>
   <string name="close">Close</string>
   <string name="regular">Regular</string>
   <string name="premium">Premium</string>
@@ -36,6 +37,8 @@
   <string name="nearest_help">Closest to your selected search area</string>
   <string name="reported_hours">Reported %1$d h ago</string>
   <string name="reported_minutes">Reported %1$d min ago</string>
+  <string name="reported_days">Reported %1$d d ago</string>
+  <string name="reported_days_hours">Reported %1$d d %2$d h ago</string>
   <string name="choose_maps">Choose a maps app</string>
   <string name="maps_unavailable">No app can open this map link. Install a maps app or browser.</string>
   <string name="open_with">Open stations with</string>
@@ -73,4 +76,10 @@
   <string name="refresh_prices">Refresh prices</string>
   <string name="report_saved">Price report saved · unverified community observation.</string>
   <string name="report_failed">Report was not confirmed. Check your connection and refresh before trying again.</string>
+  <string name="limit_notice_saved">OpenFuel\'s database reached its free daily limit, so live prices are paused until about %1$s. Saved prices still show.</string>
+  <string name="limit_notice">OpenFuel\'s database reached its free daily limit, so live prices are paused until about %1$s.</string>
+  <string name="limit_report">OpenFuel\'s database reached its free daily limit, so price reports are paused until about %1$s.</string>
+  <string name="donate">Donate</string>
+  <string name="donate_costs">Donate to cover the database and map costs</string>
+  <string name="link_unavailable">No app can open this link. Install a web browser.</string>
 </resources>
