@@ -165,7 +165,8 @@
   // Invisible buttons over the chips give TalkBack each station's label and action. Normally they move once
   // the map settles and let touches through to the map. While TalkBack explores by touch (the app calls
   // setTouchExploration), they take touches, so touching a chip reads its station, and follow the map.
-  const labels=document.createElement('div');labels.className='station-labels';document.body.append(labels);
+  // The layer sits in MapLibre's canvas container, so pans and pinches that start on a button still move the map.
+  const labels=document.createElement('div');labels.className='station-labels';map.getCanvasContainer().append(labels);
   let generation=0,exploring=false;
   function placeLabels(){for(const {at,w,h,button} of placed){const p=map.project(at);button.style.transform=`translate(${Math.round(p.x-w/2)}px,${Math.round(p.y-h+20)}px)`;}}
   map.on('moveend',placeLabels);
@@ -181,7 +182,7 @@
    placed=stations.map(({s,chip})=>{
     const known=s.price!=null,w=known?64:42,h=known?66:40,button=document.createElement('button');
     button.setAttribute('aria-label',s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));
-    button.style.width=w+'px';button.style.height=h+'px';button.onclick=()=>OpenFuelMap.selected(s.id);
+    button.style.width=w+'px';button.style.height=h+'px';button.onclick=event=>{event.stopPropagation();OpenFuelMap.selected(s.id);};
     return {s,at:[s.lon,s.lat],slot:atlas.slots.get(chip),w,h,button};
    }).sort((a,b)=>b.s.lat-a.s.lat);
    labels.replaceChildren(...placed.map(item=>item.button));placeLabels();
