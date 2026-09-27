@@ -36,7 +36,7 @@ const state = {fuel:'regular', radius:10000, sort:'distance', saved:false, cente
 let clientId = storage.read('client-id', null);
 if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { clientId = crypto.randomUUID(); storage.write('client-id', clientId); }
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
-// pendingRequest is the station request on its way ({generation, key}); fixTimer runs while a return visit waits for the device fix.
+// pendingRequest is the station request on its way ({generation, reportVersion, key}); fixTimer runs while a return visit waits for the device fix.
 let pendingRequest = null, fixTimer = null, onlineTimer, markerFrame = 0, reportedAt = 0;
 // A snapshot this young is as current as the server's own short caches, so it is not asked for again.
 const FRESH_SNAPSHOT_MS = 30000;
@@ -149,7 +149,7 @@ function withOwnReports(stations) {
 // Official builds can set a donation page for the database and map costs; without one no donate UI appears.
 const donateURL=document.querySelector('meta[name="openfuel-donate-url"]')?.content||'';
 document.querySelectorAll('.donate-link').forEach(link=>{if(donateURL){link.hidden=false;if(link.href!==undefined)link.href=donateURL;}});
-/** The database reached its daily allowance: the Worker's own cap, or Cloudflare's request limit page. */
+/** The database reached its daily allowance: the Worker's own cap, or Cloudflare's daily request limit. */
 class ServiceLimit extends Error {
   constructor(resetsAt) { super('OpenFuel reached its free daily database limit.'); this.name='ServiceLimit'; this.resetsAt=resetsAt; }
 }
@@ -160,8 +160,9 @@ async function api(path, options={}) {
     const response=await fetch(`/api/v1/${path}`,{...options,signal:controller.signal});
     const body=await response.json().catch(()=>null);
     if (body?.error==='spending_cap') throw new ServiceLimit(new Date(body.resets_at||nextUtcMidnight()));
-    // Cloudflare answers the daily Worker request limit itself with a non-JSON 429 page (error 1027).
-    if (response.status===429 && !body) throw new ServiceLimit(nextUtcMidnight());
+    // Cloudflare answers the daily Worker request limit itself (error 1027): as problem JSON when asked for
+    // JSON, otherwise as a non-JSON 429 page. Its other 429s, such as 1015 rate limiting, are not the limit.
+    if (response.status===429 && (!body || body.error_code===1027 || body.error_name==='workers_daily_limit')) throw new ServiceLimit(nextUtcMidnight());
     if (!response.ok) throw Error(body?.message || (response.status===429 ? 'Too many requests. Wait a minute and try again.' : 'Could not reach OpenFuel. Try again.'));
     if (!body) throw Error('The response could not be read. Try again.');
     return body;
@@ -204,6 +205,8 @@ const snapshotFresh=()=>{const age=Date.now()-state.loadedAt;return age>=0&&age<
 /** Loads the chosen area unless its snapshot is fresh enough to show as it is. */
 function loadArea() {
   if(!snapshotFresh()){refreshStations();return;}
+  // An answer still on its way (for the radius just left, say) must not replace this snapshot.
+  state.generation++;pendingRequest=null;
   stopWaitingForFix();state.connection='online';state.loadFailed=false;render();
 }
 function stopWaitingForFix() { clearTimeout(fixTimer);fixTimer=null; }
@@ -267,7 +270,7 @@ async function refreshStations(fresh=false) {
   stopWaitingForFix();
   const generation=++state.generation, reportVersion=state.reportVersion;
   const center={...state.center},radius=state.radius;
-  pendingRequest={generation,key:cacheKey(center)};
+  pendingRequest={generation,reportVersion,key:cacheKey(center)};
   state.connection='loading';render();
   try {
     const query=new URLSearchParams({lat:center.lat.toFixed(6),lon:center.lon.toFixed(6),radius:String(radius),fuel:state.fuel});
@@ -300,8 +303,9 @@ function chooseLocation(lat,lon,label,source='search',remember=true,load=true) {
   // A city or map choice wins over an earlier, still-pending device request.
   locationGeneration++;searchGeneration++;locatePending=false;$('locate-button').disabled=false;stopWaitingForFix();
   // A choice in the same area as the station request already on its way (a device fix in the saved
-  // area, for example) keeps that request instead of sending another.
-  const requested=pendingRequest?.generation===state.generation&&pendingRequest.key===cacheKey({lat,lon});
+  // area, for example) keeps that request instead of sending another, unless this browser's report was
+  // confirmed since it was sent: its answer is then discarded.
+  const requested=pendingRequest?.generation===state.generation&&pendingRequest.reportVersion===state.reportVersion&&pendingRequest.key===cacheKey({lat,lon});
   if(!requested)state.generation++;
   state.center={lat,lon};state.source=source;state.label=label;state.stations=[];state.loadedAt=0;state.selected=null;state.coverage=null;
   $('location-status').textContent=label;
@@ -316,13 +320,14 @@ function chooseLocation(lat,lon,label,source='search',remember=true,load=true) {
   // After the station request, so the prices go out first.
   startBaseMap();
 }
-function locate() {
+function locate(automatic=false) {
   if (locatePending) return;
   if (!navigator.geolocation) { $('location-status').textContent='Location is unavailable in this browser. Search a city instead.';startBaseMap();return; }
   const generation=++locationGeneration;
   locatePending=true;$('locate-button').disabled=true;
   $('location-status').textContent=state.center?`${state.label} · Checking device location…`:'Your browser will ask for location. You can search a city instead.';
-  // Station areas are kilometres wide, so a coarse fix up to five minutes old is enough and arrives sooner.
+  // Station areas are kilometres wide, so a coarse fix is enough and arrives sooner. The automatic fix
+  // on entry may be up to five minutes old; a tap asks for the current location, at most a minute old.
   navigator.geolocation.getCurrentPosition(position=>{
     if(generation!==locationGeneration)return;
     locatePending=false;$('locate-button').disabled=false;
@@ -340,7 +345,7 @@ function locate() {
     // Without a fix a return visit loads its saved area now, and a first visit shows the Canada overview.
     if(fixTimer)loadArea();
     startBaseMap();
-  },{enableHighAccuracy:false,timeout:15000,maximumAge:300000});
+  },{enableHighAccuracy:false,timeout:15000,maximumAge:automatic?300000:60000});
 }
 async function searchPlaces(event) {
   event.preventDefault();const query=$('place-search').value.trim(), generation=++searchGeneration;
@@ -421,7 +426,7 @@ document.addEventListener('click',event=>{if(!event.target.closest('.search-head
 $('search-form').addEventListener('submit',searchPlaces);
 $('place-search').addEventListener('input',()=>{searchGeneration++;closePlaceChoices();});
 $('place-search').addEventListener('keydown',event=>{if(event.key==='Escape')closePlaceChoices();});
-$('locate-button').addEventListener('click',locate);$('empty-locate').addEventListener('click',locate);
+$('locate-button').addEventListener('click',()=>locate());$('empty-locate').addEventListener('click',()=>locate());
 $('search-area').addEventListener('click',()=>{const center=visibleMapCenter();chooseLocation(center.lat,center.lng,`Map area · ${center.lat.toFixed(3)}, ${center.lng.toFixed(3)}`,'map');});
 $('refresh-button').addEventListener('click',()=>refreshStations(true));
 $('radius').addEventListener('change',event=>{state.radius=Number(event.target.value);if(state.center){rememberArea();state.stations=[];state.loadedAt=0;restoreArea();loadArea();}});
@@ -469,11 +474,11 @@ function locationGranted() {
 // A return visit shows its saved area at once and sends one station request. With location already
 // granted it waits up to 3 seconds for the fix and loads that area (the saved one when the fix rounds
 // to it); otherwise it loads the saved area. A snapshot under 30 seconds old is not asked for again.
-if(!restoreLastArea())requestAnimationFrame(()=>locate());
+if(!restoreLastArea())requestAnimationFrame(()=>locate(true));
 else locationGranted().then(granted=>{
   if(state.source!=='previous')return;
   if(granted&&!snapshotFresh()){state.connection='loading';render();fixTimer=setTimeout(loadArea,3000);}
   else loadArea();
-  requestAnimationFrame(()=>locate());
+  requestAnimationFrame(()=>locate(true));
 });
 })();
