@@ -56,6 +56,22 @@ export function validateResponse(input: unknown): StationResponse {
   return data as StationResponse;
 }
 
+/** When an API answer means OpenFuel reached its free daily allowance, the time that allowance resets; otherwise null.
+ * That is the Worker's own spending cap, or Cloudflare's daily request limit (error 1027): a 429 whose JSON names
+ * error 1027 when the client asks for JSON, and a 429 page otherwise. Other Cloudflare 429s, such as its rate
+ * limiting (1015), and OpenFuel's own JSON 429s are not the daily limit. Both limits reset at midnight UTC. */
+export function dailyLimitReset(status: number, body: unknown, now = Date.now()): Date | null {
+  const answer = body && typeof body === 'object' ? body as Record<string, unknown> : null;
+  const midnight = new Date(now);
+  midnight.setUTCHours(24, 0, 0, 0);
+  if (answer?.error === 'spending_cap') {
+    const resetsAt = typeof answer.resets_at === 'string' ? Date.parse(answer.resets_at) : NaN;
+    return Number.isFinite(resetsAt) ? new Date(resetsAt) : midnight;
+  }
+  if (status !== 429) return null;
+  return !answer || answer.error_code === 1027 || answer.error_name === 'workers_daily_limit' ? midnight : null;
+}
+
 export function reportAge(observedAt: string | undefined, now = Date.now()): string {
   if (!observedAt || !Number.isFinite(Date.parse(observedAt))) return 'Time unavailable';
   const minutes = Math.max(0, Math.floor((now - Date.parse(observedAt)) / 60_000));

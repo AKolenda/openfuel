@@ -153,10 +153,21 @@ function OpenFuel() {
     }
   }, []);
 
-  const locate = useCallback(async () => {
-    const intent = ++areaIntent.current;
+  /** Loads the area around a location fix. At startup `saved` is the restored area: it loads when no fix
+   * arrives within 3 seconds or none can be had, and a fix that arrives later still replaces it. */
+  const locate = useCallback(async (saved?: { point: Coordinates; label: string }) => {
+    let intent = ++areaIntent.current;
     const sequence = ++locationSequence.current;
     const isCurrent = () => intent === areaIntent.current && sequence === locationSequence.current;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+    const loadSaved = () => {
+      clearTimeout(fallback);
+      if (!saved || !isCurrent()) return;
+      void loadArea(saved.point, saved.label, false);
+      // loadArea claims the area choice; take over its claim so a later fix can still replace the saved area.
+      intent = areaIntent.current; saved = undefined;
+    };
+    if (saved) fallback = setTimeout(() => { loadSaved(); if (isCurrent()) setLocating(true); }, 3000);
     setLocating(true); setError(''); setNotice('');
     try {
       const result = await Location.requestForegroundPermissionsAsync();
@@ -179,10 +190,14 @@ function OpenFuel() {
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Could not get a GPS fix. Try outside or choose a city.')), 20_000); }),
       ]).finally(() => clearTimeout(timer));
       if (!isCurrent()) return;
+      clearTimeout(fallback); saved = undefined;
       setDeviceLocation(position.coords);
       await loadArea(position.coords, 'Near your location');
     } catch (cause) { if (isCurrent()) setNotice(failure(cause)); }
-    finally { if (sequence === locationSequence.current) setLocating(false); }
+    finally {
+      loadSaved();
+      if (sequence === locationSequence.current) setLocating(false);
+    }
   }, [loadArea]);
 
   useEffect(() => {
@@ -210,12 +225,14 @@ function OpenFuel() {
         }
       } catch { clientId.current ||= Crypto.randomUUID(); }
       if (!disposed && startupIntent === areaIntent.current) {
-        // With location already allowed, the fix decides the area, so fetch once for it instead of
-        // fetching the saved area and then the fix. Otherwise refresh the saved area.
+        // With location already allowed, a fix within 3 seconds decides the area, so fetch once for it instead
+        // of fetching the saved area and then the fix; locate() loads the saved area when no fix comes in time.
+        // Otherwise refresh the saved area now.
         const granted = await Location.getForegroundPermissionsAsync().then(result => result.granted).catch(() => false);
         if (disposed || startupIntent !== areaIntent.current) return;
-        if (currentArea.current && !granted) void loadArea(currentArea.current.point, currentArea.current.label, false);
-        void locate();
+        const saved = currentArea.current ?? undefined;
+        if (saved && !granted) void loadArea(saved.point, saved.label, false);
+        void locate(granted ? saved : undefined);
       }
     })();
     return () => { disposed = true; ++areaIntent.current; ++loadSequence.current; ++locationSequence.current; };

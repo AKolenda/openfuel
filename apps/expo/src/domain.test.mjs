@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { areaSnapshot, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse, withOwnReports } from './domain.ts';
+import { areaSnapshot, dailyLimitReset, safeLogoUrl, parseCents, priceLabel, reportAge, sortedStations, validateResponse, withOwnReports } from './domain.ts';
 
 const station = (id, price, distanceMetres) => ({ id, name: 'Test station', latitude: 53, longitude: -113,
   distanceMetres, prices: { regular: price, premium: null, diesel: null }, synthetic: false });
@@ -94,4 +94,28 @@ test('several own reports apply by observation time, also to saved snapshots', (
   assert.equal(shown.prices.diesel, 1699);
   const snapshot = areaSnapshot({ mode: 'live', is_demo: false, stations: [station('osm-node-1', null, 50)] }, { latitude: 53, longitude: -113 }, 'Edmonton', '2026-09-27T11:59:00Z');
   assert.equal(withOwnReports(validateResponse(snapshot.data).stations, [first], confirmedAt)[0].prices.regular, 1499);
+});
+
+test('the daily limit is the Worker spending cap or Cloudflare error 1027, not other 429s', () => {
+  const now = Date.parse('2026-09-26T19:30:00Z');
+  const midnight = '2026-09-27T00:00:00.000Z';
+  const cap = { error: 'spending_cap', reason: 'd1_free_daily_read_limit', scope: 'all', resets_at: '2026-09-26T23:00:00Z', message: 'Paused' };
+  assert.equal(dailyLimitReset(503, cap, now)?.toISOString(), '2026-09-26T23:00:00.000Z');
+  assert.equal(dailyLimitReset(503, { ...cap, resets_at: undefined }, now)?.toISOString(), midnight);
+  assert.equal(dailyLimitReset(503, { ...cap, resets_at: 'soon' }, now)?.toISOString(), midnight);
+  // Cloudflare's daily request limit: RFC 9457 JSON when JSON is asked for, otherwise a page that is not JSON.
+  const cloudflare = { type: 'https://developers.cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-1xxx-errors/error-1027/',
+    title: 'Error 1027: This website has been temporarily rate limited', status: 429, detail: 'The daily request limit was reached.',
+    error_code: 1027, error_name: 'workers_daily_limit', cloudflare_error: true };
+  assert.equal(dailyLimitReset(429, cloudflare, now)?.toISOString(), midnight);
+  assert.equal(dailyLimitReset(429, { ...cloudflare, error_name: undefined }, now)?.toISOString(), midnight);
+  assert.equal(dailyLimitReset(429, { ...cloudflare, error_code: undefined }, now)?.toISOString(), midnight);
+  assert.equal(dailyLimitReset(429, null, now)?.toISOString(), midnight);
+  assert.equal(dailyLimitReset(429, null, Date.parse('2026-09-27T00:00:00Z'))?.toISOString(), '2026-09-28T00:00:00.000Z');
+  // Cloudflare's rate limiting (1015), OpenFuel's own 429s and ordinary failures are not the daily limit.
+  assert.equal(dailyLimitReset(429, { ...cloudflare, title: 'Error 1015: You are being rate limited', error_code: 1015, error_name: 'rate_limited' }, now), null);
+  assert.equal(dailyLimitReset(429, { error: 'rate_limited', message: 'The hourly report limit was reached.' }, now), null);
+  assert.equal(dailyLimitReset(503, { error: 'temporarily_unavailable', message: 'Could not reach the station database.' }, now), null);
+  assert.equal(dailyLimitReset(502, null, now), null);
+  assert.equal(dailyLimitReset(200, { mode: 'live', is_demo: false, stations: [] }, now), null);
 });
