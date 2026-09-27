@@ -325,7 +325,7 @@ function spy(env) {
 test('every station file matches the snapshot and the area formula', () => {
   const snapshot = readFileSync(new URL('../../packages/data/canada-stations.jsonl', import.meta.url), 'utf8').trim().split('\n').map(JSON.parse);
   const index = JSON.parse(stationFiles.get('index.json'));
-  assert.equal(index.areas.length, stationFiles.size - 1);
+  assert.equal(index.areas.length, stationFiles.size - 2);
   const seen = new Map();
   for (const area of index.areas) for (const record of JSON.parse(stationFiles.get(`${area}.json`))) {
     assert.equal(Math.floor((record.latitude + 90) * 2) * 1000 + Math.floor((record.longitude + 180) * 2), area);
@@ -333,6 +333,10 @@ test('every station file matches the snapshot and the area formula', () => {
   }
   assert.equal(seen.size, snapshot.length);
   for (const record of snapshot) assert.deepEqual(seen.get(record.id), record);
+  // ids.json lists the same stations, area by area, for the report check.
+  const ids = JSON.parse(stationFiles.get('ids.json'));
+  assert.deepEqual(Object.keys(ids).map(Number), index.areas);
+  for (const area of index.areas) assert.deepEqual(ids[area].split(' '), JSON.parse(stationFiles.get(`${area}.json`)).map(record => record.id));
 });
 test('a stations request asks D1 once, for area prices only, and not again while they are fresh', async () => {
   const restore = cacheStub(), realNow = Date.now;
@@ -385,6 +389,56 @@ test("a report is one D1 call, even as an isolate's first of the day, and its pr
   assert.equal(body.stations.find(s => s.id === stationId).prices.regular, 1399);
   assert.equal(calls.length, 2, 'one call for the areas the report did not cover');
   assert.ok(calls[1].every(query => !/FROM stations\b/.test(query)));
+});
+test('a report for a station D1 still has but the deployed snapshot dropped is refused without asking D1', async () => {
+  const fresh = (await import('./worker.mjs?dropped-station')).default, env = database(), dropped = 'osm-node-1';
+  assert.ok(!Object.values(JSON.parse(stationFiles.get('ids.json'))).some(ids => ids.split(' ').includes(dropped)));
+  // Seeding only adds and updates stations, so D1 keeps those that later snapshots no longer have.
+  await env.DB.prepare("INSERT INTO stations VALUES(?1, 53.5461, -113.4938, '{}')").bind(dropped).run();
+  const calls = spy(env);
+  const response = await fresh.fetch(post({...payload, station_id: dropped}), env);
+  assert.equal(response.status, 404);
+  assert.equal((await response.json()).error, 'station_not_found');
+  assert.equal(calls.length, 0);
+  assert.equal((await env.DB.prepare('SELECT count(*) AS reports FROM price_reports').first()).reports, 0);
+});
+test('reports for snapshot stations, new and repeated, are still one D1 call each, and ids.json is read once', async () => {
+  const fresh = (await import('./worker.mjs?snapshot-reports')).default, requests = [], env = {...database(), ASSETS: assets(requests)}, calls = spy(env);
+  const value = {...payload, request_id: 'request-snapshot-123456'};
+  const created = await fresh.fetch(post(value), env);
+  assert.equal(created.status, 201);
+  assert.equal(calls.length, 1);
+  const repeated = await fresh.fetch(post(value), env);
+  assert.equal(repeated.status, 200);
+  assert.equal((await repeated.json()).report.id, (await created.json()).report.id);
+  assert.equal(calls.length, 2);
+  assert.equal((await fresh.fetch(post({...payload, price_milli: 1459}), env)).status, 201);
+  assert.equal(calls.length, 3);
+  assert.deepEqual(requests, ['/data/stations/ids.json']);
+  assert.equal(await priceOf(env), 1459);
+});
+test('a failed or unfinished ids.json load does not block later reports', async () => {
+  const fresh = (await import('./worker.mjs?ids-load')).default, files = assets();
+  let load = 'hang';
+  const env = {...database(), ASSETS: {fetch: request => {
+    const ids = new URL(request.url).pathname.endsWith('/ids.json');
+    // The first load never settles, as when Workers cancels its request's subrequests; the next one fails.
+    if (ids && load === 'hang') return new Promise(() => {});
+    if (ids && load === 'fail') return Promise.reject(new Error('unavailable'));
+    return files.fetch(request);
+  }}}, calls = spy(env);
+  const answer = () => Promise.race([fresh.fetch(post(), env), new Promise(resolve => setTimeout(() => resolve('hung'), 2000))]);
+  fresh.fetch(post(), env);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  load = 'fail';
+  const failed = await answer();
+  assert.notEqual(failed, 'hung');
+  assert.equal(failed.status, 503);
+  load = 'ok';
+  const response = await answer();
+  assert.notEqual(response, 'hung');
+  assert.equal(response.status, 201);
+  assert.equal(calls.length, 1, 'only the report that could be checked reached D1');
 });
 test('an isolate at the daily cap answers from areas another isolate cached in the data centre', async () => {
   const restore = cacheStub(), realNow = Date.now;

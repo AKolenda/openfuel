@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// The site build's per-area station files, generated from the snapshot, served as the ASSETS binding.
+// The site build's station files (one per area, index.json and ids.json), generated from the snapshot, served as the ASSETS binding.
 import {execFileSync} from 'node:child_process';
 import {mkdtempSync, readdirSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';

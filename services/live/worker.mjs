@@ -110,7 +110,8 @@ function remember(map, key, value) {
   return value;
 }
 // Station geography comes from static files the site build writes from the same snapshot as D1's
-// stations table (data/stations/<area>.json, plus index.json listing the areas that have stations).
+// stations table (data/stations/<area>.json, plus index.json listing the areas that have stations and
+// ids.json, which reports check against).
 // An isolate keeps the index and its most recently used areas' files; they change only with a
 // deploy, which starts new isolates. Only files that have arrived are kept: a load still in flight
 // belongs to its request, which may end (and cancel it) before it settles.
@@ -131,6 +132,18 @@ async function stationsIn(env, origin, areas, spent) {
     spent.count++;
     return remember(areaStations, area, await stationFile(env, origin, area));
   }));
+}
+// D1's stations table keeps stations that later snapshots drop, and no stations answer shows those, so
+// a report must name a station in the deployed snapshot. ids.json (about 250 KB) holds each area's ids
+// as one space-separated string: an isolate reads and parses it once in about 1.5 ms and a lookup scans
+// it in under 0.5 ms (measured in Node 22), where one JSON string per id took 3 to 15 ms to parse, of
+// the 10 ms of CPU Workers Free allows a request. As with the station files, only a loaded file is kept.
+let snapshotIds = null;
+/** The area of a station in the deployed snapshot, or undefined if the snapshot does not have it. */
+async function snapshotArea(env, origin, id) {
+  if (!snapshotIds) snapshotIds = await stationFile(env, origin, 'ids');
+  const word = ` ${id} `;
+  for (const area in snapshotIds) if (` ${snapshotIds[area]} `.includes(word)) return Number(area);
 }
 // Prices: D1 keeps one area_prices row per area with all of its current prices and a version that
 // changes whenever one of them does. A search asks D1 once, for all its areas together, and gets the
@@ -187,6 +200,7 @@ async function readReport(request) {
   }
   return body;
 }
+const stationNotFound = () => new InputError('station_not_found', 'This station was not found in the imported directory.', 404);
 async function report(request, env, ctx) {
   const body = await readReport(request);
   // Edge limit is best effort per IP, while a SQL trigger enforces per-install/global limits atomically.
@@ -195,6 +209,8 @@ async function report(request, env, ctx) {
     if (!success) throw new InputError('rate_limited', 'Too many reports. Try again in a minute.', 429);
   }
   checkBudget(env, 'write');
+  // A station outside the deployed snapshot (from an app's old saved list, say) costs no D1 call.
+  if (await snapshotArea(env, new URL(request.url).origin, body.station_id) === undefined) throw stationNotFound();
   const id = body.request_id || crypto.randomUUID(), observed_at = new Date().toISOString(), asked = Date.now();
   // One D1 call: an earlier report with this request ID, the insert (only for a known station and a new
   // ID, so a concurrent retry cannot insert twice), and the station's area prices after the insert.
@@ -210,7 +226,7 @@ async function report(request, env, ctx) {
     ...(learn ? [learn] : []),
   ])).map(result => result.results[0]);
   if (learn) learnBudget(day, total);
-  if (!place) throw new InputError('station_not_found', 'This station was not found in the imported directory.', 404);
+  if (!place) throw stationNotFound();
   // This isolate sees the area's prices as they are after the report at once, and so does any isolate
   // in the data centre that checks its cache next; others within VERSION_SECONDS.
   const entry = {version: place.version ?? 0, checkedAt: asked, seenAt: place.seen, list: place.prices ? priceList(place.prices) : []};

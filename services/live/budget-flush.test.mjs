@@ -3,7 +3,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './worker.mjs';
-import {assets} from './test-assets.mjs';
+import {assets, stationFiles} from './test-assets.mjs';
+
+// Reports must name a station in the snapshot; this is one in Edmonton's area, which D1 answers for below.
+const stationId = JSON.parse(stationFiles.get('ids.json'))[287133].split(' ')[0];
 
 test('usage reaches the shared daily total: reports at once, reads after two minutes, and a failed flush keeps its counts', async () => {
   const flushes = [];
@@ -29,7 +32,7 @@ test('usage reaches the shared daily total: reports at once, reads after two min
   const env = {ASSETS: assets(), DB: {prepare: statement, batch: async queries => Promise.all(queries.map(q => q.all()))}};
   const search = (lat, lon) => worker.fetch(new Request(`https://openfuel.test/api/v1/stations?lat=${lat}&lon=${lon}&radius=10000`), env);
   const report = () => worker.fetch(new Request('https://openfuel.test/api/v1/reports', {method: 'POST', headers: {'content-type': 'application/json'},
-    body: JSON.stringify({station_id: 'osm-node-1', fuel_type: 'regular', price_milli: 1399, client_id: 'test-install-12345678'})}), env);
+    body: JSON.stringify({station_id: stationId, fuel_type: 'regular', price_milli: 1399, client_id: 'test-install-12345678'})}), env);
   const realNow = Date.now, start = realNow();
   let offset = 0;
   Date.now = () => start + offset;

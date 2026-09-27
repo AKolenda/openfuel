@@ -117,7 +117,9 @@ def write_areas(destination):
     """Write the station snapshot as one static file per area, which the Worker reads instead of D1.
 
     index.json lists the areas that have stations, so the Worker never asks for an empty one.
-    The D1 stations table is seeded from the same snapshot and only validates reports.
+    ids.json gives each area's station ids as one space-separated string, so the Worker can refuse a
+    report for a station outside the snapshot without asking D1: the D1 stations table is seeded from
+    the same snapshot but keeps stations that later snapshots drop.
     """
     areas={}
     for line in (DATA/'canada-stations.jsonl').read_text().splitlines():
@@ -126,11 +128,12 @@ def write_areas(destination):
     folder.mkdir(parents=True,exist_ok=True)
     # Replace earlier area files only; anything else in the folder is left alone.
     for old in folder.glob('*.json'):
-        if old.stem=='index' or old.stem.isdigit(): old.unlink()
+        if old.stem in ('index','ids') or old.stem.isdigit(): old.unlink()
     for area,records in areas.items(): (folder/f'{area}.json').write_text(compact(records))
     metadata=json.loads((DATA/'metadata.json').read_text())
     (folder/'index.json').write_text(compact({'imported_at':metadata['imported_at'],'source':metadata['station_source'],
         'license':metadata['station_license'],'areas':sorted(areas)}))
+    (folder/'ids.json').write_text(compact({area:' '.join(r['id'] for r in areas[area]) for area in sorted(areas)}))
     return len(areas)
 
 if __name__ == '__main__':

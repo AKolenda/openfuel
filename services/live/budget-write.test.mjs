@@ -3,11 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './worker.mjs';
-import {assets} from './test-assets.mjs';
+import {assets, stationFiles} from './test-assets.mjs';
 
+// Reports must name a station in the snapshot; this is one in Edmonton's area.
+const stationId = JSON.parse(stationFiles.get('ids.json'))[287133].split(' ')[0];
 const nearby = new Request('https://openfuel.test/api/v1/stations?lat=53.5461&lon=-113.4938&radius=10000');
 const report = () => new Request('https://openfuel.test/api/v1/reports', {method: 'POST', headers: {'content-type': 'application/json'},
-  body: JSON.stringify({station_id: 'osm-node-1', fuel_type: 'regular', price_milli: 1399, client_id: 'test-install-12345678'})});
+  body: JSON.stringify({station_id: stationId, fuel_type: 'regular', price_milli: 1399, client_id: 'test-install-12345678'})});
 test("D1's write limit pauses reports but not browsing", async () => {
   const limit = "D1_ERROR: Your account has exceeded D1's free tier daily row write limit. Upgrade to a paid plan or wait until tomorrow (midnight UTC) to continue.";
   const statement = query => {
