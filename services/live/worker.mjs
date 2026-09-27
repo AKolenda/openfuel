@@ -4,8 +4,6 @@ import {correctedStation} from '../../packages/data/corrections.mjs';
 import {stationBrand} from '../../packages/brands/resolve.mjs';
 import metadata from '../../packages/data/metadata.json' with {type: 'json'};
 import marketAverages from '../../packages/data/market-averages.json' with {type: 'json'};
-import brandCatalog from '../../packages/brands/catalog.json' with {type: 'json'};
-import stationCorrections from '../../packages/data/station-corrections.json' with {type: 'json'};
 import cities from '../../packages/data/canada-cities.json' with {type: 'json'};
 const grades = new Set(['regular', 'premium', 'diesel']);
 const headers = {
@@ -24,7 +22,7 @@ class InputError extends Error {
 // OpenFuel stops with a clear answer before Cloudflare does, and never runs up a bill on a paid plan.
 // Usage is counted per isolate and added to a one-row-per-day table now and then, so it is approximate.
 // Reads and writes are capped separately: a spent write budget pauses reports, not browsing.
-const budget = {day: '', pendingRead: 0, pendingWritten: 0, read: 0, written: 0, flushedAt: 0, flushing: false, readCappedUntil: 0, writeCappedUntil: 0};
+const budget = {day: '', learned: false, pendingRead: 0, pendingWritten: 0, read: 0, written: 0, flushedAt: 0, flushing: false, readCappedUntil: 0, writeCappedUntil: 0};
 const utcDay = now => new Date(now).toISOString().slice(0, 10);
 const nextUtcMidnight = now => Date.UTC(new Date(now).getUTCFullYear(), new Date(now).getUTCMonth(), new Date(now).getUTCDate() + 1);
 class SpendingCap extends Error {
@@ -35,8 +33,18 @@ function limits(env) {
 }
 function rollDay(now) {
   const day = utcDay(now);
-  // A new isolate or day flushes on its first metered request, so it learns the shared total at once.
-  if (budget.day !== day) Object.assign(budget, {day, pendingRead: 0, pendingWritten: 0, read: 0, written: 0, flushedAt: 0});
+  // A new isolate or day reads the shared total along with its first D1 query (see learnBudget) and
+  // adds its own reads two minutes later, then every ten minutes (see flushBudget).
+  if (budget.day !== day) Object.assign(budget, {day, learned: false, pendingRead: 0, pendingWritten: 0, read: 0, written: 0, flushedAt: now - 480_000});
+}
+/** The statement that reads today's shared total, for an isolate that has not read it yet; add it to a batch. */
+function budgetStatement(env) {
+  return budget.learned ? null : env.DB.prepare('SELECT rows_read, rows_written FROM usage_budget WHERE day = ?1').bind(budget.day);
+}
+function learnBudget(day, row) {
+  if (budget.day !== day) return;
+  budget.learned = true;
+  if (row) { budget.read = Math.max(budget.read, row.rows_read); budget.written = Math.max(budget.written, row.rows_written); }
 }
 function checkBudget(env, kind = 'read', now = Date.now()) {
   rollDay(now);
@@ -67,40 +75,79 @@ function meter(results) {
 }
 async function flushBudget(env, now = Date.now()) {
   if (budget.flushing || (!budget.pendingRead && !budget.pendingWritten)) return;
-  if (budget.pendingRead < 25_000 && now - budget.flushedAt < 120_000) return;
+  // Rows written (by reports) are added straight after the request, so the write budget holds even
+  // across short-lived isolates; reads every ten minutes or 25,000 rows. Retries wait five seconds.
+  const writes = budget.pendingWritten && now - budget.flushedAt >= 5_000;
+  if (!writes && budget.pendingRead < 25_000 && now - budget.flushedAt < 600_000) return;
   const day = budget.day, read = budget.pendingRead, written = budget.pendingWritten;
   budget.flushing = true; budget.pendingRead = 0; budget.pendingWritten = 0; budget.flushedAt = now;
   try {
+    // The flush itself reads and writes about one row each, counted in its own values.
     const total = await env.DB.prepare('INSERT INTO usage_budget(day,rows_read,rows_written) VALUES(?1,?2,?3) ON CONFLICT(day) DO UPDATE SET rows_read=rows_read+excluded.rows_read, rows_written=rows_written+excluded.rows_written RETURNING rows_read, rows_written')
-      .bind(day, read, written).first();
+      .bind(day, read + 2, written + 1).first();
     // A flush that finishes after midnight UTC belongs to the previous day's row.
-    if (total && budget.day === day) {
-      budget.read = total.rows_read; budget.written = total.rows_written;
-      // The flush itself reads and writes about one row each.
-      budget.pendingRead += 2; budget.pendingWritten += 1;
-    }
+    if (total && budget.day === day) { budget.read = total.rows_read; budget.written = total.rows_written; budget.learned = true; }
   } catch { if (budget.day === day) { budget.pendingRead += read; budget.pendingWritten += written; } }
   finally { budget.flushing = false; }
 }
 const d1LimitPattern = /exceeded D1's free tier daily row (read|write) limit/i;
 
-// Areas are 0.5 degree squares. The SQL expressions match the stations_area index and current_prices.area.
+// Areas are 0.5 degree squares, computed exactly as in migration 0002 and tools/import_live_data.py.
 const areaRow = lat => Math.floor((lat + 90) * 2), areaColumn = lon => Math.floor((lon + 180) * 2);
 const areaId = (row, column) => row * 1000 + column;
-// At most this many areas per search, which keeps Cache API calls and D1 parameters within Workers Free
-// limits. It only narrows 50 km searches in the far north, where it trims the east-west edges.
+// At most this many areas per search, which keeps static file reads and D1 parameters within Workers
+// Free limits. It only narrows 50 km searches in the far north, where it trims the east-west edges.
 const MAX_AREAS = 20;
-// Geography changes only with a re-import, brand catalog or correction change, so its cache key
-// follows those files. Prices are cached per area version: D1 changes an area's version whenever a
-// price there changes, so a cached price stays valid until it is updated. Each isolate re-reads the
-// versions (one row per area) at most every VERSION_SECONDS, which bounds how old a price can look.
-const GEOGRAPHY_SECONDS = 7 * 86400, PRICE_SECONDS = 7 * 86400, VERSION_SECONDS = 15;
-const fingerprint = text => { let hash = 2166136261; for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619); return (hash >>> 0).toString(36); };
-const GEOGRAPHY_VERSION = `g2.${metadata.imported_at}.${fingerprint(JSON.stringify([brandCatalog, stationCorrections]))}`;
-const cacheKey = (origin, kind, id) => new Request(`${origin}/__cache/v1/${kind}/${kind === 'prices' ? '' : GEOGRAPHY_VERSION + '/'}${id}`);
-// Per-isolate copies, checked before the Cache API: area geography and price lists by version.
-const placesMemo = new Map(), pricesMemo = new Map(), versionMemo = new WeakMap();
-const versionsFor = db => { if (!versionMemo.has(db)) versionMemo.set(db, new Map()); return versionMemo.get(db); };
+// Workers Free allows 50 subrequests per request, and Cache API calls share that quota. Static file
+// reads through the assets binding are counted too, to be safe. This leaves room for the D1 call, the
+// budget flush and a margin; station files come first and the data centre's price cache gets the rest.
+const SUBREQUESTS = 44;
+// Isolate copies are capped so a long-lived isolate that served much of Canada stays well within memory.
+const MEMO_LIMIT = 300;
+function remember(map, key, value) {
+  map.delete(key); map.set(key, value);
+  if (map.size > MEMO_LIMIT) map.delete(map.keys().next().value);
+  return value;
+}
+// Station geography comes from static files the site build writes from the same snapshot as D1's
+// stations table (data/stations/<area>.json, plus index.json listing the areas that have stations).
+// An isolate keeps the index and its most recently used areas' files; they change only with a
+// deploy, which starts new isolates. Only files that have arrived are kept: a load still in flight
+// belongs to its request, which may end (and cancel it) before it settles.
+let stationIndex = null;
+const areaStations = new Map();
+async function stationFile(env, origin, name) {
+  const response = await env.ASSETS.fetch(new Request(`${origin}/data/stations/${name}.json`));
+  if (!response.ok) throw new Error(`station file ${name}: ${response.status}`);
+  return response.json();
+}
+/** Each area's station records; `spent.count` counts the files this request reads. */
+async function stationsIn(env, origin, areas, spent) {
+  if (!stationIndex) { spent.count++; stationIndex = new Set((await stationFile(env, origin, 'index')).areas); }
+  const index = stationIndex;
+  return Promise.all(areas.map(async area => {
+    if (!index.has(area)) return [];
+    if (areaStations.has(area)) return remember(areaStations, area, areaStations.get(area));
+    spent.count++;
+    return remember(areaStations, area, await stationFile(env, origin, area));
+  }));
+}
+// Prices: D1 keeps one area_prices row per area with all of its current prices and a version that
+// changes whenever one of them does. A search asks D1 once, for all its areas together, and gets the
+// price list only for areas whose version changed. Lists are kept per isolate and shared with the
+// other isolates in the data centre through the Cache API, stamped with when D1 was last asked; an
+// area is asked again at most every VERSION_SECONDS, which bounds how old a price can look.
+const PRICE_CACHE_SECONDS = 7 * 86400, VERSION_SECONDS = 15;
+const priceKey = (origin, area) => new Request(`${origin}/__cache/v2/prices/${area}`);
+// area_prices.prices is an object keyed by station and fuel; lists hold its [station_id, fuel_type, price_milli, observed_at, source] values.
+const priceList = text => Object.values(JSON.parse(text));
+// Per-isolate {version, checkedAt, seenAt, list} by area, kept per D1 binding. checkedAt is this
+// Worker's clock just before it asked D1, for freshness. seenAt is D1's own clock when it answered,
+// which orders answers however late they arrive: a list never replaces one D1 gave later.
+const d1Clock = "CAST(round((julianday('now')-2440587.5)*86400000) AS INTEGER)";
+const newer = (entry, than) => !than || entry.seenAt > than.seenAt;
+const priceMemo = new WeakMap();
+const pricesFor = db => { if (!priceMemo.has(db)) priceMemo.set(db, new Map()); return priceMemo.get(db); };
 async function cached(key) {
   const response = await globalThis.caches?.default.match(key);
   return response ? response.json() : undefined;
@@ -148,32 +195,37 @@ async function report(request, env, ctx) {
     if (!success) throw new InputError('rate_limited', 'Too many reports. Try again in a minute.', 429);
   }
   checkBudget(env, 'write');
-  const existing = await env.DB.prepare('SELECT id, latitude, longitude FROM stations WHERE id = ?1').bind(body.station_id).first();
-  if (!existing) throw new InputError('station_not_found', 'This station was not found in the imported directory.', 404);
-  const id = body.request_id || crypto.randomUUID();
-  const findOld = () => env.DB.prepare('SELECT id, station_id, fuel_type, price_milli, client_id, observed_at FROM price_reports WHERE id = ?1').bind(id).first();
-  const repeated = old => {
+  const id = body.request_id || crypto.randomUUID(), observed_at = new Date().toISOString(), asked = Date.now();
+  // One D1 call: an earlier report with this request ID, the insert (only for a known station and a new
+  // ID, so a concurrent retry cannot insert twice), and the station's area prices after the insert.
+  const learn = budgetStatement(env), day = budget.day;
+  const [old, , place, total] = meter(await env.DB.batch([
+    env.DB.prepare('SELECT id, station_id, fuel_type, price_milli, client_id, observed_at FROM price_reports WHERE id = ?1').bind(id),
+    env.DB.prepare('INSERT INTO price_reports (id, station_id, fuel_type, price_milli, client_id, observed_at) SELECT ?1, ?2, ?3, ?4, ?5, ?6 ' +
+      'WHERE EXISTS (SELECT 1 FROM stations WHERE id = ?2) AND NOT EXISTS (SELECT 1 FROM price_reports WHERE id = ?1)')
+      .bind(id, body.station_id, body.fuel_type, body.price_milli, body.client_id, observed_at),
+    env.DB.prepare(`SELECT CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) AS area, area_prices.version AS version, area_prices.prices AS prices, ${d1Clock} AS seen ` +
+      'FROM stations LEFT JOIN area_prices ON area_prices.area = CAST((latitude+90)*2 AS INTEGER)*1000+CAST((longitude+180)*2 AS INTEGER) WHERE stations.id = ?1')
+      .bind(body.station_id),
+    ...(learn ? [learn] : []),
+  ])).map(result => result.results[0]);
+  if (learn) learnBudget(day, total);
+  if (!place) throw new InputError('station_not_found', 'This station was not found in the imported directory.', 404);
+  // This isolate sees the area's prices as they are after the report at once, and so does any isolate
+  // in the data centre that checks its cache next; others within VERSION_SECONDS.
+  const entry = {version: place.version ?? 0, checkedAt: asked, seenAt: place.seen, list: place.prices ? priceList(place.prices) : []};
+  const memo = pricesFor(env.DB);
+  if (newer(entry, memo.get(place.area))) {
+    remember(memo, place.area, entry);
+    store(ctx, priceKey(new URL(request.url).origin, place.area), entry, PRICE_CACHE_SECONDS);
+  }
+  if (old) {
     if (old.client_id !== body.client_id || old.station_id !== body.station_id || old.fuel_type !== body.fuel_type || old.price_milli !== body.price_milli) {
       throw new InputError('report_conflict', 'Use a new request ID for a different report.', 409);
     }
     delete old.client_id;
     return json({ok: true, report: old, is_demo: false, verification: 'unverified'}, 200);
-  };
-  const old = await findOld();
-  if (old) return repeated(old);
-  const observed_at = new Date().toISOString();
-  try {
-    meter(await env.DB.prepare('INSERT INTO price_reports (id, station_id, fuel_type, price_milli, client_id, observed_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
-      .bind(id, body.station_id, body.fuel_type, body.price_milli, body.client_id, observed_at).run());
-  } catch (error) {
-    // A concurrent retry may have committed after the initial lookup.
-    if (body.request_id) { const committed = await findOld(); if (committed) return repeated(committed); }
-    throw error;
   }
-  // The report changed its area's version in D1, so every data centre reads the new price on its next
-  // version check. This isolate checks at once, and a read that started earlier cannot restore the old version.
-  const area = areaId(areaRow(existing.latitude), areaColumn(existing.longitude)), memo = versionsFor(env.DB);
-  memo.set(area, {version: memo.get(area)?.version ?? 0, checkedAt: -Infinity, invalidatedAt: Date.now()});
   return json({ok: true, report: {id, station_id: body.station_id, fuel_type: body.fuel_type, price_milli: body.price_milli, observed_at}, is_demo: false, verification: 'unverified'}, 201);
 }
 const radians = n => n * Math.PI / 180;
@@ -203,109 +255,98 @@ function marketReference(lat, lon, fuel) {
   const regional=averages.filter(r=>r.city!=='Canada').map(r=>({...r,distance:distanceMetres(lat,lon,r.latitude,r.longitude)})).sort((a,b)=>a.distance-b.distance)[0];
   return regional?.distance<=100000?regional:averages.find(r=>r.city==='Canada');
 }
-async function nearby(env, query, origin, ctx) {
-  const {lat,lon,radius,fuel}=locationQuery(query);
+// Each record's corrected and branded form, made when a search first returns it and kept with the record.
+const places = new WeakMap();
+function placeOf(record) {
+  if (!places.has(record)) {
+    const place = {...correctedStation(record), latitude: record.latitude, longitude: record.longitude};
+    places.set(record, {...place, ...stationBrand(place)});
+  }
+  return places.get(record);
+}
+/** The areas a search covers, at most MAX_AREAS. */
+export function searchAreas(lat, lon, radius) {
   const dy=radius/110000, south=Math.max(-90,lat-dy), north=Math.min(89.999999,lat+dy);
   const rowCount=areaRow(north)-areaRow(south)+1;
   // A span of 2*dx degrees touches at most 4*dx+2 half-degree columns.
   const dx=Math.min(radius/(110000*Math.max(0.001,Math.cos(radians(lat)))), Math.max(0,(Math.floor(MAX_AREAS/rowCount)-2)/4));
   const west=Math.max(-180,lon-dx), east=Math.min(179.999999,lon+dx);
   const areas=[];
-  for(let row=areaRow(south);row<=areaRow(north);row++) for(let column=areaColumn(west);column<=areaColumn(east);column++) areas.push({row,column,id:areaId(row,column)});
-  const now=Date.now(), memo=versionsFor(env.DB);
-  // Station rows per area: this isolate's copy, then the Cache API, then D1.
-  const geography=new Map();
-  for(const area of areas) if(placesMemo.has(area.id)) geography.set(area.id,placesMemo.get(area.id));
-  await Promise.all(areas.filter(area=>!geography.has(area.id)).map(async area=>{
-    const rows=await cached(cacheKey(origin,'stations',area.id));
-    if(rows) { geography.set(area.id,rows); placesMemo.set(area.id,rows); }
-  }));
-  const missingPlaces=areas.filter(area=>!geography.has(area.id));
-  // Price versions for this request; a version older than VERSION_SECONDS is read again.
-  const versions=new Map(), unchecked=[];
-  for(const area of areas) {
-    const entry=memo.get(area.id);
-    if(entry && now-entry.checkedAt<VERSION_SECONDS*1000) versions.set(area.id,entry.version); else unchecked.push(area);
+  for(let row=areaRow(south);row<=areaRow(north);row++) for(let column=areaColumn(west);column<=areaColumn(east);column++) areas.push(areaId(row,column));
+  return areas;
+}
+async function nearby(env, query, origin, ctx) {
+  const {lat,lon,radius,fuel}=locationQuery(query);
+  const areas=searchAreas(lat,lon,radius);
+  const now=Date.now(), memo=pricesFor(env.DB), spent={count:0};
+  // Nearest stations first, from the static geography; prices are only needed for their areas.
+  const candidates=[];
+  (await stationsIn(env,origin,areas,spent)).forEach((places,i)=>{
+    for(const place of places) {
+      const distance=distanceMetres(lat,lon,place.latitude,place.longitude);
+      if(distance<=radius) candidates.push([distance,place,areas[i]]);
+    }
+  });
+  candidates.sort((a,b)=>a[0]-b[0]);
+  const returned=candidates.slice(0,200);
+  const priced=[...new Set(returned.map(candidate=>candidate[2]))];
+  // Price lists: this isolate's copy, then the data centre's, each if D1 was asked within VERSION_SECONDS.
+  const fresh=entry=>entry && now-entry.checkedAt<VERSION_SECONDS*1000;
+  const prices=new Map(), known=new Map();
+  let stale=[];
+  for(const area of priced) {
+    const own=memo.get(area);
+    if(fresh(own)) prices.set(area,own.list); else { stale.push(area); if(own) known.set(area,own); }
   }
-  const prices=new Map();
-  if(missingPlaces.length||unchecked.length) {
+  // Each area shared through the data centre's cache takes a lookup and possibly a store.
+  const shareable=new Set(stale.slice(0,Math.max(0,Math.floor((SUBREQUESTS-spent.count)/2))));
+  await Promise.all([...shareable].map(async area=>{
+    const shared=await cached(priceKey(origin,area)), own=memo.get(area);
+    if(!shared || !newer(shared,own)) return;
+    known.set(area,shared);
+    if(fresh(shared)) { prices.set(area,shared.list); remember(memo,area,shared); }
+  }));
+  stale=stale.filter(area=>!prices.has(area));
+  if(stale.length) {
     try { checkBudget(env); }
     catch(error) {
-      // Over the cap, areas already cached keep working with the last known prices (each shows its age).
-      if(!(error instanceof SpendingCap) || missingPlaces.length) throw error;
-      await Promise.all(unchecked.map(async area=>{
-        const known=memo.get(area.id)?.version ?? (await cached(cacheKey(origin,'prices',`${area.id}/latest`)))?.version;
-        if(known===undefined) throw error;
-        versions.set(area.id,known);
-      }));
-      unchecked.length=0;
+      // Over the cap, areas seen before keep their last known prices (each shows its age).
+      if(!(error instanceof SpendingCap) || stale.some(area=>!known.has(area))) throw error;
+      for(const area of stale) prices.set(area,known.get(area).list);
+      stale=[];
     }
   }
-  if(missingPlaces.length||unchecked.length) {
-    // One statement per area row keeps D1 on the stations_area index.
-    const rows=[...new Set(missingPlaces.map(area=>area.row))].map(row=>{
-      const columns=missingPlaces.filter(area=>area.row===row).map(area=>area.column);
-      return {row,from:Math.min(...columns),to:Math.max(...columns)};
-    });
-    const statements=rows.map(({row,from,to})=>env.DB.prepare('SELECT id,latitude,longitude,data FROM stations WHERE CAST((latitude+90)*2 AS INTEGER)=?1 AND CAST((longitude+180)*2 AS INTEGER) BETWEEN ?2 AND ?3').bind(row,from,to));
-    if(unchecked.length) statements.push(env.DB.prepare(`SELECT area,version FROM area_versions WHERE area IN (${unchecked.map((_,i)=>'?'+(i+1)).join(',')})`).bind(...unchecked.map(area=>area.id)));
-    const results=meter(await env.DB.batch(statements));
-    const wanted=new Set(missingPlaces.map(area=>area.id));
-    for(const area of missingPlaces) geography.set(area.id,[]);
-    rows.forEach((_,i)=>{
-      for(const row of results[i].results) {
-        const id=areaId(areaRow(row.latitude),areaColumn(row.longitude));
-        if(wanted.has(id)) geography.get(id).push([row.id,row.latitude,row.longitude,row.data]);
-      }
-    });
-    for(const area of missingPlaces) { placesMemo.set(area.id,geography.get(area.id)); store(ctx,cacheKey(origin,'stations',area.id),geography.get(area.id),GEOGRAPHY_SECONDS); }
-    if(unchecked.length) {
-      const found=new Map(results[results.length-1].results.map(row=>[row.area,row.version]));
-      for(const area of unchecked) {
-        const version=found.get(area.id)??0;
-        versions.set(area.id,version);
-        // A report handled here after this read began has already made the result out of date.
-        if(!(memo.get(area.id)?.invalidatedAt>=now)) memo.set(area.id,{version,checkedAt:now});
-      }
-    }
-  }
-  // Price lists per area version: this isolate's copy, then the Cache API, then D1.
-  const priced=areas.filter(area=>versions.get(area.id)>0);
-  for(const area of priced) { const key=`${area.id}/${versions.get(area.id)}`; if(pricesMemo.has(key)) prices.set(area.id,pricesMemo.get(key)); }
-  await Promise.all(priced.filter(area=>!prices.has(area.id)).map(async area=>{
-    const list=await cached(cacheKey(origin,'prices',`${area.id}/${versions.get(area.id)}`));
-    if(list) { prices.set(area.id,list); pricesMemo.set(`${area.id}/${versions.get(area.id)}`,list); }
-  }));
-  const missingPrices=priced.filter(area=>!prices.has(area.id));
-  if(missingPrices.length) {
-    checkBudget(env);
-    const [result]=meter(await env.DB.batch([env.DB.prepare(`SELECT station_id,fuel_type,price_milli,observed_at,source,area FROM current_prices WHERE area IN (${missingPrices.map((_,i)=>'?'+(i+1)).join(',')})`).bind(...missingPrices.map(area=>area.id))]));
-    for(const area of missingPrices) prices.set(area.id,[]);
-    for(const row of result.results) prices.get(row.area)?.push([row.station_id,row.fuel_type,row.price_milli,row.observed_at,row.source]);
-    for(const area of missingPrices) {
-      const version=versions.get(area.id), list=prices.get(area.id);
-      pricesMemo.set(`${area.id}/${version}`,list);
-      store(ctx,cacheKey(origin,'prices',`${area.id}/${version}`),list,PRICE_SECONDS);
-      // The latest list lets a new isolate serve cached areas while the daily cap is reached.
-      store(ctx,cacheKey(origin,'prices',`${area.id}/latest`),{version,list},PRICE_SECONDS);
+  if(stale.length) {
+    // One query for every stale area: its version, and its list only if the version is not the one known.
+    // Every stale area gets a row (version NULL if it never had a price), stamped with D1's clock.
+    const statements=[env.DB.prepare(`WITH known(area,version) AS (VALUES ${stale.map((_,i)=>`(?${2*i+1},?${2*i+2})`).join(',')}) `+
+      `SELECT known.area AS area, area_prices.version AS version, CASE WHEN area_prices.version=known.version THEN NULL ELSE area_prices.prices END AS prices, ${d1Clock} AS seen `+
+      'FROM known LEFT JOIN area_prices ON area_prices.area=known.area').bind(...stale.flatMap(area=>[area,known.get(area)?.version??0]))];
+    // An isolate's first D1 call of the day also reads the shared budget total, in the same round trip.
+    const learn=budgetStatement(env), day=budget.day;
+    if(learn) statements.push(learn);
+    const asked=Date.now(), results=meter(await env.DB.batch(statements));
+    if(learn) learnBudget(day,results[1].results[0]);
+    const rows=new Map(results[0].results.map(row=>[row.area,row]));
+    for(const area of stale) {
+      const row=rows.get(area), version=row?.version??0;
+      const entry={version,checkedAt:asked,seenAt:row?.seen,list:!version?[]:row.prices===null?known.get(area)?.list??[]:priceList(row.prices)};
+      // A report handled here, or another read, may have stored what D1 said after this answer.
+      const current=memo.get(area);
+      if(!newer(entry,current)) { prices.set(area,current.list); continue; }
+      prices.set(area,entry.list);
+      remember(memo,area,entry);
+      if(shareable.has(area)) store(ctx,priceKey(origin,area),entry,PRICE_CACHE_SECONDS);
     }
   }
   const byStation=new Map();
-  for(const area of areas) for(const price of prices.get(area.id)||[]) {
+  for(const area of priced) for(const price of prices.get(area)||[]) {
     if(!byStation.has(price[0])) byStation.set(price[0],[]);
     byStation.get(price[0]).push(price);
   }
-  // Distances use the stored coordinates; only the stations returned are parsed and branded.
-  const candidates=[];
-  for(const area of areas) for(const row of geography.get(area.id)||[]) {
-    const distance=distanceMetres(lat,lon,row[1],row[2]);
-    if(distance<=radius) candidates.push([distance,row]);
-  }
-  candidates.sort((a,b)=>a[0]-b[0]);
-  const stations=candidates.slice(0,200).map(([distance,[id,latitude,longitude,data]])=>{
-    const place={...correctedStation(JSON.parse(data)),latitude,longitude};
-    const station={...place,...stationBrand(place),distanceMetres:distance,prices:{regular:null,premium:null,diesel:null},ages:{},observedAt:{},priceSources:{},stale:{},synthetic:false};
-    for(const [,fuelType,priceMilli,observedAt,source] of byStation.get(id)||[]) {
+  const stations=returned.map(([distance,record])=>{
+    const station={...placeOf(record),distanceMetres:distance,prices:{regular:null,premium:null,diesel:null},ages:{},observedAt:{},priceSources:{},stale:{},synthetic:false};
+    for(const [,fuelType,priceMilli,observedAt,source] of byStation.get(record.id)||[]) {
       station.prices[fuelType]=priceMilli;
       station.ages[fuelType]=Math.max(0,Math.floor((now-Date.parse(observedAt))/60000));
       station.observedAt[fuelType]=observedAt;
@@ -354,7 +395,9 @@ export default {
       // Health checks that D1 answers (SELECT 1 reads no rows); the counts come from the bundled snapshot.
       if(url.pathname==='/api/v1/health') {
         checkBudget(env);
-        meter(await env.DB.prepare('SELECT 1 AS ok').all());
+        const learn=budgetStatement(env), day=budget.day;
+        if(learn) learnBudget(day,meter(await env.DB.batch([env.DB.prepare('SELECT 1 AS ok'),learn]))[1].results[0]);
+        else meter(await env.DB.prepare('SELECT 1 AS ok').all());
         body={ok:true,service:'openfuel',database:'cloudflare-d1',databaseConfigured:true,writesEnabled:writesOpen(env),mode:'live',is_demo:false,station_count:metadata.station_count};
         cacheControl='no-store';
       } else if(url.pathname==='/api/v1/stations') { body=await nearby(env,url.searchParams,url.origin,ctx); cacheControl='private, max-age=15'; }
@@ -368,10 +411,12 @@ export default {
       if(error instanceof SpendingCap) return spendingCap(error,env);
       const limit=String(error.message).match(d1LimitPattern);
       if(limit) {
-        // D1's read limit stops everything; its write limit only stops reports.
-        const until=nextUtcMidnight(Date.now());
-        if(limit[1].toLowerCase()==='read') budget.readCappedUntil=until; else budget.writeCappedUntil=until;
-        return spendingCap(new SpendingCap(`d1_free_daily_${limit[1].toLowerCase()}_limit`,until),env);
+        // D1's read limit stops everything. Its write limit stops reports; only reports write, so a
+        // read that fails with it means D1 is refusing all queries.
+        const until=nextUtcMidnight(Date.now()), kind=limit[1].toLowerCase(), reporting=url.pathname==='/api/v1/reports';
+        if(kind==='write') budget.writeCappedUntil=until;
+        if(kind==='read' || !reporting) budget.readCappedUntil=until;
+        return spendingCap(new SpendingCap(kind==='write' && !reporting?'d1_free_daily_limit':`d1_free_daily_${kind}_limit`,until),env);
       }
       if(String(error.message).includes('report_capacity_limit')) return json({error:'report_capacity',message:'The report archive is full. Station browsing remains available.'},429);
       if(String(error.message).includes('report_rate_limit')) return json({error:'rate_limited',message:'The hourly report limit was reached. Try again later.'},429,{'retry-after':'3600'});

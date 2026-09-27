@@ -6,23 +6,46 @@ Map tiles come from OpenFreeMap's free public service.
 
 ## How database use is kept low
 
-- **Cached areas.** `/api/v1/stations` works in 0.5° areas. Each area's stations are cached
-  in the data centre for up to a week (the cache key changes with the station snapshot,
-  brand catalog and corrections). Prices are cached per area *version*: every price report
-  bumps its area's version in D1, so cached prices stay valid until a price there changes.
-- **Fresh prices.** Each Worker instance re-reads the versions (about one D1 row per area)
-  at most every 15 seconds, and browsers may reuse a stations answer for 15 seconds. A new
-  report therefore reaches everyone within about 15–30 seconds, and the reporter sees it at once.
+Cloudflare bills D1 by rows read and written, not by queries, so the design keeps both the rows and
+the round trips per request as low as possible.
+
+- **Station locations never touch D1.** The site build writes the station snapshot as one static
+  file per 0.5° area (`data/stations/<area>.json`, about 1,070 files, plus `index.json`). The Worker
+  reads the files it needs through its static-assets binding, keeps its 300 most recently used areas,
+  and skips areas without stations. D1's `stations` table, seeded from the same snapshot, only validates reports.
+- **One D1 query per stations request.** D1 keeps one `area_prices` row per area holding all of its
+  current prices and a version. A search sends the versions it already has for all its areas in one
+  query and gets a price list back only for areas whose version changed: about one or two rows read
+  per area, and only for the areas of the stations it returns.
+- **Shared between instances.** Price lists are kept in each Worker instance and in the data centre's
+  Cache API, stamped with when D1 was last asked. Within 15 seconds of a check, any instance in that
+  data centre answers without D1.
+- **Fresh prices.** Every change to `current_prices` (a report, a manual UPDATE or DELETE, a restore)
+  sets or removes that one entry in its area's row and gives the area a new random version, so a
+  replaced price is never served once an area is re-checked. The instance that took a report shows the
+  new price at once; other instances within about 15 seconds, and browsers may reuse a stations answer
+  for 15 seconds more (the web app skips its copy for 15 seconds after its own report).
+- **One D1 call per report.** Checking the request ID, inserting, and reading the area's new prices
+  run as one batch of 10–11 rows read, however many prices the area has, plus one row per report the
+  same install made in the last hour (its hourly limit check).
 - **No database for static facts.** Regions, city search and the Statistics Canada averages come
   from the bundled snapshot files; health only asks D1 to answer (`SELECT 1`, no rows read).
-- **Hand edits and restores stay correct.** Any change to `current_prices`, including a manual
-  UPDATE or DELETE, gives its area a new random version, so caches never serve a removed price.
 - **Cheap writes.** The report capacity check reads one row, and re-seeding skips rows that did
   not change.
 
-Measured locally for an Edmonton 10 km search: 452 rows read on a cold cache (775–1,562
-before), 0 rows for repeats until the next version check, and about 10 ms per warm request.
-Searches cover at most 20 areas, which only trims 50 km searches in the far north.
+Measured locally with the real Worker and local D1, for an Edmonton 10 km search:
+
+| Request | D1 calls | Rows read |
+| --- | --- | --- |
+| New Worker instance (includes reading the day's budget total) | 1 | 5 |
+| Repeat within 15 s, same instance or data centre | 0 | 0 |
+| Re-check after 15 s, prices unchanged | 1 | 4 |
+| Price report, first price for that station and grade | 1 | 10 (7 rows written) |
+| Price report replacing a price | 1 | 11 (5 rows written) |
+
+Before this design, the same cold search took 2 D1 calls and about 453 rows (448 of them station
+locations), and a report took 3 calls. Searches cover at most 20 areas, which only trims 50 km
+searches in the far north.
 
 ## The daily cap
 
@@ -38,12 +61,14 @@ The Worker keeps its own daily D1 budget, below the Workers Free limits (5M rows
 When the read budget, or Cloudflare's own D1 read limit, is reached, the API answers
 `503 {"error":"spending_cap", "scope":"all", "resets_at": ...}` until midnight UTC. Areas already
 cached keep working with their last known prices, each shown with its age. A spent write budget
-(or D1's write limit) answers `"scope":"reports"` for new reports only; browsing continues. The website shows saved prices under a notice with the donate link,
+answers `"scope":"reports"` for new reports only; browsing continues. Cloudflare's own D1 write
+limit stops all queries, so once it is reached only areas already cached keep answering. The website shows saved prices under a notice with the donate link,
 and Expo explains it in its error message. If Cloudflare's daily *request* limit is reached,
 Cloudflare itself answers with a non-JSON 429 page, which the apps treat the same way.
 
-The count is kept per Worker instance and added to the `usage_budget` table every
-two minutes or 25,000 rows, so it is approximate; that is why the defaults leave 20% headroom.
+The count is kept per Worker instance, which reads the day's shared total along with its first D1
+query and adds its own usage to the `usage_budget` table after responding: rows written by a report
+straight away, rows read two minutes after its first query and then every ten minutes (or 25,000 rows). It is approximate; that is why the defaults leave 20% headroom.
 Rows read by `wrangler` or the dashboard count against Cloudflare's limit but not this budget.
 
 ## Cloudflare account settings (dashboard)
@@ -79,9 +104,24 @@ All are optional; without them no donate UI appears.
 Use the wrangler login that owns openfuel.ca. On a machine with several logins, bind that
 profile to the repository once (`npx wrangler auth activate <profile>`) or add
 `--profile <profile>` to each command. Apply the D1 migration before deploying the Worker
-that uses it:
+that uses it; a Worker deployed first answers every stations request with an error. If the
+station snapshot changed, seed D1 before deploying too, so the station files and D1's stations
+table match (otherwise new stations cannot be reported and moved stations lose their prices
+until they do):
 
 ```sh
-npm run db:remote   # applies services/live/migrations/0002_area_cache_and_budget.sql
-npm run deploy      # builds the site and deploys the Worker
+npx wrangler d1 migrations list openfuel-data --remote   # 0002 should be listed as not yet applied
+npm run db:remote        # applies services/live/migrations/0002_area_cache_and_budget.sql
+npm run db:seed:remote   # only if packages/data changed since the last seed
+npm run deploy           # builds the site (including the station files) and deploys the Worker
 ```
+
+If `area_prices` is ever edited out of step with `current_prices`, rebuild it. This is safe while
+reports arrive:
+
+```sh
+npx wrangler d1 execute openfuel-data --remote --command "UPDATE area_prices SET prices='{}', version=((version+1+(random() & 1073741823)) & 2147483647) | 1; INSERT INTO area_prices(area,version,prices) SELECT area,(random() & 2147483647) | 1,json_group_object(station_id||':'||fuel_type,json_array(station_id,fuel_type,price_milli,observed_at,source)) FROM current_prices WHERE area IS NOT NULL GROUP BY area ON CONFLICT(area) DO UPDATE SET version=((area_prices.version+1+(random() & 1073741823)) & 2147483647) | 1, prices=excluded.prices"
+```
+
+Do not enable Workers Caching (the cache in front of the Worker): it bills every request,
+including the free static files and station files.

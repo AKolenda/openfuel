@@ -9,6 +9,7 @@ import argparse
 import csv
 import io
 import json
+import math
 from pathlib import Path
 import unicodedata
 import zipfile
@@ -108,11 +109,37 @@ def generate(destination):
     path=Path(destination);path.parent.mkdir(parents=True,exist_ok=True);path.write_text('\n'.join(lines)+'\n')
     print(f'Wrote {len(lines)-1} seed statements to {path}')
 
+def area_id(latitude, longitude):
+    """The 0.5 degree area of a point, as migration 0002 and the Worker compute it."""
+    return math.floor((latitude+90)*2)*1000+math.floor((longitude+180)*2)
+
+def write_areas(destination):
+    """Write the station snapshot as one static file per area, which the Worker reads instead of D1.
+
+    index.json lists the areas that have stations, so the Worker never asks for an empty one.
+    The D1 stations table is seeded from the same snapshot and only validates reports.
+    """
+    areas={}
+    for line in (DATA/'canada-stations.jsonl').read_text().splitlines():
+        r=json.loads(line); areas.setdefault(area_id(r['latitude'],r['longitude']),[]).append(r)
+    folder=Path(destination)
+    folder.mkdir(parents=True,exist_ok=True)
+    # Replace earlier area files only; anything else in the folder is left alone.
+    for old in folder.glob('*.json'):
+        if old.stem=='index' or old.stem.isdigit(): old.unlink()
+    for area,records in areas.items(): (folder/f'{area}.json').write_text(compact(records))
+    metadata=json.loads((DATA/'metadata.json').read_text())
+    (folder/'index.json').write_text(compact({'imported_at':metadata['imported_at'],'source':metadata['station_source'],
+        'license':metadata['station_license'],'areas':sorted(areas)}))
+    return len(areas)
+
 if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--refresh-from',type=Path)
     parser.add_argument('--sql',type=Path)
+    parser.add_argument('--areas',type=Path,help='write per-area station files to this folder')
     args=parser.parse_args()
     if args.refresh_from: refresh(args.refresh_from)
     if args.sql: generate(args.sql)
-    if not args.refresh_from and not args.sql: parser.error('choose --sql PATH or --refresh-from PATH')
+    if args.areas: print(f'Wrote {write_areas(args.areas)} area files to {args.areas}')
+    if not args.refresh_from and not args.sql and not args.areas: parser.error('choose --sql PATH, --areas PATH or --refresh-from PATH')

@@ -37,7 +37,7 @@ let clientId = storage.read('client-id', null);
 if (typeof clientId !== 'string' || !/^[a-zA-Z0-9_-]{16,80}$/.test(clientId)) { clientId = crypto.randomUUID(); storage.write('client-id', clientId); }
 let pendingReport = storage.read('pending-report', null), reportStation = null, locatePending = false, locationGeneration = 0, searchGeneration = 0, toastTimer;
 // pendingRequest is the station request on its way ({generation, key}); fixTimer runs while a return visit waits for the device fix.
-let pendingRequest = null, fixTimer = null, onlineTimer, markerFrame = 0;
+let pendingRequest = null, fixTimer = null, onlineTimer, markerFrame = 0, reportedAt = 0;
 // A snapshot this young is as current as the server's own short caches, so it is not asked for again.
 const FRESH_SNAPSHOT_MS = 30000;
 const map = L.map('map', {zoomControl:false, preferCanvas:true}).setView([57, -106], 4);
@@ -252,8 +252,9 @@ async function refreshStations(fresh=false) {
   state.connection='loading';render();
   try {
     const query=new URLSearchParams({lat:center.lat.toFixed(6),lon:center.lon.toFixed(6),radius:String(radius),fuel:state.fuel});
-    // Normal loads may reuse the browser's copy for 15 seconds; Refresh always asks again.
-    const response=await api(`stations?${query}`,fresh===true?{cache:'no-cache'}:{});
+    // Normal loads may reuse the browser's copy for 15 seconds; Refresh, and loads within 15 seconds
+    // of this browser's own report, always ask again so the copy cannot hide the new price.
+    const response=await api(`stations?${query}`,fresh===true||Date.now()-reportedAt<15000?{cache:'no-cache'}:{});
     if (generation!==state.generation || reportVersion!==state.reportVersion) return;
     if (response.is_demo!==false || response.mode!=='live') throw Error('OpenFuel is still serving sample data. Please try again after the live update.');
     state.stations=normalize(response.stations);state.coverage=response.coverage;state.loadedAt=Date.now();state.loadFailed=false;state.connection='online';cacheCurrent();render();
@@ -369,7 +370,7 @@ async function submitReport(event) {
   try {
     const response=await api('reports',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
     if(!response.ok||response.is_demo!==false||response.report?.id!==request.request_id||response.report?.station_id!==station.id||response.report?.fuel_type!==fuel||response.report?.price_milli!==value)throw Error('No confirmation received. Refresh before trying again.');
-    state.reportVersion++;pendingReport=null;storage.write('pending-report',null);
+    state.reportVersion++;reportedAt=Date.now();pendingReport=null;storage.write('pending-report',null);
     station.prices[fuel]=value;station.observedAt[fuel]=response.report.observed_at;station.ages[fuel]=0;state.fuel=fuel;
     // The confirmed report is shown straight away; refetching the area would only cost another request.
     state.connection='online';cacheCurrent();$('report-dialog').close();render();toast('Price shared as an unverified community report.');

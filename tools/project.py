@@ -154,6 +154,9 @@ def build_site(*, include_source: bool=True) -> Path:
     (site/'docs/evidence.js').write_text('/* Generated from executed checks; native app builds are separate. */\nwindow.OPENFUEL_EVIDENCE='+json.dumps({'results':results,'logs':logs})+';\n')
     from tools.public_config import emit_public_config
     emit_public_config(ROOT, site)
+    # Station geography for the Worker, one file per 0.5 degree area, so stations requests do not read D1.
+    from tools.import_live_data import write_areas
+    write_areas(site/'data/stations')
     if include_source:
         source=package_source()
         if source.stat().st_size > WORKERS_ASSET_LIMIT:
