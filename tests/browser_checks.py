@@ -228,6 +228,9 @@ def main():
                 check(prefix+'Android APK is a real download link',page.locator('a[data-i18n="a-build"]').get_attribute('href')=='https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-android.apk')
                 page.locator('.phone-play').click()
                 frame=open_iframe(page,'#demo-frame')
+                # The app shows the denial once the browser answers its location request.
+                try:frame.locator('#location-status',has_text='permission is off').wait_for(timeout=10000)
+                except PlaywrightError:pass
                 check(prefix+'website location denial has no sample fallback',frame.locator('.station-card').count()==0 and 'permission is off' in frame.locator('#location-status').inner_text())
                 page.locator('#demo-dialog [data-close]').click()
                 if width in [1440,390]:page.screenshot(path=str(OUT/f'website-{width}.png'),full_page=False)
