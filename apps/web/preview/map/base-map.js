@@ -13,6 +13,8 @@ const MAPLIBRE_FILES = ['vendor/maplibre-gl.css', 'vendor/maplibre-gl.js', 'vend
 
 /** Adds MapLibre and its Leaflet binding to the page. Resolves true once both run, false if a file fails. */
 function loadMapLibre() {
+  // The Android map page loads MapLibre itself before this script.
+  if (typeof maplibregl !== 'undefined' && L.maplibreGL) return Promise.resolve(true);
   const elements = MAPLIBRE_FILES.map(path => {
     const element = document.createElement(path.endsWith('.css') ? 'link' : 'script');
     // Scripts keep their order: the binding needs MapLibre to have run first.
