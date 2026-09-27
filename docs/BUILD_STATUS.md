@@ -2,7 +2,8 @@
 
 OpenFuel now uses a real Canadian station directory and community pump reports.
 The public site is https://openfuel.ca/ and map is https://openfuel.ca/preview/.
-Cloudflare serves the website, API, source archive and compact Android APK.
+Cloudflare serves the website and API; the source archive and compact Android APK are
+GitHub release assets (https://github.com/AKolenda/openfuel/releases).
 
 | Check | Current result |
 | --- | --- |

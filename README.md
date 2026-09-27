@@ -8,8 +8,8 @@ SwiftUI app still needs an Apple SDK build and simulator verification on a Mac.
 
 - [Public repository](https://github.com/AKolenda/openfuel)
 - [Website](https://openfuel.ca/) and [station map](https://openfuel.ca/preview/)
-- [Android APK](https://openfuel.ca/downloads/openfuel-android.apk) — development build, Android 8+
-- [API health](https://openfuel.ca/api/v1/health) and [source download](https://openfuel.ca/downloads/openfuel-source.zip)
+- [Android APK](https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-android.apk) — development build, Android 8+
+- [API health](https://openfuel.ca/api/v1/health) and [source download](https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip)
 
 Allow location when you enter the app to find nearby stations. If permission is
 unavailable, search a Canadian city or choose an area on the map. The app uses

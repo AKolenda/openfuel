@@ -7,7 +7,8 @@ import json
 import os
 
 KEYS = ('OPENFUEL_PUBLIC_ENV', 'OPENFUEL_PUBLIC_API_BASE_URL', 'OPENFUEL_PUBLIC_SOURCE_URL')
-DEFAULTS = dict(zip(KEYS, ('development', '/api/v1', '/downloads/openfuel-source.zip')))
+# Downloads are GitHub release assets; the site does not host them.
+DEFAULTS = dict(zip(KEYS, ('development', '/api/v1', 'https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip')))
 # Optional donation page for the running costs (database, map tiles). Without it no donate UI appears.
 DONATE_KEY = 'OPENFUEL_PUBLIC_DONATE_URL'
 

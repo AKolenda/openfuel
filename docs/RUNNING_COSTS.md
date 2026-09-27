@@ -1,8 +1,9 @@
 # Running costs, limits and donations
 
 OpenFuel runs on one Cloudflare Worker with a D1 database. Static files (the website,
-map code, the Android APK download) are served free and never touch the database.
-Map tiles come from OpenFreeMap's free public service.
+map code, station files) are served free and never touch the database. Downloads
+(the Android APK and the source archive) are GitHub release assets, and map tiles
+come from OpenFreeMap's free public service.
 
 ## How database use is kept low
 
