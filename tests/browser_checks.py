@@ -265,7 +265,11 @@ def main():
                 load(page,'/preview/')
                 check(prefix+'approved wordmark is used in the app header',page.locator('.search-header .wordmark img').get_attribute('src')=='/brand/openfuel-wordmark-light.svg')
                 check(prefix+'app offers an installable web manifest',page.locator('link[rel=manifest]').get_attribute('href')=='manifest.webmanifest')
-                check(prefix+'real map has attribution',page.get_by_role('link',name='OpenStreetMap contributors').count()==1)
+                # The base map (and its credit) starts once the centre is known, or after 2.5 s without one.
+                credit=page.get_by_role('link',name='OpenStreetMap contributors')
+                try:credit.first.wait_for(timeout=10000)
+                except PlaywrightError:pass
+                check(prefix+'real map has attribution',credit.count()==1)
                 check(prefix+'no fictional station fallback',page.locator('.station-card').count()==0)
                 check(prefix+'no station branding appears without station records',page.locator('img[data-brand-logo]').count()==0)
                 check(prefix+'manual search remains available',page.get_by_role('searchbox',name='Search Canadian city or coordinates').count()==1)
