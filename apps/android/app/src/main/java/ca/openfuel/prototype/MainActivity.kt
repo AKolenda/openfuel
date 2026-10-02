@@ -81,11 +81,10 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var syncState by remember { mutableStateOf(if (initial.cached) "cached" else "choose-area") }
     var hasSearchArea by remember { mutableStateOf(initial.point.source != SearchSource.OVERVIEW) }
     var point by remember { mutableStateOf(initial.point) }
-    var browsePoint by remember { mutableStateOf<SearchPoint?>(null) }
+    var browse by remember { mutableStateOf<MapMove?>(null) } // The map's view after the last pan or zoom, until an area loads.
     var centerRequest by remember { mutableIntStateOf(0) }
     var devicePoint by remember { mutableStateOf<SearchPoint?>(null) }
     var locating by remember { mutableStateOf(false) }
-    var locationMessage by remember { mutableStateOf<String?>(null) }
     var locationIntro by remember { mutableStateOf(!prefs.getBoolean("location-intro-seen", false)) }
     var refreshJob by remember { mutableStateOf<Job?>(null) }
     var locationJob by remember { mutableStateOf<Job?>(null) }
@@ -138,7 +137,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         val changedArea = !next.sameCell(point)
         point = next
         repository.rememberArea(next)
-        browsePoint = null
+        browse = null
         if (recenter && (changedArea || explicit)) centerRequest++
         if (changedArea) stations = emptyList()
         refreshJob = scope.launch {
@@ -162,6 +161,14 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
             } finally { if (version == refreshVersion) syncing = false }
         }
     }
+    var areaRequest by remember { mutableIntStateOf(0) } // Raised to open the city search in the top controls.
+    /** Says why the location cannot be used, with a way to choose a city instead. */
+    fun locationFailed(message: Int) {
+        scope.launch {
+            val result = snackbar.showSnackbar(context.getString(message), actionLabel = context.getString(R.string.choose_city), duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) areaRequest++
+        }
+    }
     fun locate(recenter: Boolean = true, silent: Boolean = false) {
         if (locating && silent) return
         locationJob?.cancel()
@@ -173,28 +180,28 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 val fix = currentSearchPoint(context)
                 if (version != locationVersion) return@launch
                 if (fix != null) {
-                    devicePoint = fix; locationMessage = null
+                    devicePoint = fix
                     if (recenter && selectionVersion == selectedWhenStarted) {
                         // A fix inside the area on screen moves the search origin; its stations load again only when old.
                         val sameCell = hasSearchArea && fix.sameCell(point)
                         if (sameCell && fixKeepsStations(syncing, syncState, silent, loadedAt, limitResetsAt, System.currentTimeMillis())) {
-                            point = fix; repository.rememberArea(fix); browsePoint = null
+                            point = fix; repository.rememberArea(fix); browse = null
                             stations = stations.measuredFrom(fix)
                         } else refresh(fix, explicit = false)
                         if (sameCell && !silent) centerRequest++
                     }
                 } else if (!silent && selectionVersion == selectedWhenStarted) {
-                    locationMessage = "Location unavailable. Turn on device location or choose a city."; menu = Menu.LOCATION
+                    locationFailed(R.string.location_off)
                 }
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: Exception) {
-                if (!silent && selectionVersion == selectedWhenStarted) { locationMessage = "Location unavailable. Choose a city or try again."; menu = Menu.LOCATION }
+                if (!silent && selectionVersion == selectedWhenStarted) locationFailed(R.string.location_failed)
             } finally { if (version == locationVersion) locating = false }
         }
     }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         if (hasLocationPermission(context)) locate()
-        else { locationMessage = "Location permission was declined. Choose an area below."; menu = Menu.LOCATION }
+        else locationFailed(R.string.location_declined)
     }
     fun requestLocation() {
         selectionVersion++
@@ -219,11 +226,13 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     fun openDetail(station: Station, stack: List<Station> = emptyList()) {
         selectedId = station.id; menu = Menu.DETAIL
     }
-    /** The map was panned or zoomed. A move away from the loaded area keeps a pending location fix from replacing it. */
+    /**
+     * The map was panned or zoomed. A move far enough to offer "Search here" keeps a pending location fix from
+     * replacing it. Only the top controls read [browse], so a pan does not recompose the whole screen.
+     */
     fun onMapMove(move: MapMove) {
-        val area = move.center.takeIf { approximateDistanceMetres(point, it.latitude, it.longitude) > 750 }
-        if (area != null) selectionVersion++
-        browsePoint = move.center
+        if (mapMovedAway(point, move)) selectionVersion++
+        browse = move
     }
     fun openReport() {
         reportError = null; reportLimited = false; menu = Menu.PRICE
@@ -324,18 +333,23 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     query = query,
                     onQueryChange = { query = it },
                     area = point,
+                    browse = { browse },
+                    syncing = syncing,
+                    offline = syncState == "offline",
+                    locating = locating,
+                    areaRequest = areaRequest,
+                    searchCities = { repository.searchCities(it) },
                     savedOnly = savedOnly,
                     onSavedOnlyChange = { savedOnly = it },
                     openSettings = { menu = Menu.SETTINGS },
-                    chooseArea = { menu = Menu.LOCATION }
+                    useLocation = { requestLocation() },
+                    searchArea = { refresh(it, recenter = false) },
+                    chooseCity = { refresh(it) }
                 )
             }
         }
         // Map credit and location button, just above the station sheet.
         SheetOverlays(stationSheet, sheetInset, baseMap, locating, requestLocation = { requestLocation() })
-        // "Search this area" once the map has moved away from the loaded area.
-        if (stationSheet.currentValue != SheetValue.Expanded && stationSheet.targetValue != SheetValue.Expanded)
-            SearchAreaButton(point, browsePoint, syncing, offline = syncState == "offline") { refresh(it, recenter = false) }
         // "Show station list" while the sheet is hidden.
         if (sheetHidden) ShowStationsButton {
             cards = false
@@ -343,19 +357,15 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         }
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
-        title = { Text("Find fuel around you") },
-        text = { Text("Use your foreground location to find real nearby stations. Your search coordinates go to OpenFuel; map tiles are supplied by OpenFreeMap. No background tracking. You can also choose a city.") },
-        confirmButton = { TextButton(onClick = { requestLocation() }, modifier = Modifier.testTag("allow-location")) { Text("Use my location") } },
-        dismissButton = { TextButton(onClick = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply(); menu = Menu.LOCATION }) { Text("Choose a city") } })
+        title = { Text(stringResource(R.string.intro_title)) },
+        text = { Text(stringResource(R.string.intro_body)) },
+        confirmButton = { TextButton(onClick = { requestLocation() }, modifier = Modifier.testTag("allow-location")) { Text(stringResource(R.string.intro_use_location)) } },
+        dismissButton = { TextButton(onClick = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply(); areaRequest++ }) { Text(stringResource(R.string.choose_city)) } })
     MenuHost(menu = { menu }, dismiss = { menu = null }) { shown, closeMenu ->
         MenuBody(
             menu = shown,
             closeMenu = closeMenu,
             openMenu = { menu = it },
-            repository = repository,
-            locationMessage = locationMessage,
-            requestLocation = { requestLocation() },
-            chooseArea = { locationMessage = null; refresh(it) },
             filters = filters,
             provider = provider,
             fullWidth = fullWidth,

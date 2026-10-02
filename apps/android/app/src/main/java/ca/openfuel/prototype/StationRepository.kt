@@ -94,11 +94,11 @@ class StationRepository(context: Context) {
     }
 
     suspend fun searchCities(query: String): List<SearchPoint> = withContext(Dispatchers.IO) {
-        val body = request("/geocode?q=" + java.net.URLEncoder.encode(query.take(100), "UTF-8"))
+        val body = CityLookup.get(appContext).search(base, query)
         val results = body.getJSONArray("results")
         (0 until minOf(results.length(), 12)).map { i ->
             val place = results.getJSONObject(i)
-            SearchPoint(place.getDouble("latitude"), place.getDouble("longitude"), place.getString("name") + " · chosen area")
+            SearchPoint(place.getDouble("latitude"), place.getDouble("longitude"), shortPlaceName(place.getString("name")))
         }.filter { FuelCore.validStationPoint(it.latitude, it.longitude) }
     }
 

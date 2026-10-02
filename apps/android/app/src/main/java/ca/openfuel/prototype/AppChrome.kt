@@ -15,7 +15,7 @@ internal val Pale = Color(DesignTokens.SOFT)
 internal val Rule = Color(DesignTokens.LINE)
 
 /** The menu sheet on screen, if any. */
-internal enum class Menu { LOCATION, SETTINGS, SORT, ABOUT, DETAIL, PRICE, NEW_STATION, CORRECTION }
+internal enum class Menu { SETTINGS, SORT, ABOUT, DETAIL, PRICE, NEW_STATION, CORRECTION }
 
 /** Where the station sheet rests. */
 internal enum class Detent { COLLAPSED, HALF, FULL }
