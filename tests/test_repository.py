@@ -138,7 +138,7 @@ def test_workflow_exists_and_has_no_publish_permissions(name):
 
 def test_native_workflow_paths():
     assert 'tools/project.py android-build' in (ROOT/'.github/workflows/android.yml').read_text()
-    assert 'apps/android/app/build/outputs/apk/debug/app-debug.apk' in (ROOT/'.github/workflows/android.yml').read_text()
+    assert 'apps/android/app/build/outputs/apk/release/app-release.apk' in (ROOT/'.github/workflows/android.yml').read_text()
     assert 'tools/project.py ios-build' in (ROOT/'.github/workflows/ios.yml').read_text()
 
 def test_js_syntax_when_node_available():

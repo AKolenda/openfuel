@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package ca.openfuel.prototype
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,27 +17,54 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
- * The menu sheet. It reads [menu] itself, so opening or switching a menu recomposes only the sheet.
- * [body] shows one menu; every close from inside a menu calls its `closeMenu`, which runs `after` once the menu is closed.
+ * The menu sheet. It reads [menu] and [stationId] itself, so opening or switching a menu recomposes only the sheet.
+ * [body] shows one menu for the station it was opened with; every close from inside a menu calls its `closeMenu`,
+ * which slides the sheet out and then runs `after`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MenuHost(menu: () -> Menu?, dismiss: () -> Unit, body: @Composable (menu: Menu, closeMenu: (after: () -> Unit) -> Unit) -> Unit) {
-    val closeMenu: (after: () -> Unit) -> Unit = { after -> dismiss(); after() }
-    if (menu() != null) {
-        ModalBottomSheet(onDismissRequest = dismiss, containerColor = Color.White,
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).navigationBarsPadding().padding(bottom = 24.dp)) {
-                menu()?.let { body(it, closeMenu) }
+internal fun MenuHost(menu: () -> Menu?, stationId: () -> String?, dismiss: () -> Unit,
+                      body: @Composable (menu: Menu, stationId: String?, closeMenu: (after: () -> Unit) -> Unit) -> Unit) {
+    // Kept while no menu is open, so a close from inside can animate the sheet out before the menu is cleared.
+    // Not saved with the activity, as the open menu is not: after a rotation the next menu still slides in.
+    val density = LocalDensity.current
+    val menuSheet = remember(density) { SheetState(skipPartiallyExpanded = true, density = density) }
+    val scope = rememberCoroutineScope()
+    var closing by remember { mutableStateOf(false) }
+    val closeMenu: (after: () -> Unit) -> Unit = { after ->
+        if (!closing) {
+            closing = true
+            scope.launch {
+                try {
+                    menuSheet.hide()
+                    if (!menuSheet.isVisible) { dismiss(); after() }
+                } finally { closing = false }
+            }
+        }
+    }
+    val shown = menu()
+    if (shown != null) ModalBottomSheet(onDismissRequest = dismiss, containerColor = Color.White, sheetState = menuSheet) {
+        // The sheet is its own window, so its test tags need their own resource-id switch for UI Automator.
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).semantics { testTagsAsResourceId = true }
+            .padding(horizontal = 22.dp).navigationBarsPadding().padding(bottom = 24.dp)) {
+            // Switching menus or stations crossfades, and the sheet grows or shrinks to the new content.
+            AnimatedContent(targetState = shown to stationId(), label = "menu",
+                transitionSpec = { fadeIn(tween(150, 60)) togetherWith fadeOut(tween(90)) using SizeTransform(clip = false) }
+            ) { (target, id) ->
+                Column(Modifier.fillMaxWidth()) { body(target, id, closeMenu) }
             }
         }
     }

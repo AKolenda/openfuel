@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 
 /** How long stations loaded for the area on screen answer a location fix in the same cell. */
@@ -118,17 +119,16 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     val visible = remember(stations, grade, sort, filters, query, savedOnly, favorites) { FuelCore.visible(stations, grade, sort, filters, query, savedOnly, favorites) }
     val brandLogos = rememberBrandLogos(visible)
     val bestId = visible.filter { it.price(grade) != null && it.age(grade) <= 60 }.minByOrNull { it.price(grade, filters.members)!! }?.id
-    val selected = stations.find { it.id == selectedId }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val unavailable = stringResource(R.string.maps_unavailable)
     val linkUnavailable = stringResource(R.string.link_unavailable)
     LaunchedEffect(Unit) { if (loadedDrafts.isFailure) snackbar.showSnackbar(context.getString(R.string.local_storage_error)) }
     // Official builds may name a donation page for the database and map costs; without one no donate UI appears.
-    val donate: (() -> Unit)? = BuildConfig.DONATE_URL.takeIf { it.isNotEmpty() }?.let { url -> {
+    val donate: (() -> Unit)? = remember(context, linkUnavailable) { BuildConfig.DONATE_URL.takeIf { it.isNotEmpty() }?.let { url -> {
         try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
         catch (_: ActivityNotFoundException) { scope.launch { snackbar.showSnackbar(linkUnavailable) } }
-    } }
+    } } }
     fun refresh(next: SearchPoint = point, explicit: Boolean = true, recenter: Boolean = true, fresh: Boolean = false,
                 preloaded: Deferred<List<Station>>? = null) {
         if (explicit) selectionVersion++
@@ -149,9 +149,13 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 if (version != refreshVersion) return@launch
                 // A GPS fix in the same cell may have moved the search origin while this loaded.
                 val area = point
-                repository.cache(loaded, area)
                 stations = if (area.latitude == next.latitude && area.longitude == next.longitude) loaded else loaded.measuredFrom(area)
                 syncState = "connected"; loadedAt = System.currentTimeMillis()
+                // The snapshot is written off the UI thread, one write at a time in the order the loads finished.
+                try {
+                    withContext(StationRepository.cacheDispatcher) { repository.cache(loaded, area, rememberSearchArea = false) }
+                } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+                catch (_: Exception) { scope.launch { snackbar.showSnackbar(context.getString(R.string.local_storage_error)) } }
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }
             catch (error: ServiceLimitException) {
                 // Saved stations stay on screen under the daily-limit notice.
@@ -347,7 +351,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         text = { Text("Use your foreground location to find real nearby stations. Your search coordinates go to OpenFuel; map tiles are supplied by OpenFreeMap. No background tracking. You can also choose a city.") },
         confirmButton = { TextButton(onClick = { requestLocation() }, modifier = Modifier.testTag("allow-location")) { Text("Use my location") } },
         dismissButton = { TextButton(onClick = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply(); menu = Menu.LOCATION }) { Text("Choose a city") } })
-    MenuHost(menu = { menu }, dismiss = { menu = null }) { shown, closeMenu ->
+    MenuHost(menu = { menu }, stationId = { selectedId }, dismiss = { menu = null }) { shown, stationId, closeMenu ->
         MenuBody(
             menu = shown,
             closeMenu = closeMenu,
@@ -374,7 +378,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 runCatching { draftStore.clear() }.onSuccess { drafts.clear() }
                     .onFailure { scope.launch { snackbar.showSnackbar(context.getString(R.string.local_storage_error)) } }
             },
-            selected = selected,
+            selected = stations.find { it.id == stationId },
             favorites = favorites,
             go = { go(it) },
             save = { save(it) },
