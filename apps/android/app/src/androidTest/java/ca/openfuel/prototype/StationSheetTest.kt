@@ -155,11 +155,18 @@ class StationSheetTest {
     @Test fun listRaisesTheSheetBeforeItScrollsAndLowersItFromTheTop() {
         launch().use {
             assertEquals(half, stop())
+            val halfTop = sheetTop()
+            handle().performClick()
+            val fullTop = sheetTop()
+            handle().performClick()
+            assertEquals(half, stop())
             // From HALF a fast swipe up on a row raises the sheet to FULL, and the list still starts at its first row.
-            list().performTouchInput { swipe(Offset(centerX, 48.dp.toPx()), Offset(centerX, 48.dp.toPx() - 500), durationMillis = 150) }
+            // The swipe stays within the distance between the stops, which is shorter than 500 px on small screens.
+            val distance = minOf(500f, halfTop - fullTop)
+            list().performTouchInput { swipe(Offset(centerX, 48.dp.toPx()), Offset(centerX, 48.dp.toPx() - distance), durationMillis = 150) }
             assertEquals(full, stop())
             assertEquals(0f, listScroll())
-            val fullTop = sheetTop()
+            assertEquals(fullTop, sheetTop(), 1f)
             // Once at FULL, the next swipe scrolls the list.
             list().performTouchInput { swipeUp(durationMillis = 300) }
             assertEquals(full, stop())
@@ -177,7 +184,7 @@ class StationSheetTest {
             assertEquals(fullTop, sheetTop(), 1f)
             // With the list at its top, a swipe down lowers the sheet one stop.
             list().performScrollToIndex(0)
-            list().performTouchInput { swipe(Offset(centerX, 48.dp.toPx()), Offset(centerX, 48.dp.toPx() + 450), durationMillis = 150) }
+            list().performTouchInput { swipe(Offset(centerX, 48.dp.toPx()), Offset(centerX, 48.dp.toPx() + minOf(450f, distance)), durationMillis = 150) }
             assertEquals(half, stop())
         }
     }
