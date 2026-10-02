@@ -8,6 +8,8 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.view.ViewConfiguration
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -318,6 +320,31 @@ class StationSheetTest {
             } finally {
                 scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
                 compose.waitUntil(20_000) { context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT }
+            }
+        }
+    }
+
+    @Test fun collapsedSheetDoesNotPaintRowsThroughTheNavigationInset() {
+        launch().use { scenario ->
+            header().performTouchInput { swipeDown(durationMillis = 150) }
+            assertEquals(collapsed, stop())
+            val root = compose.onNodeWithTag("native-root")
+            val rootBounds = root.fetchSemanticsNode().boundsInRoot
+            val sheetBounds = header().fetchSemanticsNode().boundsInRoot
+            var insetHeight = 0
+            scenario.onActivity { insetHeight = it.window.decorView.rootWindowInsets
+                .getInsets(android.view.WindowInsets.Type.navigationBars()).bottom }
+            assertTrue("This gesture-navigation check needs a bottom inset", insetHeight > 0)
+            val pixels = root.captureToImage().toPixelMap()
+            val top = pixels.height - insetHeight
+            val left = (sheetBounds.left - rootBounds.left).toInt()
+            val right = (sheetBounds.right - rootBounds.left).toInt()
+            // Inspect the top quarter of the actual reserved strip, away from Android's gesture pill. In the
+            // regression, the first row's border and tinted background painted here while the header was closed.
+            for (y in top until top + (insetHeight / 4).coerceAtLeast(1)) {
+                for (x in left until right) {
+                    assertEquals("Station content leaked into navigation inset at ($x,$y)", Color.White, pixels[x, y])
+                }
             }
         }
     }

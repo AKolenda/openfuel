@@ -201,6 +201,10 @@ internal fun BoxWithConstraintsScope.StationSheet(sheet: StationSheetState, chro
             shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp), color = Color.White, shadowElevation = 6.dp) {
             sheetContent(handle, header, list)
         }
+        // Gesture navigation is transparent on Android 15. Keep the reserved inset opaque so a COLLAPSED
+        // sheet shows only its header, rather than the first row painting through below it.
+        Box(Modifier.align(Alignment.BottomCenter).widthIn(max = 640.dp).fillMaxWidth()
+            .windowInsetsBottomHeight(WindowInsets.navigationBars).background(Color.White))
     }
 }
 
