@@ -15,7 +15,7 @@ internal val Pale = Color(DesignTokens.SOFT)
 internal val Rule = Color(DesignTokens.LINE)
 
 /** The menu sheet on screen, if any. */
-internal enum class Menu { SETTINGS, SORT, ABOUT, DETAIL, PRICE, NEW_STATION, CORRECTION }
+internal enum class Menu { SETTINGS, ABOUT, DETAIL, PRICE, NEW_STATION, CORRECTION }
 
 /** Where the station sheet rests. */
 internal enum class Detent { COLLAPSED, HALF, FULL }
@@ -27,7 +27,7 @@ internal enum class Detent { COLLAPSED, HALF, FULL }
 @Stable internal class MapChrome {
     /** Where the station sheet last settled. */
     var detent by mutableStateOf(Detent.HALF)
-    /** The settled sheet covers the map. */
+    /** The sheet covers the map, including while it is being dragged. */
     var mapCovered by mutableStateOf(false)
     /** The top of the station sheet at [Detent.HALF]. */
     var halfTopPx by mutableIntStateOf(0)

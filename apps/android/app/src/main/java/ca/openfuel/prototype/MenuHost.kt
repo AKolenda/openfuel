@@ -85,8 +85,6 @@ internal fun MenuBody(
     donate: (() -> Unit)?,
     refreshNow: () -> Unit,
     applySettings: (Filters, MapProvider, Boolean) -> Unit,
-    sort: SortMode,
-    changeSort: (SortMode) -> Unit,
     drafts: List<StationProposal>,
     clearDrafts: () -> Unit,
     selected: Station?,
@@ -111,10 +109,6 @@ internal fun MenuBody(
                 applySettings(f, p, wide)
                 closeMenu {}
             })
-        Menu.SORT -> {
-            SheetTitle(stringResource(R.string.sort_stations)) { closeMenu {} }
-            SortMode.entries.forEach { mode -> OptionRow(sortLabel(mode), sortHelp(mode), sort == mode) { changeSort(mode); closeMenu {} } }
-        }
         Menu.ABOUT -> {
             SheetTitle(stringResource(R.string.about)) { closeMenu {} }
             Text(stringResource(R.string.about_body), lineHeight = 24.sp, color = Muted)
@@ -145,7 +139,7 @@ internal fun MenuBody(
         Grade.entries.forEach { fuel -> FilterChip(selected = grade == fuel, onClick = { changeGrade(fuel) },
             label = { Text(gradeLabel(fuel)) }, modifier = Modifier.testTag("fuel-${fuel.name.lowercase()}")) }
     }
-    Text("Pull down at the top of the station list to refresh. Drag its handle to expand or hide the panel.", fontSize = 12.sp, color = Muted)
+    Text(stringResource(R.string.sheet_settings_help), fontSize = 12.sp, color = Muted)
     TextButton(onClick = refresh, modifier = Modifier.testTag("refresh-prices")) { Text("Refresh stations now") }
     Text("Station data", fontWeight = FontWeight.SemiBold)
     Text("Station locations: OpenStreetMap contributors. Community pump prices are unverified; check the report time and confirm at the pump.", fontSize = 12.sp, color = Muted)
