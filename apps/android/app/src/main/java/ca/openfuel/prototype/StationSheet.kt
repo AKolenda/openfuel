@@ -83,7 +83,8 @@ import kotlin.math.roundToInt
     /** The sheet's top; below the screen until its stops are known. */
     fun top(): Float = drag.offset.takeUnless { it.isNaN() } ?: restTop.takeUnless { it.isNaN() } ?: Float.POSITIVE_INFINITY
     /** The sheet has reached FULL and covers the map. */
-    fun coversMap(): Boolean = top() <= fullTop + .5f
+    // In a window so short that FULL is the collapsed stop, the sheet never counts as covering the map.
+    fun coversMap(): Boolean = restTop > fullTop + .5f && top() <= fullTop + .5f
     /** 1 at [restTop] or lower and 0 at FULL, so what sits on the map fades as the sheet rises instead of popping. */
     fun mapAlpha(): Float = if (restTop > fullTop) ((top() - fullTop) / (restTop - fullTop)).coerceIn(0f, 1f) else 1f
 

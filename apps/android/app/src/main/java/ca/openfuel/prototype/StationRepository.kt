@@ -307,7 +307,7 @@ class StationRepository(context: Context) {
         private val stationRequests = SharedLoads<Pair<Double, Double>, Pair<String, List<Station>>>(background)
         private val ownReportsLock = Any()
         private val snapshotLock = Any()
-        /** Runs snapshot writes one at a time, so an earlier load's snapshot never replaces a later one's. */
+        /** Runs snapshot writes one at a time and in order, so with each refresh cancelling the one before it, an earlier load's snapshot never replaces a later one's. */
         @OptIn(ExperimentalCoroutinesApi::class)
         val cacheDispatcher = Dispatchers.IO.limitedParallelism(1)
 

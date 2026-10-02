@@ -150,9 +150,10 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 val area = point
                 stations = if (area.latitude == next.latitude && area.longitude == next.longitude) loaded else loaded.measuredFrom(area)
                 syncState = "connected"; loadedAt = System.currentTimeMillis()
-                // The snapshot is written off the UI thread, one write at a time in the order the loads finished.
+                // The snapshot is written off the UI thread, one write at a time in the order the loads finished. A
+                // newer refresh cancels this job, but not the write, so the saved file never falls behind the screen.
                 try {
-                    withContext(StationRepository.cacheDispatcher) { repository.cache(loaded, area, rememberSearchArea = false) }
+                    withContext(kotlinx.coroutines.NonCancellable + StationRepository.cacheDispatcher) { repository.cache(loaded, area, rememberSearchArea = false) }
                 } catch (error: kotlinx.coroutines.CancellationException) { throw error }
                 catch (_: Exception) { scope.launch { snackbar.showSnackbar(context.getString(R.string.local_storage_error)) } }
             } catch (error: kotlinx.coroutines.CancellationException) { throw error }

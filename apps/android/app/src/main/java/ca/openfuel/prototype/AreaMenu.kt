@@ -102,10 +102,14 @@ internal fun AreaMenu(area: SearchPoint, recent: List<SearchPoint>, movedAway: B
         runCatching { chipFocus.requestFocus() }
         then()
     }
-    BackHandler(enabled = expanded) { close() }
+    // With no room below the chip, as in landscape with the keyboard up, the menu stays closed, and so do its
+    // chevron and Back handling.
+    val fits = anchorBottom > 0 && menuHeight > 0.dp
+    val open = expanded && fits
+    BackHandler(enabled = open) { close() }
     Box(modifier.onGloballyPositioned { anchorBottom = (it.positionInWindow().y + it.size.height).roundToInt() }) {
-        AreaChip(area, expanded, Modifier.focusRequester(chipFocus)) { expanded = !expanded }
-        DropdownMenu(expanded = expanded && anchorBottom > 0 && menuHeight > 0.dp, onDismissRequest = { close() }, offset = DpOffset(0.dp, 6.dp),
+        AreaChip(area, open, Modifier.focusRequester(chipFocus)) { expanded = !open && fits }
+        DropdownMenu(expanded = open, onDismissRequest = { close() }, offset = DpOffset(0.dp, 6.dp),
             shape = RoundedCornerShape(16.dp), containerColor = Color.White, shadowElevation = 8.dp,
             modifier = Modifier.widthIn(min = 240.dp, max = 320.dp).heightIn(max = menuHeight).semantics { testTagsAsResourceId = true }.testTag("area-menu")) {
             AreaRow(stringResource(R.string.area_your_location), Icons.Default.MyLocation, "area-location",

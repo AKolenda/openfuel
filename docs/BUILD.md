@@ -51,7 +51,8 @@ python tools/project.py android-build
 ```
 
 The core command needs kotlinc/JDK but not the Android SDK. The full command requires the pinned Gradle
-and outputs apps/android/app/build/outputs/apk/debug/app-debug.apk only after a successful build.
+and, only after a successful build, outputs the debug APK and the downloadable release APK,
+apps/android/app/build/outputs/apk/release/app-release.apk.
 There is no fake Gradle wrapper: the input archive did not include its JAR. With Gradle installed,
 `cd apps/android && gradle wrapper --gradle-version 8.11.1` generates a real wrapper for review.
 Run the manual native-Android workflow after publishing the root tree to your GitHub repository.
