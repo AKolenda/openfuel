@@ -128,6 +128,10 @@ local-only report test. The exact compact APK was installed and visually checked
 The 0.3.2 record, [`release-0.3.2.json`](../../evidence/android-native/release-0.3.2.json), lists
 eight unit tests and six public HTTPS instrumentation tests passed, with the local-only report
 test skipped. Both records predate the OpenFreeMap base map and the daily-limit notice.
+The 0.3.3 record, [`ux-0.3.3.json`](../../evidence/android-native/ux-0.3.3.json), covers the
+three-stop station sheet, the area menu and city search, and the optimized release APK: 25 unit
+tests and 34 public HTTPS instrumentation tests passed, plus the sheet and top-control tests at
+360 dp with font scale 1.3. Its screenshots are in [`ux-0.3.3/`](../../evidence/android-native/ux-0.3.3/).
 
 Previous generated sample fixtures remain solely as isolated unit-test inputs and design
 reference assets. They are never selected by the app's startup or live repository.
