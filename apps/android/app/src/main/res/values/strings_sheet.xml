@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- The station sheet and the map controls that travel with it. -->
+<resources>
+  <string name="sheet_title">%1$s nearby</string>
+  <plurals name="sheet_station_count">
+    <item quantity="one">%1$d station · CAD ¢/L</item>
+    <item quantity="other">%1$d stations · CAD ¢/L</item>
+  </plurals>
+  <string name="sheet_station_list">Station list</string>
+  <string name="sheet_expanded">Expanded</string>
+  <string name="sheet_half_open">Half open</string>
+  <string name="sheet_collapsed">Collapsed</string>
+  <string name="sheet_expand">Expand</string>
+  <string name="sheet_collapse">Collapse</string>
+  <string name="sheet_move_full">Expand the station list</string>
+  <string name="sheet_move_half">Open the station list halfway</string>
+  <string name="sheet_move_collapsed">Collapse the station list</string>
+  <string name="sheet_refresh">Refresh stations</string>
+  <string name="sheet_refreshing">Refreshing</string>
+  <string name="sheet_sort">Sort: %1$s</string>
+  <string name="sheet_nearest_help">Closest to your selected search area</string>
+  <string name="sheet_no_report">No report yet</string>
+  <string name="sheet_offline">Offline · showing saved stations</string>
+  <string name="sheet_cached">Showing saved stations</string>
+  <string name="sheet_no_saved">No saved stations here. Open a station and tap Save.</string>
+  <string name="sheet_show_all">Show all</string>
+  <string name="sheet_use_location">Use my location</string>
+  <string name="sheet_settings_help">Tap Refresh in the station list to update prices. Drag the list up or down, or tap its top edge.</string>
+</resources>

@@ -32,14 +32,15 @@ internal fun StationRow(s: Station, grade: Grade, filters: Filters, cards: Boole
                     else Text(if (s.name == "Petro-Canada") "PC" else s.name.take(1), color = Forest, fontWeight = FontWeight.Bold)
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(s.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(FuelCore.distanceText(s.distanceMetres) + (if (!cards) " · ${s.address}" else ""), fontSize = 11.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (cards) Text(s.address, fontSize = 11.sp, color = Muted)
+                    Text(s.name, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(FuelCore.distanceText(s.distanceMetres) + (if (!cards) " · ${s.address}" else ""), fontSize = 11.sp, lineHeight = 14.sp, color = Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (cards) Text(s.address, fontSize = 11.sp, lineHeight = 14.sp, color = Muted)
                     if (filters.members && s.memberDiscount > 0) Text(stringResource(R.string.member_price), fontSize = 10.sp, color = Muted)
                 }
                 if (!cards) Column(horizontalAlignment = Alignment.End) {
                     Price(s.price(grade, filters.members), 24)
-                    Text(ageLabel(s.age(grade)), fontSize = 9.sp, color = if (s.age(grade) > 60) Color(0xFF927743) else Muted)
+                    Text(if (s.age(grade) == Int.MAX_VALUE) stringResource(R.string.sheet_no_report) else ageLabel(s.age(grade)),
+                        fontSize = 9.sp, lineHeight = 12.sp, color = if (s.age(grade) > 60) Color(0xFF927743) else Muted)
                 }
                 if (!wide && !cards) GoButton(best, go)
             }

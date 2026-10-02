@@ -93,7 +93,6 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var refreshVersion by remember { mutableIntStateOf(0) }
     var locationVersion by remember { mutableIntStateOf(0) }
     var syncing by remember { mutableStateOf(false) }
-    var pulled by remember { mutableStateOf(false) } // The list was pulled; its spinner shows until that load ends.
     var loadedAt by remember { mutableLongStateOf(0L) } // When the last load succeeded, in epoch milliseconds.
     var limitResetsAt by remember { mutableStateOf(Instant.EPOCH) } // Shown while syncState is "limited".
     var submitting by remember { mutableStateOf(false) }
@@ -254,46 +253,33 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         runCatching { draftStore.save(draft) }.onSuccess { drafts.clear(); drafts.addAll(draftStore.load()); menu = Menu.ABOUT }
             .onFailure { scope.launch { snackbar.showSnackbar(context.getString(R.string.local_storage_error)) } }
     }
-    val stationSheet = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = false)
-    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = stationSheet)
+    val sheet = rememberStationSheetState()
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.White).statusBarsPadding().semantics { testTagsAsResourceId = true }.testTag("native-root")) {
-        val contentHeight = (maxHeight - 124.dp).coerceAtLeast(280.dp)
-        val peekHeight = minOf(280.dp, maxHeight * .36f)
-        val sheetHidden = stationSheet.currentValue == SheetValue.Hidden || stationSheet.targetValue == SheetValue.Hidden
-        val sheetInset = if (sheetHidden) 0.dp else peekHeight
-        // The shared map chrome follows the M3 sheet: Expanded is FULL, PartiallyExpanded HALF and Hidden COLLAPSED.
-        val detent = when (stationSheet.currentValue) { SheetValue.Expanded -> Detent.FULL; SheetValue.PartiallyExpanded -> Detent.HALF; SheetValue.Hidden -> Detent.COLLAPSED }
-        val halfTop = constraints.maxHeight - with(LocalDensity.current) { peekHeight.roundToPx() }
-        SideEffect { chrome.detent = detent; chrome.mapCovered = detent == Detent.FULL; chrome.halfTopPx = halfTop }
-        BottomSheetScaffold(
-            scaffoldState = scaffoldState,
-            sheetPeekHeight = peekHeight,
-            sheetSwipeEnabled = false, // Only the handle moves the panel; list gestures scroll/refresh.
-            sheetContainerColor = Color.White,
-            containerColor = Color(0xFFEDF1EA),
-            sheetShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
-            sheetDragHandle = { StationSheetHandle(stationSheet, scope) },
-            snackbarHost = { SnackbarHost(snackbar) },
-            sheetContent = {
-                // Only a pull shows the spinner; loads the app starts itself (startup, location, search) show in
-                // the status line instead, so the indicator never pops into the list on its own.
-                LaunchedEffect(syncing) { if (!syncing) pulled = false }
+        // The station sheet over the map. It rests at COLLAPSED, HALF or FULL and follows the finger between them.
+        StationSheet(
+            sheet = sheet,
+            chrome = chrome,
+            area = point,
+            sheetContent = { handle, header, list ->
                 StationSheetContent(
-                    height = contentHeight,
+                    handle = handle,
+                    header = header,
+                    list = list,
                     grade = grade,
+                    savedOnly = savedOnly,
                     visible = visible,
                     sort = sort,
+                    changeSort = { sort = it },
                     cards = cards,
                     onCardsChange = { cards = it },
-                    openSort = { menu = Menu.SORT },
                     syncState = syncState,
                     limitResetsAt = limitResetsAt,
                     hasStations = stations.isNotEmpty(),
                     donate = donate,
                     syncing = syncing,
-                    refreshing = pulled && syncing,
-                    onRefresh = { if (hasSearchArea && !syncing) { pulled = true; refresh(recenter = false, fresh = true) } },
+                    onRefresh = { if (hasSearchArea && !syncing) refresh(recenter = false, fresh = true) },
                     resetFilters = { query = ""; filters = Filters(); savedOnly = false },
+                    showAll = { savedOnly = false },
                     filters = filters,
                     fullWidth = fullWidth,
                     bestId = bestId,
@@ -319,6 +305,8 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     modifier = Modifier.fillMaxSize().testTag("station-map"),
                     onSelect = { openDetail(it) }
                 )
+                // Under the top controls the map fades to its background colour as the sheet reaches FULL.
+                SheetScrim(sheet)
                 TopControls(
                     chrome = chrome,
                     query = query,
@@ -331,16 +319,11 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 )
             }
         }
-        // Map credit and location button, just above the station sheet.
-        SheetOverlays(stationSheet, sheetInset, baseMap, locating, requestLocation = { requestLocation() })
+        // Map credit, location button and snackbar, which travel with the station sheet.
+        SheetOverlays(sheet, chrome, snackbar, baseMap, locating, requestLocation = { requestLocation() })
         // "Search this area" once the map has moved away from the loaded area.
-        if (stationSheet.currentValue != SheetValue.Expanded && stationSheet.targetValue != SheetValue.Expanded)
+        if (chrome.detent != Detent.FULL)
             SearchAreaButton(point, browsePoint, syncing, offline = syncState == "offline") { refresh(it, recenter = false) }
-        // "Show station list" while the sheet is hidden.
-        if (sheetHidden) ShowStationsButton {
-            cards = false
-            scope.launch { stationSheet.partialExpand() }
-        }
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
         title = { Text("Find fuel around you") },
@@ -367,8 +350,6 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 filters = f; provider = p; fullWidth = wide
                 prefs.edit().putString("maps", if (p == MapProvider.GOOGLE) "google" else "ask").putBoolean("wide", wide).apply()
             },
-            sort = sort,
-            changeSort = { sort = it },
             drafts = drafts,
             clearDrafts = {
                 runCatching { draftStore.clear() }.onSuccess { drafts.clear() }
