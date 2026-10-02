@@ -77,6 +77,25 @@ internal fun AreaMenu(area: SearchPoint, recent: List<SearchPoint>, movedAway: B
                       useLocation: () -> Unit, searchMapArea: () -> Unit, choose: (SearchPoint) -> Unit, searchCity: () -> Unit,
                       modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(false) }
+    val view = LocalView.current
+    val density = LocalDensity.current
+    var anchorBottom by remember { mutableIntStateOf(0) }
+    var popupWindowHeight by remember { mutableIntStateOf(view.rootView.height) }
+    DisposableEffect(view) {
+        fun updateWindowHeight() {
+            val frame = android.graphics.Rect()
+            view.getWindowVisibleDisplayFrame(frame)
+            popupWindowHeight = frame.height()
+        }
+        val listener = android.view.ViewTreeObserver.OnGlobalLayoutListener { updateWindowHeight() }
+        view.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        updateWindowHeight()
+        onDispose { view.viewTreeObserver.removeOnGlobalLayoutListener(listener) }
+    }
+    // Compose passes the visible frame height (excluding system bars) to Material's positioner.
+    // Material's popup also requires a 48 dp window margin. Without a cap it can move above its anchor
+    // on short screens; keep its existing scroll container and keyboard navigation below the chip.
+    val menuHeight = with(density) { (popupWindowHeight - anchorBottom - 6.dp.roundToPx() - 48.dp.roundToPx()).coerceAtLeast(0).toDp() }
     fun close(then: () -> Unit = {}) {
         expanded = false
         // A clickable takes focus only outside touch mode, so this moves it only for keyboard and D-pad users.
@@ -84,11 +103,11 @@ internal fun AreaMenu(area: SearchPoint, recent: List<SearchPoint>, movedAway: B
         then()
     }
     BackHandler(enabled = expanded) { close() }
-    Box(modifier) {
+    Box(modifier.onGloballyPositioned { anchorBottom = (it.positionInWindow().y + it.size.height).roundToInt() }) {
         AreaChip(area, expanded, Modifier.focusRequester(chipFocus)) { expanded = !expanded }
-        DropdownMenu(expanded = expanded, onDismissRequest = { close() }, offset = DpOffset(0.dp, 6.dp),
+        DropdownMenu(expanded = expanded && anchorBottom > 0 && menuHeight > 0.dp, onDismissRequest = { close() }, offset = DpOffset(0.dp, 6.dp),
             shape = RoundedCornerShape(16.dp), containerColor = Color.White, shadowElevation = 8.dp,
-            modifier = Modifier.widthIn(min = 240.dp, max = 320.dp).semantics { testTagsAsResourceId = true }.testTag("area-menu")) {
+            modifier = Modifier.widthIn(min = 240.dp, max = 320.dp).heightIn(max = menuHeight).semantics { testTagsAsResourceId = true }.testTag("area-menu")) {
             AreaRow(stringResource(R.string.area_your_location), Icons.Default.MyLocation, "area-location",
                 selected = area.source == SearchSource.DEVICE, busy = locating) { close(useLocation) }
             AreaRow(stringResource(R.string.area_search_map), Icons.Default.Map, "area-map",

@@ -82,7 +82,7 @@ class TopControlsTest {
 
     private fun openCitySearch() {
         compose.onNodeWithTag("search-area").performClick()
-        compose.onNodeWithTag("area-choose-city").performClick()
+        compose.onNodeWithTag("area-choose-city").performScrollTo().performClick()
         waitForTag("city-query")
     }
 
@@ -166,7 +166,34 @@ class TopControlsTest {
         openCitySearch()
         compose.waitUntil(5_000) { keyboardVisible }
         compose.waitForIdle()
-        // Compose boundsInWindow uses a separate origin for each Popup. Compare Android screen bounds.
+        withWindowBounds { bounds ->
+            compose.waitUntil(5_000) { bounds("city-query") != null && bounds("city-results") != null }
+            val field = bounds("city-query")!!
+            val results = bounds("city-results")!!
+            assertTrue("City results $results cover their field $field", results.top >= field.bottom)
+            compose.onNodeWithTag("city-Edmonton").assertIsDisplayed()
+        }
+    }
+
+    @Test fun areaDropdownStaysBelowChipAndScrollsToCitySearch() {
+        show(fontScale = 1.3f)
+        withWindowBounds { bounds ->
+            // A focusable menu hides the underlying window from accessibility until it closes.
+            compose.waitUntil(5_000) { bounds("search-area") != null }
+            val chip = bounds("search-area")!!
+            compose.onNodeWithTag("search-area").performClick()
+            compose.waitForIdle()
+            compose.waitUntil(5_000) { bounds("area-menu") != null }
+            val menu = bounds("area-menu")!!
+            assertTrue("Area menu $menu covers its chip $chip", menu.top >= chip.bottom)
+            compose.onNodeWithTag("area-choose-city").performScrollTo().assertIsDisplayed().performClick()
+            waitForTag("city-query")
+            compose.onNodeWithTag("city-query").assertIsFocused()
+        }
+    }
+
+    /** Compose boundsInWindow has a separate origin for each Popup; use actual Android screen bounds. */
+    private fun withWindowBounds(block: ((String) -> android.graphics.Rect?) -> Unit) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val oldInfo = automation.serviceInfo
         val info = automation.serviceInfo
@@ -179,13 +206,7 @@ class TopControlsTest {
             return (0 until node.childCount).firstNotNullOfOrNull { find(node.getChild(it), tag) }
         }
         fun bounds(tag: String) = automation.windows.firstNotNullOfOrNull { find(it.root, tag) }
-        try {
-            compose.waitUntil(5_000) { bounds("city-query") != null && bounds("city-results") != null }
-            val field = bounds("city-query")!!
-            val results = bounds("city-results")!!
-            assertTrue("City results $results cover their field $field", results.top >= field.bottom)
-            compose.onNodeWithTag("city-Edmonton").assertIsDisplayed()
-        } finally { automation.serviceInfo = oldInfo }
+        try { block(::bounds) } finally { automation.serviceInfo = oldInfo }
     }
 
     @Test fun backHidesKeyboardThenLeavesCitySearch() {
