@@ -4,10 +4,12 @@ package ca.openfuel.prototype
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.view.View
 import android.view.accessibility.AccessibilityManager
 import android.webkit.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,7 +38,7 @@ internal const val MAP_BACKGROUND = 0xFFEDF1EA
 // The page draws with MapLibre; Leaflet, base-map.js and station-map-leaflet.js load only without WebGL.
 private const val MAP_HOST = "openfuel.ca"
 private const val MAP_PATH = "/_native-map/"
-private val mapFiles = mapOf(
+internal val mapFiles = mapOf(
     "station-map.html" to "text/html", "station-map.js" to "text/javascript", "map-style.js" to "text/javascript",
     "maplibre-gl.js" to "text/javascript", "maplibre-gl.css" to "text/css", "station-map-leaflet.js" to "text/javascript",
     "leaflet.js" to "text/javascript", "base-map.js" to "text/javascript", "leaflet.css" to "text/css")
@@ -60,14 +62,21 @@ private fun mapFile(context: Context, path: String?): WebResourceResponse? {
     return WebResourceResponse(type, "UTF-8", body)
 }
 
-/** Bundled map code shares one compositor for tiles and geographically anchored logos. */
+/**
+ * Bundled map code shares one compositor for tiles and geographically anchored logos.
+ * [padding] is the part of the map covered by controls; the map centres itself in the rest. [visible] is false while
+ * the map is covered, so it stops drawing. A tapped chip calls [onSelect] with its station and every station whose chip
+ * lies under it, front first.
+ */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, brandLogos: Map<String, Bitmap>, onMove: (SearchPoint) -> Unit,
-            onBaseMap: (String) -> Unit = {}, modifier: Modifier = Modifier, onSelect: (Station) -> Unit) {
+internal fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, brandLogos: Map<String, Bitmap>, onMove: (MapMove) -> Unit,
+            onBaseMap: (String) -> Unit = {}, modifier: Modifier = Modifier, padding: () -> PaddingValues = { PaddingValues() }, visible: () -> Boolean = { true },
+            onSelect: (Station, List<Station>) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val select by rememberUpdatedState(onSelect)
+    val inset by rememberUpdatedState(padding)
     val moved by rememberUpdatedState(onMove)
     val baseMap by rememberUpdatedState(onBaseMap)
     val stationIndex = remember(stations) { stations.associateBy { it.id } }
@@ -101,8 +110,9 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
             }
             addJavascriptInterface(MapBridge(
                 ready = { post { ready = true } },
-                moved = { lat, lon -> post { if (FuelCore.validStationPoint(lat, lon)) moved(SearchPoint(lat, lon, "Map area", SearchSource.MAP)) } },
-                selected = { id -> post { currentStations[id]?.let(select) } },
+                moved = { lat, lon, side -> post { if (FuelCore.validStationPoint(lat, lon)) moved(MapMove(SearchPoint(lat, lon, "Map area", SearchSource.MAP), side)) } },
+                // Ids that went stale between the tap and this post are dropped; a stale front chip selects nothing.
+                selected = { ids -> post { currentStations[ids.first()]?.let { front -> select(front, ids.mapNotNull(currentStations::get)) } } },
                 base = { name -> post { baseMap(name) } }
             ), "OpenFuelMap")
             // The page opens on the search area, so its first tiles are that area's rather than Canada's.
@@ -119,6 +129,12 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); web?.run { removeJavascriptInterface("OpenFuelMap"); stopLoading(); destroy() } }
+    }
+    // The padding moves the camera, so it is sent before the first setArea (this effect starts first) and again only
+    // when a control's size changes, never as the station sheet moves. CSS px are dp.
+    LaunchedEffect(ready) {
+        if (ready) snapshotFlow { inset().let { it.calculateTopPadding().value to it.calculateBottomPadding().value } }
+            .collect { (top, bottom) -> view?.evaluateJavascript("window.setPadding&&window.setPadding($top,$bottom);", null) }
     }
     // Search results never reset the user's camera or zoom. Only explicit recenter requests do.
     LaunchedEffect(ready, centerRequest) {
@@ -170,13 +186,29 @@ fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: Sear
     }
     val web = view
     if (web == null) Box(modifier.background(Color(MAP_BACKGROUND)))
-    else AndroidView(factory = { web }, modifier = modifier)
+    // An INVISIBLE WebView skips its drawing and Chromium pauses the page's frames; its scripts still run.
+    else AndroidView(factory = { web }, modifier = modifier, update = { it.visibility = if (visible()) View.VISIBLE else View.INVISIBLE })
 }
 
-internal class MapBridge(private val ready: () -> Unit, private val moved: (Double, Double) -> Unit, private val selected: (String) -> Unit,
+/**
+ * The map page's calls. [moved] gets the visible centre and the short side of the visible map in metres, or NaN when
+ * unknown. [selected] gets 1 to 12 station ids, the tapped one first.
+ */
+internal class MapBridge(private val ready: () -> Unit, private val moved: (Double, Double, Double) -> Unit, private val selected: (List<String>) -> Unit,
                          private val base: (String) -> Unit) {
     @JavascriptInterface fun ready() = ready.invoke()
-    @JavascriptInterface fun moved(latitude: Double, longitude: Double) = moved.invoke(latitude, longitude)
-    @JavascriptInterface fun selected(id: String) { if (id.length <= 120) selected.invoke(id) }
+    /** The Leaflet page, which does not report the size of its view. */
+    @JavascriptInterface fun moved(latitude: Double, longitude: Double) = moved.invoke(latitude, longitude, Double.NaN)
+    @JavascriptInterface fun movedView(latitude: Double, longitude: Double, shortSideMetres: Double) =
+        moved.invoke(latitude, longitude, shortSideMetres.takeIf { it.isFinite() && it > 0 } ?: Double.NaN)
+    /** The Leaflet page selects one station. */
+    @JavascriptInterface fun selected(id: String) { if (id.length in 1..120) selected.invoke(listOf(id)) }
+    /** A JSON array of the tapped station's id and those under it. Anything else is ignored. */
+    @JavascriptInterface fun selectedStack(json: String) {
+        val array = runCatching { JSONArray(json) }.getOrNull() ?: return
+        if (array.length() !in 1..12) return
+        val ids = (0 until array.length()).map { (array.opt(it) as? String)?.takeIf { id -> id.length in 1..120 } ?: return }
+        selected.invoke(ids)
+    }
     @JavascriptInterface fun base(name: String) { if (name == "openfreemap" || name == "openstreetmap") base.invoke(name) }
 }

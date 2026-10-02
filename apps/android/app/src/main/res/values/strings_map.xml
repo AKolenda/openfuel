@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <!-- Stations whose map chips lie under a tapped chip, in the station details. -->
+  <string name="also_at_this_spot">Also at this spot</string>
+  <string name="no_price">no price</string>
+</resources>

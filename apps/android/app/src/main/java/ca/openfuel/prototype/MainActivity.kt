@@ -110,13 +110,14 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var savedOnly by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf<Menu?>(null) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var stackIds by rememberSaveable { mutableStateOf(emptyList<String>()) } // A tapped map chip's stations, front first.
     var baseMap by remember { mutableStateOf<String?>(null) } // "openfreemap" or "openstreetmap" once shown.
     val chrome = remember { MapChrome() }
     val draftStore = remember { LocalDraftStore(context) }
     val loadedDrafts = remember { runCatching { draftStore.load() } }
     val drafts = remember { mutableStateListOf<StationProposal>().apply { addAll(loadedDrafts.getOrDefault(emptyList())) } }
     val visible = remember(stations, grade, sort, filters, query, savedOnly, favorites) { FuelCore.visible(stations, grade, sort, filters, query, savedOnly, favorites) }
-    val brandLogos = rememberBrandLogos(visible)
+    val brandLogos = rememberBrandLogos(stations) // The area's logos, so filtering the list loads none again.
     val bestId = visible.filter { it.price(grade) != null && it.age(grade) <= 60 }.minByOrNull { it.price(grade, filters.members)!! }?.id
     val selected = stations.find { it.id == selectedId }
     val snackbar = remember { SnackbarHostState() }
@@ -214,10 +215,9 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         favorites = if (station.id in favorites) favorites - station.id else favorites + station.id
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
-    /** Opens a station's details, from the list or the map. [stack] is the other stations whose chips lie under a tapped map chip; the details do not show it yet. */
-    @Suppress("UNUSED_PARAMETER")
+    /** Opens a station's details, from the list or the map. [stack] is every station at a tapped map chip, front first; the details offer the others. */
     fun openDetail(station: Station, stack: List<Station> = emptyList()) {
-        selectedId = station.id; menu = Menu.DETAIL
+        selectedId = station.id; stackIds = stack.map { it.id }; menu = Menu.DETAIL
     }
     /** The map was panned or zoomed. A move away from the loaded area keeps a pending location fix from replacing it. */
     fun onMapMove(move: MapMove) {
@@ -264,7 +264,9 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         // The shared map chrome follows the M3 sheet: Expanded is FULL, PartiallyExpanded HALF and Hidden COLLAPSED.
         val detent = when (stationSheet.currentValue) { SheetValue.Expanded -> Detent.FULL; SheetValue.PartiallyExpanded -> Detent.HALF; SheetValue.Hidden -> Detent.COLLAPSED }
         val halfTop = constraints.maxHeight - with(LocalDensity.current) { peekHeight.roundToPx() }
-        SideEffect { chrome.detent = detent; chrome.mapCovered = detent == Detent.FULL; chrome.halfTopPx = halfTop }
+        // The map shows again as soon as the sheet starts to leave FULL, so it is drawn by the time it is uncovered.
+        val covered = detent == Detent.FULL && stationSheet.targetValue == SheetValue.Expanded
+        SideEffect { chrome.detent = detent; chrome.mapCovered = covered; chrome.halfTopPx = halfTop }
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
             sheetPeekHeight = peekHeight,
@@ -314,10 +316,13 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     currentLocation = devicePoint,
                     centerRequest = centerRequest,
                     brandLogos = brandLogos,
-                    onMove = { onMapMove(MapMove(it)) },
+                    onMove = { onMapMove(it) },
                     onBaseMap = { baseMap = it },
                     modifier = Modifier.fillMaxSize().testTag("station-map"),
-                    onSelect = { openDetail(it) }
+                    // The map centres itself between the top controls and the half-open sheet, and stops drawing while covered.
+                    padding = with(LocalDensity.current) { { PaddingValues(top = chrome.topControlsBottomPx.toDp(), bottom = (this@BoxWithConstraints.constraints.maxHeight - chrome.halfTopPx).toDp()) } },
+                    visible = { !chrome.mapCovered },
+                    onSelect = { station, stack -> openDetail(station, stack) }
                 )
                 TopControls(
                     chrome = chrome,
@@ -383,7 +388,10 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
             reportError = reportError,
             reportLimited = reportLimited,
             report = { s, value -> report(s, value) },
-            saveDraft = { saveDraft(it) }
+            saveDraft = { saveDraft(it) },
+            stack = stackIds.mapNotNull { id -> stations.find { it.id == id } },
+            brandLogos = brandLogos,
+            showStation = { selectedId = it.id }
         )
     }
 }
