@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="maplibre-gl.css">
 <style>
 html,body{height:100%;width:100%;margin:0;background:#edf1ea}#map{position:fixed;inset:0}
+/* The map canvas takes focus back from closed menus and the keyboard; only real keyboard focus shows a ring. */
+.maplibregl-canvas:focus:not(:focus-visible){outline:none}
 .station-labels{position:fixed;inset:0;overflow:clip;pointer-events:none}.station-labels.exploring button{pointer-events:auto}.station-labels button{position:absolute;left:0;top:0;padding:0;border:0;background:none}
 /* Leaflet markers, used only without WebGL. */
 .station-pin{background:none;border:0}.station-chip{box-sizing:border-box;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid #285b43;border-radius:13px;background:white;color:#285b43;font:700 15px system-ui;box-shadow:0 1px 3px #0003}

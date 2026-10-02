@@ -1,22 +1,39 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package ca.openfuel.prototype
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** A station's price and report age, with directions, a price report, saving and corrections, in the menu sheet. */
+/**
+ * A station's price and report age, with directions, a price report, saving and corrections, in the menu sheet.
+ * [stack] is every station at the map chip that was tapped, front first; the others are offered under the address.
+ */
 @Composable
 internal fun StationDetail(s: Station, grade: Grade, filters: Filters, saved: Boolean, close: () -> Unit, go: () -> Unit, reportPrice: () -> Unit,
-                           save: () -> Unit, suggestCorrection: () -> Unit) {
+                           save: () -> Unit, suggestCorrection: () -> Unit, stack: List<Station>, brandLogos: Map<String, Bitmap>, showStation: (Station) -> Unit) {
     SheetTitle(s.name, close)
-    Text(s.address, color = Muted); Spacer(Modifier.height(18.dp))
+    Text(s.address, color = Muted)
+    val others = stack.filter { it.id != s.id }
+    if (others.isNotEmpty()) AlsoHere(others, grade, filters, brandLogos, showStation)
+    Spacer(Modifier.height(18.dp))
     Price(s.price(grade, filters.members), 42)
     Text(ageLabel(s.age(grade)), fontSize = 12.sp, color = Muted)
     if (s.price(grade) != null) Text("Community report · unverified", fontSize = 12.sp, color = Muted)
@@ -30,4 +47,19 @@ internal fun StationDetail(s: Station, grade: Grade, filters: Filters, saved: Bo
         OutlinedButton(onClick = save, Modifier.weight(1f)) { Text(stringResource(if (saved) R.string.unsave else R.string.save)) }
     }
     TextButton(onClick = suggestCorrection) { Text(stringResource(R.string.suggest_correction)) }
+}
+
+/** Stations whose map chips lie under the tapped one, which a tap cannot reach on the map. One line, so the price stays in view. */
+@Composable
+private fun AlsoHere(stations: List<Station>, grade: Grade, filters: Filters, brandLogos: Map<String, Bitmap>, show: (Station) -> Unit) {
+    Text(stringResource(R.string.also_at_this_spot), fontSize = 12.sp, color = Muted, modifier = Modifier.padding(top = 12.dp).semantics { heading() })
+    // The menu sheet is its own window, so its tags need their own resource-id switch for UI Automator.
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).semantics { testTagsAsResourceId = true }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        stations.forEach { o ->
+            val logo = o.brandLogoUrl?.let { brandLogos[it] }
+            AssistChip(onClick = { show(o) }, modifier = Modifier.testTag("stack-${o.id}"),
+                label = { Text(o.name + " · " + (o.price(grade, filters.members)?.let(FuelCore::priceText) ?: stringResource(R.string.no_price)), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingIcon = logo?.let { { Image(it.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(AssistChipDefaults.IconSize)) } })
+        }
+    }
 }

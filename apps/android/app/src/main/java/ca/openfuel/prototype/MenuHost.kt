@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 package ca.openfuel.prototype
 
+import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
@@ -101,7 +102,10 @@ internal fun MenuBody(
     reportError: String?,
     reportLimited: Boolean,
     report: (Station, Int) -> Unit,
-    saveDraft: (StationProposal) -> Unit
+    saveDraft: (StationProposal) -> Unit,
+    stack: List<Station>,
+    brandLogos: Map<String, Bitmap>,
+    showStation: (Station) -> Unit
 ) {
     when (menu) {
         Menu.LOCATION -> LocationSearch(repository, locationMessage, dismiss = { closeMenu {} }, useLocation = { closeMenu { requestLocation() } }) {
@@ -129,7 +133,8 @@ internal fun MenuBody(
         }
         Menu.DETAIL -> selected?.let { s ->
             StationDetail(s, grade, filters, saved = s.id in favorites, close = { closeMenu {} }, go = { go(s) },
-                reportPrice = openReport, save = { save(s) }, suggestCorrection = { openMenu(Menu.CORRECTION) })
+                reportPrice = openReport, save = { save(s) }, suggestCorrection = { openMenu(Menu.CORRECTION) },
+                stack = stack, brandLogos = brandLogos, showStation = showStation)
         }
         Menu.PRICE -> selected?.let { s -> PriceForm(s, grade, submitting, reportError, donate.takeIf { reportLimited }, close = { if (!submitting) closeMenu {} }) { value ->
             report(s, value)
