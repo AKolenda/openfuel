@@ -135,10 +135,11 @@ class NativeScreensTest {
         runBlocking { repository.refresh(city) }
         context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
-            compose.onNodeWithText("Calgary").assertExists()
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("search-area").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("search-area").assertContentDescriptionEquals("Area: Calgary")
             compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("Calgary").assertExists()
+            compose.onNodeWithTag("search-area").assertContentDescriptionEquals("Area: Calgary")
             screenshot("android-map-only")
             compose.onNodeWithTag("show-stations").performClick()
             compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isEmpty() }
@@ -159,13 +160,14 @@ class NativeScreensTest {
         assertFalse(initial.cached)
         assertTrue(initial.stations.isEmpty())
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Find fuel around you").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Find fuel around you").assertExists()
             // No base map (and no tile request) sits behind the first-arrival question.
             Thread.sleep(1_500)
             assertFalse("Map loaded before an area was known", mapView(scenario))
             compose.onNodeWithText("Choose a city").performClick()
-            compose.onNodeWithText("Choose your area").assertExists()
-            compose.onNodeWithText("Edmonton · chosen city").assertExists()
+            compose.onNodeWithTag("city-query").assertIsDisplayed()
+            compose.onNodeWithTag("city-Edmonton").assertIsDisplayed()
             screenshot("android-first-arrival")
             assertFalse(mapView(scenario))
             compose.onNodeWithTag("city-Edmonton").performClick()
@@ -187,7 +189,7 @@ class NativeScreensTest {
             stationCount = stations.size
             assertTrue("Seeded nearby stations expected", stations.isNotEmpty())
             assertTrue(stations.all { FuelCore.validStationPoint(it.latitude,it.longitude) })
-            compose.waitUntil(40_000) { compose.onAllNodesWithText("Your location").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(40_000) { compose.onAllNodesWithContentDescription("Area: Your location").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(40_000) { compose.onAllNodesWithTag("station-${stations.first().id}").fetchSemanticsNodes().isNotEmpty() }
             // The credit names OpenStreetMap on either base map (OpenFreeMap or the raster fallback).
             compose.onNodeWithText("© OpenStreetMap contributors", substring = true).assertExists()

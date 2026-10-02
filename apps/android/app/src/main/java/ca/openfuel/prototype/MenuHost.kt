@@ -77,10 +77,6 @@ internal fun MenuBody(
     menu: Menu,
     closeMenu: (after: () -> Unit) -> Unit,
     openMenu: (Menu) -> Unit,
-    repository: StationRepository,
-    locationMessage: String?,
-    requestLocation: () -> Unit,
-    chooseArea: (SearchPoint) -> Unit,
     filters: Filters,
     provider: MapProvider,
     fullWidth: Boolean,
@@ -108,9 +104,6 @@ internal fun MenuBody(
     showStation: (Station) -> Unit
 ) {
     when (menu) {
-        Menu.LOCATION -> LocationSearch(repository, locationMessage, dismiss = { closeMenu {} }, useLocation = { closeMenu { requestLocation() } }) {
-            closeMenu { chooseArea(it) }
-        }
         Menu.SETTINGS -> SettingsContent(filters, provider, fullWidth, grade,
             changeGrade = changeGrade, about = { openMenu(Menu.ABOUT) },
             donate = donate, refresh = { refreshNow(); closeMenu {} },

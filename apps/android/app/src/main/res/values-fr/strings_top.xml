@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+  <string name="clear_search">Effacer la recherche</string>
+  <string name="saved_only_tip">Afficher seulement les stations enregistrées</string>
+  <string name="saved_only_on">Stations enregistrées seulement</string>
+  <string name="saved_only_off">Toutes les stations</string>
+  <string name="area_chip">Zone : %1$s</string>
+  <string name="area_expanded">Développé</string>
+  <string name="area_collapsed">Réduit</string>
+  <string name="area_map">Zone de la carte</string>
+  <string name="area_none">Choisir une zone</string>
+  <string name="area_your_location">Votre position</string>
+  <string name="area_last_location">Dernière zone localisée</string>
+  <string name="area_search_map">Chercher dans cette zone de la carte</string>
+  <string name="area_recent">Récentes</string>
+  <string name="area_cities">Villes</string>
+  <string name="area_choose_city">Choisir une ville…</string>
+  <string name="city_hint">Ville ou localité</string>
+  <string name="city_close">Fermer la recherche de ville</string>
+  <string name="city_searching">Recherche…</string>
+  <string name="city_none">Aucune ville trouvée</string>
+  <string name="city_failed">Recherche de ville indisponible</string>
+  <string name="city_retry">Réessayer</string>
+  <plurals name="city_count">
+    <item quantity="one">%1$d ville</item>
+    <item quantity="many">%1$d villes</item>
+    <item quantity="other">%1$d villes</item>
+  </plurals>
+  <string name="search_here">Chercher ici</string>
+  <string name="search_here_busy">Recherche…</string>
+  <string name="search_here_retry">Réessayer</string>
+  <string name="location_off">Position indisponible. Activez la localisation de l’appareil ou choisissez une ville.</string>
+  <string name="location_failed">Position indisponible. Réessayez ou choisissez une ville.</string>
+  <string name="location_declined">L’accès à la position a été refusé. Vous pouvez plutôt choisir une ville.</string>
+  <string name="choose_city">Choisir une ville</string>
+  <string name="intro_title">Trouver du carburant près de vous</string>
+  <string name="intro_body">Utilisez votre position au premier plan pour trouver les vraies stations à proximité. Vos coordonnées de recherche sont envoyées à OpenFuel ; les tuiles de la carte viennent d’OpenFreeMap. Aucun suivi en arrière-plan. Vous pouvez aussi choisir une ville.</string>
+  <string name="intro_use_location">Utiliser ma position</string>
+</resources>
