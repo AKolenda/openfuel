@@ -50,12 +50,15 @@ def test_no_inherited_active_client_spdx():
 def test_android_xml_and_bilingual_resources():
     folder=ROOT/'apps/android/app/src/main'
     for p in folder.rglob('*.xml'): ET.parse(p)
-    en=ET.parse(folder/'res/values/strings.xml').getroot()
-    fr=ET.parse(folder/'res/values-fr/strings.xml').getroot()
-    keys={e.attrib['name'] for e in en}
-    assert keys=={e.attrib['name'] for e in fr}
+    # Android merges resources by type and name, regardless of the XML filename. Each UI package
+    # keeps its own translated strings file, and counts use plurals rather than plain strings.
+    def text_resources(locale):
+        return {(e.tag,e.attrib['name']) for p in (folder/'res'/locale).glob('*.xml')
+                for e in ET.parse(p).getroot() if e.tag in {'string','plurals'}}
+    en=text_resources('values')
+    assert en==text_resources('values-fr')
     source='\n'.join(p.read_text() for p in folder.rglob('*.kt'))
-    assert set(re.findall(r'R\.string\.(\w+)',source))<=keys
+    assert set(re.findall(r'R\.(string|plurals)\.(\w+)',source))<=en
 
 def test_android_source_privacy_boundary():
     manifest=ET.parse(ROOT/'apps/android/app/src/main/AndroidManifest.xml').getroot()
