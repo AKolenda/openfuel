@@ -167,12 +167,14 @@ def release_assets() -> Path:
     """Collects a GitHub release's downloads in dist/release: the Android APK, its checksum and the source archive.
 
     The website links to https://github.com/AKolenda/openfuel/releases/latest/download/<name>, so a release
-    must attach exactly these names and must not be marked as a pre-release.
+    must attach exactly these names and must not be marked as a pre-release. The APK is the release build:
+    optimized, not debuggable, and signed with this machine's Android debug key like earlier downloads, so
+    build it where they were built or installed copies cannot update in place.
     """
     out=DIST/'release'
     if out.exists(): shutil.rmtree(out)
     out.mkdir(parents=True)
-    apk=Path(os.environ.get('OPENFUEL_ANDROID_APK', ROOT/'apps/android/app/build/outputs/apk/debug/app-debug.apk'))
+    apk=Path(os.environ.get('OPENFUEL_ANDROID_APK', ROOT/'apps/android/app/build/outputs/apk/release/app-release.apk'))
     if not apk.is_file(): raise RuntimeError('Build the Android APK first (python3 tools/project.py android-build) or set OPENFUEL_ANDROID_APK.')
     shutil.copyfile(apk,out/'openfuel-android.apk')
     (out/'openfuel-android.apk.sha256').write_text(hashlib.sha256(apk.read_bytes()).hexdigest()+'  openfuel-android.apk\n')
@@ -235,7 +237,7 @@ def android_build():
     if 'Gradle 8.11.1\n' not in completed.stdout:raise RuntimeError('Select Gradle 8.11.1; the imported Android project pins AGP 8.9.2.')
     if not (os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or (COMPONENTS['android']/'local.properties').exists()):
         raise ToolUnavailable('Android SDK path missing. Install API 35/build-tools 35.0.0, then set ANDROID_HOME.')
-    run([gradle,'--no-daemon',':app:testDebugUnitTest',':app:assembleDebug'],cwd=COMPONENTS['android'],evidence='android-build')
+    run([gradle,'--no-daemon',':app:testDebugUnitTest',':app:assembleDebug',':app:assembleRelease'],cwd=COMPONENTS['android'],evidence='android-build')
 
 def ios_generate():
     run([tool('xcodegen'),'generate','--spec','project.yml'],cwd=COMPONENTS['ios'])

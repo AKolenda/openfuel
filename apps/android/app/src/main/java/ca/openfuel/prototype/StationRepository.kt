@@ -3,10 +3,12 @@ package ca.openfuel.prototype
 
 import android.content.Context
 import android.net.http.HttpResponseCache
+import android.util.AtomicFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +48,8 @@ data class SearchPoint(val latitude: Double, val longitude: Double, val label: S
 class StationRepository(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE)
+    // The last loaded stations. The saved area and "saved-at" stay in the preferences.
+    private val snapshotFile = AtomicFile(File(context.noBackupFilesDir, "stations-v3.json"))
     private val base = BuildConfig.API_BASE_URL.trimEnd('/')
     val configured = !URL(base).host.endsWith(".invalid")
     // Read when a report is sent, so creating a repository never waits for the preferences file.
@@ -66,25 +70,29 @@ class StationRepository(context: Context) {
             .takeIf { FuelCore.validStationPoint(it.latitude, it.longitude) }
     }.getOrNull()
 
-    fun initial(): Snapshot = runCatching {
+    fun initial(): Snapshot {
         val point = savedArea() ?: return Snapshot(emptyList(), false)
-        if (!prefs.contains("snapshot-latitude") && prefs.contains("stations")) prefs.edit()
-            .putString("snapshot-latitude", point.latitude.toString()).putString("snapshot-longitude", point.longitude.toString()).apply()
-        // Migrate old snapshots that retained an unnecessarily precise search coordinate.
-        rememberArea(point)
-        val body = prefs.getString("stations", null) ?: return Snapshot(emptyList(), false, point)
-        val cachedLat = prefs.getString("snapshot-latitude", null)?.toDoubleOrNull() ?: point.latitude
-        val cachedLon = prefs.getString("snapshot-longitude", null)?.toDoubleOrNull() ?: point.longitude
-        if (round(cachedLat * 100) / 100 != point.latitude || round(cachedLon * 100) / 100 != point.longitude) return Snapshot(emptyList(), false, point)
-        val elapsed = ((System.currentTimeMillis() - prefs.getLong("saved-at", System.currentTimeMillis())) / 60_000)
-            .coerceIn(0, 1_000_000).toInt()
-        val cached = parseStations(JSONObject(body)).map { station ->
-            station.copy(ages = station.ages.mapValues { (_, age) -> (age.toLong() + elapsed).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() })
-        }
-        // Migrate the whole snapshot, including distances that otherwise reveal a finer origin.
-        if (!prefs.getBoolean("coarse-snapshot-v3", false)) cache(cached, point)
-        Snapshot(withOwnReports(cached.map { it.copy(distanceMetres = approximateDistanceMetres(point, it.latitude!!, it.longitude!!)) }), true, point)
-    }.getOrElse { Snapshot(emptyList(), false) }
+        return runCatching {
+            if (!prefs.contains("snapshot-latitude") && prefs.contains("stations")) prefs.edit()
+                .putString("snapshot-latitude", point.latitude.toString()).putString("snapshot-longitude", point.longitude.toString()).apply()
+            // Migrate old snapshots that retained an unnecessarily precise search coordinate.
+            rememberArea(point)
+            // The snapshot file names its own area and time. Earlier versions kept the snapshot in preferences.
+            val file = synchronized(snapshotLock) { runCatching { JSONObject(String(snapshotFile.readFully(), Charsets.UTF_8)) }.getOrNull() }
+            val body = file ?: prefs.getString("stations", null)?.let { JSONObject(it) } ?: return Snapshot(emptyList(), false, point)
+            val cachedLat = file?.getDouble("latitude") ?: prefs.getString("snapshot-latitude", null)?.toDoubleOrNull() ?: point.latitude
+            val cachedLon = file?.getDouble("longitude") ?: prefs.getString("snapshot-longitude", null)?.toDoubleOrNull() ?: point.longitude
+            if (round(cachedLat * 100) / 100 != point.latitude || round(cachedLon * 100) / 100 != point.longitude) return Snapshot(emptyList(), false, point)
+            val savedAt = file?.getLong("savedAt") ?: prefs.getLong("saved-at", System.currentTimeMillis())
+            val elapsed = ((System.currentTimeMillis() - savedAt) / 60_000).coerceIn(0, 1_000_000).toInt()
+            val cached = parseStations(body).map { station ->
+                station.copy(ages = station.ages.mapValues { (_, age) -> (age.toLong() + elapsed).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() })
+            }
+            // Move a snapshot from the preferences to the file, including distances that otherwise reveal a finer origin.
+            if (file == null) runCatching { cache(cached, point, rememberSearchArea = false) }
+            Snapshot(withOwnReports(cached.map { it.copy(distanceMetres = approximateDistanceMetres(point, it.latitude!!, it.longitude!!)) }), true, point)
+        }.getOrElse { Snapshot(emptyList(), false, point) }
+    }
 
     fun rememberArea(point: SearchPoint) {
         val saved = point.forStorage()
@@ -94,11 +102,11 @@ class StationRepository(context: Context) {
     }
 
     suspend fun searchCities(query: String): List<SearchPoint> = withContext(Dispatchers.IO) {
-        val body = request("/geocode?q=" + java.net.URLEncoder.encode(query.take(100), "UTF-8"))
+        val body = CityLookup.get(appContext).search(base, query)
         val results = body.getJSONArray("results")
         (0 until minOf(results.length(), 12)).map { i ->
             val place = results.getJSONObject(i)
-            SearchPoint(place.getDouble("latitude"), place.getDouble("longitude"), place.getString("name") + " · chosen area")
+            SearchPoint(place.getDouble("latitude"), place.getDouble("longitude"), shortPlaceName(place.getString("name")))
         }.filter { FuelCore.validStationPoint(it.latitude, it.longitude) }
     }
 
@@ -126,7 +134,7 @@ class StationRepository(context: Context) {
 
     suspend fun refresh(point: SearchPoint = initial().point, saveSnapshot: Boolean = true, fresh: Boolean = false): List<Station> {
         val stations = prefetch(point, fresh).await()
-        if (saveSnapshot) withContext(Dispatchers.IO) { cache(stations, point) }
+        if (saveSnapshot) withContext(cacheDispatcher) { cache(stations, point) }
         return stations
     }
 
@@ -154,8 +162,9 @@ class StationRepository(context: Context) {
             saveOwnReports(ownReports(confirmedAt).filterNot { it.stationId == station.id && it.grade == grade } +
                 OwnReport(station.id, grade, price, observedAt, confirmedAt))
         }
-        val snapshot = initial()
-        cache(snapshot.stations, snapshot.point)
+        val snapshot = withContext(cacheDispatcher) {
+            initial().also { cache(it.stations, it.point, rememberSearchArea = false) }
+        }
         prefs.edit().remove("pending-report-key").remove("pending-report-id").putLong("reported-at", confirmedAt).apply()
         snapshot.stations
     }
@@ -228,7 +237,8 @@ class StationRepository(context: Context) {
         } finally { connection.disconnect() }
     }
 
-    internal fun cache(stations: List<Station>, point: SearchPoint) {
+    /** Saves [stations] as the snapshot of [point]'s area. It writes a file: call it off the UI thread, such as on [cacheDispatcher]. */
+    internal fun cache(stations: List<Station>, point: SearchPoint, rememberSearchArea: Boolean = true) {
         val storedPoint = point.forStorage()
         val array = JSONArray()
         stations.forEach { s ->
@@ -242,10 +252,18 @@ class StationRepository(context: Context) {
                 .put("brandKey", s.brandKey ?: JSONObject.NULL).put("brandLogoUrl", s.brandLogoUrl ?: JSONObject.NULL)
                 .put("open", s.open ?: JSONObject.NULL).put("prices", prices).put("ages", ages).put("observedAt", observed).put("priceSources", sources).put("synthetic", false))
         }
-        rememberArea(storedPoint)
-        prefs.edit().putString("stations", JSONObject().put("is_demo", false).put("stations", array).toString())
-            .putString("snapshot-latitude", storedPoint.latitude.toString()).putString("snapshot-longitude", storedPoint.longitude.toString())
-            .putBoolean("coarse-snapshot-v3", true).putLong("saved-at", System.currentTimeMillis()).apply()
+        val savedAt = System.currentTimeMillis()
+        val body = JSONObject().put("is_demo", false).put("latitude", storedPoint.latitude).put("longitude", storedPoint.longitude)
+            .put("savedAt", savedAt).put("stations", array).toString().toByteArray(Charsets.UTF_8)
+        synchronized(snapshotLock) {
+            val output = snapshotFile.startWrite()
+            try { output.write(body); snapshotFile.finishWrite(output) }
+            catch (e: Exception) { snapshotFile.failWrite(output); throw e }
+            if (rememberSearchArea) rememberArea(storedPoint)
+            // Earlier versions kept the snapshot in the preferences, which are rewritten whole on every change.
+            prefs.edit().remove("stations").remove("snapshot-latitude").remove("snapshot-longitude").remove("coarse-snapshot-v3")
+                .putLong("saved-at", savedAt).apply()
+        }
     }
 
     internal fun parseStations(body: JSONObject): List<Station> {
@@ -288,6 +306,10 @@ class StationRepository(context: Context) {
         private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val stationRequests = SharedLoads<Pair<Double, Double>, Pair<String, List<Station>>>(background)
         private val ownReportsLock = Any()
+        private val snapshotLock = Any()
+        /** Runs snapshot writes one at a time and in order, so with each refresh cancelling the one before it, an earlier load's snapshot never replaces a later one's. */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val cacheDispatcher = Dispatchers.IO.limitedParallelism(1)
 
         /** Lets HttpURLConnection honour the API's Cache-Control: 15 s for stations, a day for city searches. */
         @Synchronized fun installHttpCache(context: Context) {

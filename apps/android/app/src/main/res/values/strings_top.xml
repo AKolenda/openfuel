@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- The search card, the area chip and its menu, the city search and the "Search here" pill. -->
+<resources>
+  <string name="clear_search">Clear search</string>
+  <string name="saved_only_tip">Show saved stations only</string>
+  <string name="saved_only_on">Saved stations only</string>
+  <string name="saved_only_off">All stations</string>
+  <string name="area_chip">Area: %1$s</string>
+  <string name="area_expanded">Expanded</string>
+  <string name="area_collapsed">Collapsed</string>
+  <string name="area_map">Map area</string>
+  <string name="area_none">Choose an area</string>
+  <string name="area_your_location">Your location</string>
+  <string name="area_last_location">Last location area</string>
+  <string name="area_search_map">Search this map area</string>
+  <string name="area_recent">Recent</string>
+  <string name="area_cities">Cities</string>
+  <string name="area_choose_city">Choose a city…</string>
+  <string name="city_hint">City or town</string>
+  <string name="city_close">Close city search</string>
+  <string name="city_searching">Searching…</string>
+  <string name="city_none">No cities found</string>
+  <string name="city_failed">City search unavailable</string>
+  <string name="city_retry">Retry</string>
+  <plurals name="city_count">
+    <item quantity="one">%1$d city</item>
+    <item quantity="other">%1$d cities</item>
+  </plurals>
+  <string name="search_here">Search here</string>
+  <string name="search_here_busy">Searching…</string>
+  <string name="search_here_retry">Retry</string>
+  <string name="location_off">Location unavailable. Turn on device location or choose a city.</string>
+  <string name="location_failed">Location unavailable. Try again or choose a city.</string>
+  <string name="location_declined">Location permission was declined. You can choose a city instead.</string>
+  <string name="choose_city">Choose a city</string>
+  <string name="intro_title">Find fuel around you</string>
+  <string name="intro_body">Use your foreground location to find real nearby stations. Your search coordinates go to OpenFuel; map tiles are supplied by OpenFreeMap. No background tracking. You can also choose a city.</string>
+  <string name="intro_use_location">Use my location</string>
+</resources>

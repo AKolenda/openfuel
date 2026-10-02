@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- The station sheet and the map controls that travel with it. -->
+<resources>
+  <string name="sheet_title">%1$s à proximité</string>
+  <plurals name="sheet_station_count">
+    <item quantity="one">%1$d station · CAD ¢/L</item>
+    <item quantity="many">%1$d stations · CAD ¢/L</item>
+    <item quantity="other">%1$d stations · CAD ¢/L</item>
+  </plurals>
+  <string name="sheet_station_list">Liste des stations</string>
+  <string name="sheet_expanded">Agrandie</string>
+  <string name="sheet_half_open">Ouverte à moitié</string>
+  <string name="sheet_collapsed">Réduite</string>
+  <string name="sheet_expand">Agrandir</string>
+  <string name="sheet_collapse">Réduire</string>
+  <string name="sheet_move_full">Agrandir la liste des stations</string>
+  <string name="sheet_move_half">Ouvrir la liste des stations à moitié</string>
+  <string name="sheet_move_collapsed">Réduire la liste des stations</string>
+  <string name="sheet_refresh">Actualiser les stations</string>
+  <string name="sheet_refreshing">Actualisation</string>
+  <string name="sheet_sort">Tri : %1$s</string>
+  <string name="sheet_nearest_help">Les plus proches de la zone sélectionnée</string>
+  <string name="sheet_no_report">Aucun signalement</string>
+  <string name="sheet_offline">Hors ligne · stations en mémoire</string>
+  <string name="sheet_cached">Stations en mémoire</string>
+  <string name="sheet_no_saved">Aucune station enregistrée ici. Ouvrez une station et touchez Enregistrer.</string>
+  <string name="sheet_show_all">Tout afficher</string>
+  <string name="sheet_use_location">Utiliser ma position</string>
+  <string name="sheet_settings_help">Touchez Actualiser dans la liste des stations pour mettre les prix à jour. Faites glisser la liste vers le haut ou vers le bas, ou touchez son bord supérieur.</string>
+</resources>

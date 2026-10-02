@@ -4,7 +4,6 @@
   <string name="fuel_nearby">Fuel nearby</string>
   <string name="list">List</string>
   <string name="cards">Cards</string>
-  <string name="station_count">%1$d stations · CAD ¢/L</string>
   <string name="no_matches">No matching stations. Try another search or adjust your filters.</string>
   <string name="reset_filters">Reset search and filters</string>
   <string name="suggest_station">Suggest a station</string>

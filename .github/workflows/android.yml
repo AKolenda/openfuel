@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 jobs:
-  debug-apk:
+  android-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -29,16 +29,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Test and assemble native debug APK
+      - name: Test and assemble native debug and release APKs
         run: python tools/project.py android-build
-      - name: Fingerprint debug APK
-        run: sha256sum apps/android/app/build/outputs/apk/debug/app-debug.apk > apps/android/app/build/outputs/apk/debug/SHA256SUMS
+      # The release APK is the download. This runner signs it with its own debug key, so the artifact is for
+      # checking the build; a published APK must be built where earlier downloads were signed.
+      - name: Fingerprint release APK
+        run: sha256sum apps/android/app/build/outputs/apk/release/app-release.apk > apps/android/app/build/outputs/apk/release/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: openfuel-debug-apk
+          name: openfuel-android-apk
           path: |
-            apps/android/app/build/outputs/apk/debug/app-debug.apk
-            apps/android/app/build/outputs/apk/debug/SHA256SUMS
+            apps/android/app/build/outputs/apk/release/app-release.apk
+            apps/android/app/build/outputs/apk/release/SHA256SUMS
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()

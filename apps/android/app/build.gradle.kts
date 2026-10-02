@@ -42,8 +42,8 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"$publicApiBase\"")
         buildConfigField("String", "DATA_MODE", "\"$dataMode\"")
         buildConfigField("String", "DONATE_URL", "\"$donateUrl\"")
-        versionCode = 6
-        versionName = "0.3.2-live"
+        versionCode = 7
+        versionName = "0.3.3-live"
     }
     sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/vendor"))
     sourceSets["main"].assets.srcDir(rootProject.file("../web/preview/map"))
@@ -59,7 +59,14 @@ android {
             isShrinkResources = compactApk
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
-        release { isMinifyEnabled = false }
+        // The downloadable APK: optimized and not debuggable. It is signed with the same local debug key as
+        // earlier downloads, so installed copies update in place and keep their favorites and drafts.
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 }
 dependencies {

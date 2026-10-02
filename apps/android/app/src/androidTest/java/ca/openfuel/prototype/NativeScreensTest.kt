@@ -13,6 +13,7 @@ import androidx.test.rule.GrantPermissionRule
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.getOrNull
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
@@ -54,13 +55,10 @@ class NativeScreensTest {
             compose.waitUntil(40_000) { evaluate(scenario, "document.querySelectorAll('.station-labels button').length").toInt() > 0 }
             compose.onNodeWithTag("layout-cards").performTouchInput { click() }
             compose.onNodeWithTag("layout-cards").assertIsSelected()
-            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithTag("show-stations").assertIsDisplayed().performTouchInput { click() }
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isEmpty() }
-            compose.onNodeWithTag("layout-list").assertIsSelected()
-            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
+            // A fling down the header collapses the sheet to its header; the chosen layout stays.
+            compose.onNodeWithTag("station-sheet-header").performTouchInput { swipeDown(durationMillis = 150) }
+            compose.waitUntil(5_000) { sheetState() == context.getString(R.string.sheet_collapsed) }
+            compose.onNodeWithTag("layout-cards").assertIsSelected()
             assertTrue("Map has a usable viewport: " + evaluate(scenario, "JSON.stringify([map.getContainer().clientWidth,map.getContainer().clientHeight])"), evaluate(scenario, "map.getContainer().clientHeight").toDouble() > 200)
             val before = evaluate(scenario, "map.getCenter().lng").toDouble()
             val previousIDs = StationRepository(context).initial().stations.map { it.id }.toSet()
@@ -75,7 +73,7 @@ class NativeScreensTest {
             assertEquals(longitude, StationRepository(context).initial().point.longitude, .0051)
             assertEquals(longitude, evaluate(scenario, "map.getCenter().lng").toDouble(), .00001)
             assertEquals(zoom, evaluate(scenario, "map.getZoom()").toDouble(), 0.0)
-            compose.onNodeWithTag("show-stations").assertIsDisplayed()
+            assertEquals(context.getString(R.string.sheet_collapsed), sheetState())
             // Chips are drawn in the map's own WebGL frame, so they cannot drift from it. After an animated pan, a
             // tap on a station's logo centre, found from its TalkBack button, opens a station's details.
             evaluate(scenario, "map.panBy([100,50],{duration:400});true")
@@ -118,30 +116,36 @@ class NativeScreensTest {
             assertEquals("Expanding/scrolling never resizes map tiles", viewport, evaluate(scenario, "JSON.stringify([map.getContainer().clientWidth,map.getContainer().clientHeight])"))
             assertEquals(camera, evaluate(scenario, "JSON.stringify(map.getCenter())"))
             compose.onNodeWithTag("station-list").performScrollToIndex(0)
-            compose.waitUntil(40_000) { compose.onNodeWithTag("pull-refresh").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] == "Idle" }
-            val beforeRefresh = context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE).getLong("saved-at", 0)
-            // A successful GET refresh updates the saved snapshot; no test price is submitted.
-            compose.onNodeWithTag("station-list").performTouchInput { swipe(start = Offset(center.x, 30f), end = Offset(center.x, height*.7f), durationMillis = 500) }
-            compose.waitUntil(40_000) { context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE).getLong("saved-at", 0) > beforeRefresh }
-            compose.onNodeWithTag("show-stations").assertDoesNotExist()
+            compose.waitUntil(40_000) { compose.onAllNodes(hasTestTag("refresh-stations") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+            val savedAt = { context.getSharedPreferences("openfuel-live-v2", Context.MODE_PRIVATE).getLong("saved-at", 0) }
+            val beforeRefresh = savedAt()
+            // A successful GET refresh updates the saved snapshot; no test price is submitted. The button shows a
+            // spinner, and is disabled, while the stations load.
+            compose.onNodeWithTag("refresh-stations").performTouchInput { click() }
+            compose.waitUntil(5_000) { savedAt() > beforeRefresh || compose.onNodeWithTag("refresh-stations").fetchSemanticsNode().config
+                .getOrNull(androidx.compose.ui.semantics.SemanticsProperties.StateDescription) == context.getString(R.string.sheet_refreshing) }
+            compose.waitUntil(40_000) { savedAt() > beforeRefresh }
+            assertEquals(context.getString(R.string.sheet_expanded), sheetState())
             assertEquals(camera, evaluate(scenario, "JSON.stringify(map.getCenter())"))
             screenshot("android-uncluttered-list")
         }
     }
 
-    @Test fun chosenCityRestoresAndStationSheetCanFullyHide() {
+    @Test fun chosenCityRestoresAndStationSheetCanCollapse() {
         val city = SearchPoint(51.0447, -114.0719, "Calgary · chosen city", SearchSource.CITY)
         val repository = StationRepository(context)
         runBlocking { repository.refresh(city) }
         context.getSharedPreferences("openfuel-prototype", Context.MODE_PRIVATE).edit().clear().putBoolean("location-intro-seen", true).commit()
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
-            compose.onNodeWithText("Calgary").assertExists()
-            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { swipe(start = center, end = Offset(center.x, center.y + 600), durationMillis = 200) }
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isNotEmpty() }
-            compose.onNodeWithText("Calgary").assertExists()
+            compose.waitUntil(5_000) { compose.onAllNodesWithTag("search-area").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("search-area").assertContentDescriptionEquals("Area: Calgary")
+            compose.onNodeWithTag("station-sheet-header").performTouchInput { swipeDown(durationMillis = 150) }
+            compose.waitUntil(5_000) { sheetState() == context.getString(R.string.sheet_collapsed) }
+            compose.onNodeWithTag("search-area").assertContentDescriptionEquals("Area: Calgary")
             screenshot("android-map-only")
-            compose.onNodeWithTag("show-stations").performClick()
-            compose.waitUntil(5_000) { compose.onAllNodesWithTag("show-stations").fetchSemanticsNodes().isEmpty() }
+            // A tap on the collapsed header opens the sheet halfway.
+            compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).performTouchInput { click() }
+            compose.waitUntil(5_000) { sheetState() == context.getString(R.string.sheet_half_open) }
             assertEquals(SearchSource.CITY, repository.initial().point.source)
             assertEquals("Calgary · chosen city", repository.initial().point.label)
             assertEquals(51.04, repository.initial().point.latitude, 0.0)
@@ -159,13 +163,14 @@ class NativeScreensTest {
         assertFalse(initial.cached)
         assertTrue(initial.stations.isEmpty())
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Find fuel around you").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Find fuel around you").assertExists()
             // No base map (and no tile request) sits behind the first-arrival question.
             Thread.sleep(1_500)
             assertFalse("Map loaded before an area was known", mapView(scenario))
             compose.onNodeWithText("Choose a city").performClick()
-            compose.onNodeWithText("Choose your area").assertExists()
-            compose.onNodeWithText("Edmonton · chosen city").assertExists()
+            compose.onNodeWithTag("city-query").assertIsDisplayed()
+            compose.onNodeWithTag("city-Edmonton").assertIsDisplayed()
             screenshot("android-first-arrival")
             assertFalse(mapView(scenario))
             compose.onNodeWithTag("city-Edmonton").performClick()
@@ -187,7 +192,7 @@ class NativeScreensTest {
             stationCount = stations.size
             assertTrue("Seeded nearby stations expected", stations.isNotEmpty())
             assertTrue(stations.all { FuelCore.validStationPoint(it.latitude,it.longitude) })
-            compose.waitUntil(40_000) { compose.onAllNodesWithText("Your location").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(40_000) { compose.onAllNodesWithContentDescription("Area: Your location").fetchSemanticsNodes().isNotEmpty() }
             compose.waitUntil(40_000) { compose.onAllNodesWithTag("station-${stations.first().id}").fetchSemanticsNodes().isNotEmpty() }
             // The credit names OpenStreetMap on either base map (OpenFreeMap or the raster fallback).
             compose.onNodeWithText("© OpenStreetMap contributors", substring = true).assertExists()
@@ -203,6 +208,10 @@ class NativeScreensTest {
         assertTrue(saved.cached)
         assertEquals(stationCount, saved.stations.size)
     }
+
+    /** The station sheet's stop, as TalkBack reads it. */
+    private fun sheetState() = compose.onNodeWithTag("station-sheet-handle", useUnmergedTree = true).fetchSemanticsNode().config
+        .getOrNull(androidx.compose.ui.semantics.SemanticsProperties.StateDescription)
 
     private fun screenshot(name: String) {
         val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())

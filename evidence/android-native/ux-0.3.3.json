@@ -1,0 +1,129 @@
+{
+  "version": "0.3.3-live",
+  "version_code": 7,
+  "bytes": 1965938,
+  "sha256": "5e19990d7dd854d1f4a1b7d05225c414ca184978b208278449fa1556da38bdeb",
+  "publication": "Prepared locally; no GitHub release published.",
+  "date": "2026-10-02",
+  "api": "https://openfuel.ca/api/v1",
+  "cleartext": false,
+  "debuggable": false,
+  "certificate_sha256": "be7334a1706de518819866752772c2536ce0b7f687c8673925a3c49dbea5be87",
+  "emulator": {
+    "api": 35,
+    "abi": "x86_64",
+    "renderer": "SwiftShader",
+    "viewports": [
+      "1080x2400 at density 420, font scale 1.0",
+      "720x1280 at density 320, font scale 1.3"
+    ]
+  },
+  "validation": {
+    "unit_tests": {
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0
+    },
+    "repository_check": {
+      "repository": 77,
+      "api": 45,
+      "registry": 20,
+      "generated_mobile_resources": "pass",
+      "api_contract": "pass",
+      "swift_fixture": "pass"
+    },
+    "map_javascript_syntax": "pass",
+    "upgrade": "adb install -r over published version 6 succeeded; Calgary and saved station osm-node-266330515 remained. Atomic snapshot migration verified. Checked on the release build before the final dropdown-height and navigation-inset fixes, which change no stored data.",
+    "release_smoke": [
+      "Map and remote brand logos rendered",
+      "City lookup returned Lethbridge, AB with keyboard and results visible at 360dp/font 1.3",
+      "Map marker opened station detail with Also at this spot; tapping Shell switched station detail",
+      "Final release build at 360dp/font 1.3: area dropdown opens below its chip and scrolls; collapsed sheet paints no station row through the navigation inset"
+    ],
+    "instrumentation": {
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "classes": [
+        "NativeScreensTest",
+        "StationSheetTest",
+        "TopControlsTest",
+        "MapStackTest",
+        "MapFramingTest",
+        "SnapshotStorageTest",
+        "MenuAnimationTest"
+      ],
+      "viewport": "1080x2400 at density 420, font scale 1.0"
+    },
+    "narrow_instrumentation": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "classes": [
+        "StationSheetTest",
+        "TopControlsTest"
+      ],
+      "viewport": "720x1280 at density 320, font scale 1.3"
+    }
+  },
+  "performance": {
+    "method": "One run per variant, same API 35 software-rendered emulator at 1080x2400/density 420. Expanded list: six upward and six downward 350 ms swipes with 450 ms pauses; settings: five open/Back cycles with 700 ms pauses. Debug used OPENFUEL_COMPACT_APK=false. Release used R8 and resource shrinking. gfxinfo counters cover each full phase; UI-thread samples are the retained window framestats (SyncQueued minus HandleInputStart).",
+    "measurements": {
+      "debug-list-gfxinfo": {
+        "frames_rendered": 319,
+        "janky_frames": 223,
+        "sample_frames": 120,
+        "main_thread_median_ms": 1.78,
+        "main_thread_p95_ms": 28.17,
+        "main_thread_max_ms": 35.89
+      },
+      "debug-settings-gfxinfo": {
+        "frames_rendered": 48,
+        "janky_frames": 47,
+        "sample_frames": 28,
+        "main_thread_median_ms": 13.47,
+        "main_thread_p95_ms": 67.86,
+        "main_thread_max_ms": 81.68
+      },
+      "release-list-gfxinfo": {
+        "frames_rendered": 351,
+        "janky_frames": 202,
+        "sample_frames": 120,
+        "main_thread_median_ms": 0.68,
+        "main_thread_p95_ms": 4.49,
+        "main_thread_max_ms": 7.21
+      },
+      "release-settings-gfxinfo": {
+        "frames_rendered": 50,
+        "janky_frames": 47,
+        "sample_frames": 30,
+        "main_thread_median_ms": 1.92,
+        "main_thread_p95_ms": 47.07,
+        "main_thread_max_ms": 66.11
+      }
+    },
+    "limit": "Single software-emulator comparison, not a hardware frame-rate claim. The planned threefold frame-count target was not observed; rendered frames remained janky in both variants. Release list UI-thread samples improved; settings retained occasional long frames."
+  },
+  "deferred": [
+    "C14 baseline profiles remain deferred as specified in the original package instructions.",
+    "Physical-device gesture feel and hardware frame timing were not measured."
+  ],
+  "commands": [
+    "gradle --no-daemon --max-workers=2 -POPENFUEL_COMPACT_APK=false :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=ca.openfuel.prototype.NativeScreensTest,ca.openfuel.prototype.StationSheetTest,ca.openfuel.prototype.TopControlsTest,ca.openfuel.prototype.MapStackTest,ca.openfuel.prototype.MapFramingTest,ca.openfuel.prototype.SnapshotStorageTest,ca.openfuel.prototype.MenuAnimationTest",
+    "python tools/project.py check",
+    "node --check apps/android/app/src/main/assets/station-map.js",
+    "gitleaks git --redact --no-banner --log-opts=origin/main..HEAD",
+    "python tools/project.py release-assets"
+  ],
+  "source_revision": "c2fe4e19d06ab98ec28338a204adb73907d3f1d0",
+  "screenshots": {
+    "release-area-menu-360-font13.png": "final release build",
+    "release-city-search-360-font13.png": "release build before the final dropdown-height and navigation-inset fixes",
+    "release-collapsed-360-font13.png": "final release build",
+    "release-full-412.png": "release build before the final dropdown-height and navigation-inset fixes",
+    "release-half-360-font13.png": "final release build",
+    "release-half-412.png": "release build before the final dropdown-height and navigation-inset fixes",
+    "release-stack-360-font13.png": "release build before the final dropdown-height and navigation-inset fixes",
+    "release-upgrade-saved.png": "upgrade from published version 6, before the final two visual fixes"
+  }
+}

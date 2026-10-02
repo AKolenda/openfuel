@@ -30,8 +30,17 @@
   // Exposed for the instrumentation tests, as the Leaflet page's map is.
   window.map=map;
   let changingArea=false;
-  map.on('moveend',()=>{if(!changingArea){const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);}});
+  // A move reports the visible centre and the short side of the visible map in metres: the map between the
+  // padding the app sets, at 512 px per tile.
+  map.on('moveend',()=>{if(!changingArea){
+   const p=map.getCenter().wrap(),c=map.getContainer(),padding=map.getPadding();
+   const side=Math.min(c.clientWidth-padding.left-padding.right,c.clientHeight-padding.top-padding.bottom);
+   OpenFuelMap.movedView(p.lat,p.lng,side*40075016.686*Math.cos(p.lat*Math.PI/180)/(512*2**map.getZoom()));
+  }});
   window.setArea=(lat,lon,overview)=>{changingArea=true;map.jumpTo({center:[lon,lat],zoom:overview?2:11.5});changingArea=false;};
+  // The app's top controls and half-open station sheet cover the map's edges, in CSS px. Padding keeps the centre
+  // coordinate and moves it to the middle of the rest; that move is not the user's.
+  window.setPadding=(top,bottom)=>{changingArea=true;map.setPadding({top,bottom,left:0,right:0});changingArea=false;};
   // The base map goes under the location dot once OpenFreeMap's tile index has loaded. A refused index (an HTTP
   // error or an unreadable index) switches to OpenStreetMap's raster tiles for the visit; a lost connection leaves
   // the map as it is and retries on the next move.
@@ -155,13 +164,16 @@
   map.on('webglcontextrestored',()=>map.once('style.load',()=>{
    contextLost=false;if(!map.getLayer('stations'))map.addLayer(stationLayer);showLocation();startBase();
   }));
-  // A tap selects the chip in front, the one drawn last.
-  map.on('click',event=>{
-   for(let i=placed.length-1;i>=0;i--){
-    const {s,at,w,h}=placed[i],p=map.project(at);
-    if(Math.abs(event.point.x-p.x)<=w/2&&event.point.y>=p.y-h+20&&event.point.y<=p.y+20)return OpenFuelMap.selected(s.id);
-   }
-  });
+  // Whether the point (x, y) lies in the chip's box on screen.
+  const inside=(item,x,y)=>{const p=map.project(item.at);return Math.abs(x-p.x)<=item.w/2&&y>=p.y-item.h+20&&y<=p.y+20;};
+  // A tap selects the chip in front, the one drawn last, and lists the chips drawn behind it whose brand centre
+  // it covers, front first, so the app can offer the stations hidden under it. The bridge takes at most 12.
+  function selectStack(i){
+   const front=placed[i],ids=[front.s.id];
+   for(let j=i-1;j>=0&&ids.length<12;j--){const q=map.project(placed[j].at);if(inside(front,q.x,q.y))ids.push(placed[j].s.id);}
+   OpenFuelMap.selectedStack(JSON.stringify(ids));
+  }
+  map.on('click',event=>{for(let i=placed.length-1;i>=0;i--)if(inside(placed[i],event.point.x,event.point.y))return selectStack(i);});
   // Invisible buttons over the chips give TalkBack each station's label and action. Normally they move once
   // the map settles and let touches through to the map. While TalkBack explores by touch (the app calls
   // setTouchExploration), they take touches, so touching a chip reads its station, and follow the map.
@@ -180,10 +192,11 @@
    updateAtlas(stations,images);
    // Drawn from north to south, so the chip lower on the screen is in front, as on the Leaflet page.
    placed=stations.map(({s,chip})=>{
-    const known=s.price!=null,w=known?64:42,h=known?66:40,button=document.createElement('button');
+    const known=s.price!=null,w=known?64:42,h=known?66:40,button=document.createElement('button'),item={s,at:[s.lon,s.lat],slot:atlas.slots.get(chip),w,h,button};
     button.setAttribute('aria-label',s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));
-    button.style.width=w+'px';button.style.height=h+'px';button.onclick=event=>{event.stopPropagation();OpenFuelMap.selected(s.id);};
-    return {s,at:[s.lon,s.lat],slot:atlas.slots.get(chip),w,h,button};
+    button.style.width=w+'px';button.style.height=h+'px';
+    button.onclick=event=>{event.stopPropagation();const i=placed.indexOf(item);if(i>=0)selectStack(i);};
+    return item;
    }).sort((a,b)=>b.s.lat-a.s.lat);
    labels.replaceChildren(...placed.map(item=>item.button));placeLabels();
    map.triggerRepaint();

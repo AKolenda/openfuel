@@ -4,7 +4,7 @@ A Kotlin/Compose Android app with a bundled MapLibre map (Leaflet without WebGL)
 coordinates. On first arrival, the app explains location use and requests Android's foreground
 precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
 Declining permission offers Canadian city search. The current search area is always labelled;
-a chosen city or cached area never masquerades as GPS. Pan/zoom and tap **Search this area**
+a chosen city or cached area never masquerades as GPS. Pan and tap **Search here**
 to load another part of the map, or tap the location button to recenter.
 
 Fresh installs load no map, and request no tiles, until you grant location access or choose an area.
@@ -47,18 +47,22 @@ have usage limits. There are no analytics.
 Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
 bundled or hosted by OpenFuel. MapLibre draws the base map, the cached brand/price chips and the location dot in one WebGL frame and handles station taps; each distinct chip is drawn once, so a pinch or pan moves no page elements. Prices appear above the brand icon.
 
-The approved curved F is used in the launcher and header. The map shows a small
-location selector and Saved control; fuel grades, About and data-source details
-live in Settings. The results heading names the selected fuel grade. Attribution
-is a small label at the screen's bottom-left edge. Search this area appears near
-the top after a pan of roughly 750 metres, and searches without resetting zoom.
+The approved curved F is used in the launcher and header. The area selector opens a dropdown
+with location, recent cities and city search. **Search here** appears beside it after a pan;
+the distance threshold scales with zoom. Fuel grades, About and data-source details live in
+Settings. Tapping overlapping station markers opens details with an **Also at this spot** row
+for the other stations, without changing the map zoom.
 
-Drag the **handle** to expand or hide the station panel; **Show station list**
-restores it. Gestures inside the list only scroll the list. Pull down at the top
-to refresh, or use Refresh stations now in Settings. The map stays full-size
-behind the panel so expanding/collapsing it does not resize tiles. Cached logo
-encoding and station serialization run off the UI thread, and GPS updates move
-only the location dot. No device-independent frame-rate improvement is claimed.
+Drag the station panel's header or list to move between collapsed, half-open and expanded.
+The list starts scrolling when the panel is expanded; pulling down from the list's top lowers
+it again. The panel always retains its header. Tap the refresh button in the header to update
+prices. Sort opens a dropdown, and Saved changes the heading and empty state to saved stations.
+Map attribution and the location button move above the panel and fade out at its expanded stop.
+The map stays full-size during drags and becomes invisible while covered by the expanded list.
+Menu sheets slide closed and
+crossfade between their contents. Cached logo encoding, station serialization and atomic
+snapshot writes run off the UI thread. Snapshots from older versions migrate automatically.
+No device-independent frame-rate improvement is claimed.
 Status-bar icons remain dark on the light app surface even in Android dark mode.
 
 ## Build
@@ -69,12 +73,12 @@ wrapper downloads Gradle 8.11.1. No Cloudflare secrets belong in this app.
 ```sh
 # From apps/android:
 ./gradlew :app:testDebugUnitTest
-./gradlew :app:clean :app:assembleDebug
+./gradlew :app:assembleRelease
 # Use your own HTTPS deployment:
-./gradlew :app:assembleDebug -POPENFUEL_API_BASE_URL=https://your-worker.workers.dev/api/v1
+./gradlew :app:assembleRelease -POPENFUEL_API_BASE_URL=https://your-worker.workers.dev/api/v1
 # Optional donate link (Gradle property or environment variable):
-./gradlew :app:assembleDebug -POPENFUEL_DONATE_URL=https://example.org/donate
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease -POPENFUEL_DONATE_URL=https://example.org/donate
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 `OPENFUEL_DONATE_URL` must be an HTTPS URL without credentials, quotes or whitespace; the build
@@ -82,13 +86,17 @@ fails otherwise. When set, Settings and About show **Donate to cover the databas
 (opening the browser), and the daily-limit notice and report form get a Donate button. Without it
 no donate UI appears.
 
-Output is `app/build/outputs/apk/debug/app-debug.apk`. Version 0.3.2-live (code 6), Android 8+
-(API 26), signed with the local Android debug key. This is a directly installable development
-APK; publishing to Google Play still requires a release signing process and store review.
-The default download build shrinks unused code/resources and compresses native libraries,
-keeping all four CPU architectures under the website's 25 MiB asset limit.
-Always use `:app:clean :app:assembleDebug` for a download after instrumentation: incremental
-APK packaging can retain unused ZIP padding when switching from unshrunk to compact builds.
+The download is `app/build/outputs/apk/release/app-release.apk`, version 0.3.3-live (code 7),
+Android 8+ (API 26). It is non-debuggable, with R8 code shrinking, resource shrinking and
+compressed native libraries. It uses this machine's Android debug key, as previous downloads
+did. Build published updates with the same keystore and compare their certificate digests
+with `apksigner verify --print-certs` before publishing, so existing installations keep their
+data. CI artifacts use the runner's own key and cannot replace that signing step. Google Play
+publishing still requires a release signing process and store review.
+
+`python3 tools/project.py android-build` tests and builds both variants;
+`python3 tools/project.py release-assets` prepares the release APK, checksum and source archive.
+For development and WebView inspection, use `:app:assembleDebug` instead.
 
 ## Verification
 
@@ -99,8 +107,7 @@ GPS fix in a seeded Canadian area first, e.g. `adb -s emulator-5554 emu geo fix 
 The public build's instrumented checks make GET requests only and skip the report-writing test.
 
 Disable compact packaging when running Compose instrumentation: the test APK shares app
-runtime classes that the shrinker can remove. This affects the test build only. Rebuild with
-the defaults for the downloadable compact APK, then smoke-test that APK on a device.
+runtime classes that the shrinker can remove. This affects the test build only. Build `:app:assembleRelease` for the downloadable APK, then smoke-test that APK on a device.
 
 To test the native price form against an isolated local D1 instance, run the local API on port
 8787, seed it, and then use:
@@ -121,6 +128,10 @@ local-only report test. The exact compact APK was installed and visually checked
 The 0.3.2 record, [`release-0.3.2.json`](../../evidence/android-native/release-0.3.2.json), lists
 eight unit tests and six public HTTPS instrumentation tests passed, with the local-only report
 test skipped. Both records predate the OpenFreeMap base map and the daily-limit notice.
+The 0.3.3 record, [`ux-0.3.3.json`](../../evidence/android-native/ux-0.3.3.json), covers the
+three-stop station sheet, the area menu and city search, and the optimized release APK: 25 unit
+tests and 34 public HTTPS instrumentation tests passed, plus the sheet and top-control tests at
+360 dp with font scale 1.3. Its screenshots are in [`ux-0.3.3/`](../../evidence/android-native/ux-0.3.3/).
 
 Previous generated sample fixtures remain solely as isolated unit-test inputs and design
 reference assets. They are never selected by the app's startup or live repository.
