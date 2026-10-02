@@ -4,7 +4,7 @@ A Kotlin/Compose Android app with a bundled MapLibre map (Leaflet without WebGL)
 coordinates. On first arrival, the app explains location use and requests Android's foreground
 precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
 Declining permission offers Canadian city search. The current search area is always labelled;
-a chosen city or cached area never masquerades as GPS. Pan/zoom and tap **Search here**
+a chosen city or cached area never masquerades as GPS. Pan and tap **Search here**
 to load another part of the map, or tap the location button to recenter.
 
 Fresh installs load no map, and request no tiles, until you grant location access or choose an area.
@@ -57,8 +57,9 @@ Drag the station panel's header or list to move between collapsed, half-open and
 The list starts scrolling when the panel is expanded; pulling down from the list's top lowers
 it again. The panel always retains its header. Tap the refresh button in the header to update
 prices. Sort opens a dropdown, and Saved changes the heading and empty state to saved stations.
-Map attribution and the location button stay above the panel. The map stays full-size during
-drags and becomes invisible while covered by the expanded list. Menu sheets slide closed and
+Map attribution and the location button move above the panel and fade out at its expanded stop.
+The map stays full-size during drags and becomes invisible while covered by the expanded list.
+Menu sheets slide closed and
 crossfade between their contents. Cached logo encoding, station serialization and atomic
 snapshot writes run off the UI thread. Snapshots from older versions migrate automatically.
 No device-independent frame-rate improvement is claimed.

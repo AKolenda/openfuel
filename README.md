@@ -17,7 +17,8 @@ real geographic coordinates, shows stations with unknown prices, and keeps saved
 station information available when the connection fails. A remembered area,
 rounded to two decimal places, lets cached stations appear immediately on return
 while the app refreshes and requests current location. It is labelled as a saved
-area, not a fresh GPS fix. The station sheet can be hidden to use the full map.
+area, not a fresh GPS fix. On Android, the station sheet slides between collapsed,
+half-open and expanded, keeping its header available above the map.
 
 The website and Android app draw OpenFreeMap vector tiles with MapLibre in
 OpenFuel's own style ([map style](packages/map-style/README.md)), with
@@ -55,8 +56,9 @@ community reports. A plain static server renders the shell but does not supply t
 
 ## Run on Android
 
-The downloadable Kotlin APK runs independently of a development computer. It is
-a debug sideload build, not a Google Play release. [Native build instructions](apps/android/README.md)
+The downloadable Kotlin APK runs independently of a development computer. The
+build scripts prepare an optimized, non-debuggable release variant, signed with
+the same key as earlier sideload builds. [Native build instructions](apps/android/README.md)
 and [verification status](docs/BUILD_STATUS.md) describe what has been tested.
 
 For React Native development with Expo Go:
