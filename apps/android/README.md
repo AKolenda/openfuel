@@ -72,7 +72,6 @@ wrapper downloads Gradle 8.11.1. No Cloudflare secrets belong in this app.
 
 ```sh
 # From apps/android:
-./gradlew :app:testDebugUnitTest
 ./gradlew :app:assembleRelease
 # Use your own HTTPS deployment:
 ./gradlew :app:assembleRelease -POPENFUEL_API_BASE_URL=https://your-worker.workers.dev/api/v1
@@ -94,32 +93,23 @@ with `apksigner verify --print-certs` before publishing, so existing installatio
 data. CI artifacts use the runner's own key and cannot replace that signing step. Google Play
 publishing still requires a release signing process and store review.
 
-`python3 tools/project.py android-build` tests and builds both variants;
+`python3 tools/project.py android-build` builds both variants;
 `python3 tools/project.py release-assets` prepares the release APK, checksum and source archive.
 For development and WebView inspection, use `:app:assembleDebug` instead.
 
-## Verification
+## Local API on an emulator
 
-`./gradlew :app:testDebugUnitTest` covers exact price parsing, null price visibility, sorting,
-coordinate-based directions and recognition of the daily-limit answers. `:app:connectedDebugAndroidTest -POPENFUEL_COMPACT_APK=false` tests real station parsing,
-rejects sample geography, verifies GPS, actual station UI and persistent cache. Set an emulator
-GPS fix in a seeded Canadian area first, e.g. `adb -s emulator-5554 emu geo fix -113.4938 53.5461`.
-The public build's instrumented checks make GET requests only and skip the report-writing test.
-
-Disable compact packaging when running Compose instrumentation: the test APK shares app
-runtime classes that the shrinker can remove. This affects the test build only. Build `:app:assembleRelease` for the downloadable APK, then smoke-test that APK on a device.
-
-To test the native price form against an isolated local D1 instance, run the local API on port
-8787, seed it, and then use:
+To point a debug build at an isolated local D1 instance, run the local API on port 8787, seed it,
+and then use:
 
 ```sh
-ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest \
+./gradlew :app:assembleDebug \
   -POPENFUEL_API_BASE_URL=http://10.0.2.2:8787/api/v1 -POPENFUEL_EMULATOR_TEST=true
 ```
 
-The explicit emulator flag permits HTTP only for `10.0.2.2`, and rejects release tasks. The
-write test runs only against that local address. Never publish an emulator test build. Rebuild
-without either property for the public HTTPS APK; its manifest disables cleartext traffic.
+The explicit emulator flag permits HTTP only for `10.0.2.2`, and rejects release tasks. Never
+publish an emulator build. Rebuild without either property for the public HTTPS APK; its manifest
+disables cleartext traffic.
 
 The 0.3.0 verification record and controlled-emulator screenshots are in
 [`release-0.3.0.json`](../../evidence/android-native/release-0.3.0.json). Eight unit tests passed;
@@ -133,8 +123,8 @@ three-stop station sheet, the area menu and city search, and the optimized relea
 tests and 34 public HTTPS instrumentation tests passed, plus the sheet and top-control tests at
 360 dp with font scale 1.3. Its screenshots are in [`ux-0.3.3/`](../../evidence/android-native/ux-0.3.3/).
 
-Previous generated sample fixtures remain solely as isolated unit-test inputs and design
-reference assets. They are never selected by the app's startup or live repository.
+Previous generated sample data remains only as design reference assets. It is never selected
+by the app's startup or live repository.
 
 Map/data attribution: [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
 ODbL; [OpenFreeMap](https://openfreemap.org) and [OpenMapTiles](https://www.openmaptiles.org/).

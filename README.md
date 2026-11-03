@@ -88,21 +88,19 @@ development path.
 | `apps/docs` | Searchable handbook |
 | `apps/android` | Kotlin/Jetpack Compose app and emulator checks |
 | `apps/expo` | React Native/Expo Go client |
-| `apps/ios` | Current SwiftUI/MapKit source and independently testable Swift core; Apple SDK validation pending |
+| `apps/ios` | Current SwiftUI/MapKit source and a separate Swift core package; Apple SDK validation pending |
 | `services/live` | Current Cloudflare API and D1 migrations |
 | `packages/data` | Attributed station, city and monthly-average snapshots |
 | `packages/brands` | Curated remote station-logo URLs and matching rules, without image binaries |
 | `packages/map-style` | OpenFuel's base map style, a fork of OpenFreeMap Liberty |
 | `packages/contracts` | Current and historical API contracts |
 | `packages/design` | Approved OpenFuel identity and design resources |
-| `packages/mobile` | Historical shared test fixtures |
-| `services/edge`, `services/api`, `services/registry`, `supabase` | Retained reference implementations and tests |
+| `packages/mobile` | Historical shared sample data |
+| `services/edge`, `services/api`, `services/registry`, `supabase` | Retained reference implementations |
 
 ## Check and deploy
 
 ```sh
-npm run test:live
-npm run test:edge
 npm run build
 # After selecting your own Cloudflare account, D1 database and domain:
 npm run db:remote

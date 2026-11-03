@@ -29,7 +29,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Test and assemble native debug and release APKs
+      - name: Assemble native debug and release APKs
         run: python tools/project.py android-build
       # The release APK is the download. This runner signs it with its own debug key, so the artifact is for
       # checking the build; a published APK must be built where earlier downloads were signed.

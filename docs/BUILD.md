@@ -25,19 +25,16 @@ an honest source download, and derives the docs evidence panel from actually rec
 It never publishes a running API, a database or environment files. Deploying hosting is a separate step.
 `dist/site` is generated and ignored; make source changes under apps/web and apps/docs, then rebuild.
 
-## Test dependencies
+## Python dependencies
 
 ```sh
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements-dev.txt
-python -m playwright install chromium
 python tools/project.py check --web
 ```
 
-On Windows use `.venv\Scripts\Activate.ps1`. Set CHROMIUM_PATH for a system Chromium executable;
-otherwise Playwright's installed Chromium is used. Browser tests serve only the built static site and
-block requests outside that test origin, including remote brand logos.
+On Windows use `.venv\Scripts\Activate.ps1`.
 
 ## Android
 
@@ -46,12 +43,10 @@ JDK 17 or a compatible newer runtime. Install the SDK and accept its licences in
 
 ```sh
 export ANDROID_HOME=/path/to/Android/Sdk
-python tools/project.py android-core
 python tools/project.py android-build
 ```
 
-The core command needs kotlinc/JDK but not the Android SDK. The full command requires the pinned Gradle
-and, only after a successful build, outputs the debug APK and the downloadable release APK,
+The command requires the pinned Gradle and, only after a successful build, outputs the debug APK and the downloadable release APK,
 apps/android/app/build/outputs/apk/release/app-release.apk.
 There is no fake Gradle wrapper: the input archive did not include its JAR. With Gradle installed,
 `cd apps/android && gradle wrapper --gradle-version 8.11.1` generates a real wrapper for review.
@@ -70,7 +65,7 @@ open apps/ios/OpenFuel.xcodeproj
 python tools/project.py ios-build
 ```
 
-Swift package tests run on Linux as well. Full SwiftUI/iOS builds do not. Choose an installed simulator
+The Swift core package builds on Linux as well. Full SwiftUI/iOS builds do not. Choose an installed simulator
 and configure your own team for a device build. apps/ios/project.yml is the committed source of project
 configuration; generated Xcode output is ignored, and the CI job generates it before building.
 

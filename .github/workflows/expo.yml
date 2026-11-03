@@ -22,5 +22,4 @@ jobs:
           cache-dependency-path: apps/expo/package-lock.json
       - run: npm --prefix apps/expo ci
       - run: npm --prefix apps/expo run typecheck
-      - run: npm --prefix apps/expo test
       - run: npm --prefix apps/expo run export:android

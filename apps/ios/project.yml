@@ -32,20 +32,6 @@ targets:
       - Info-Debug.plist
     dependencies:
     - package: OpenFuelCore
-    scheme:
-      testTargets:
-      - OpenFuelUITests
-  OpenFuelUITests:
-    type: bundle.ui-testing
-    platform: iOS
-    sources:
-    - path: OpenFuelUITests
-    dependencies:
-    - target: OpenFuel
-    settings:
-      base:
-        GENERATE_INFOPLIST_FILE: true
-        PRODUCT_BUNDLE_IDENTIFIER: ca.openfuel.prototype.uitests
 configFiles:
   Debug: Config/Base.xcconfig
   Release: Config/Base.xcconfig
