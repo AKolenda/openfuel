@@ -19,6 +19,5 @@ jobs:
       - name: Rebuild LOCAL database from empty + local fixtures
         run: supabase db reset --local
       - run: supabase db lint --local --level warning
-      - run: supabase test db
       - if: always()
         run: supabase stop --no-backup

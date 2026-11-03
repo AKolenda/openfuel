@@ -36,8 +36,6 @@ s+='}\n';outputs[ios/'OpenFuelCore/Sources/OpenFuelCore/GeneratedPreview.swift']
 mapbytes=(ROOT/'packages/mobile/basemap.png').read_bytes()
 outputs[android/'res/drawable-nodpi/demo_basemap.png']=mapbytes
 outputs[ios/'OpenFuel/Resources/demo_basemap.png']=mapbytes
-# Code-compatible fixture for testing, not external geodata or station licences.
-outputs[ios/'OpenFuelCore/Tests/OpenFuelCoreTests/preview-stations.json']=(ROOT/'packages/mobile/stations.json').read_bytes()
 check='--check' in sys.argv
 bad=[]
 for path,data in outputs.items():

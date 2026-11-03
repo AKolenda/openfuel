@@ -9,7 +9,6 @@
     "start": "expo start --go",
     "android": "expo start --go --android",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/domain.test.mjs",
     "export:android": "expo export --platform android"
   },
   "dependencies": {

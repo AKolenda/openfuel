@@ -21,15 +21,8 @@ GitHub release assets (https://github.com/AKolenda/openfuel/releases).
 | Swift | Source updated for Settings-based fuel/info, fixed map viewport, top area search and native List refresh. Prior portable results: 30 passed, one skip. Current host has no Swift compiler; Apple SDK/device verification still requires a Mac |
 | Source publication | Source and archive Gitleaks scans passed with no leaked credentials; reachable Git history is scanned before public push. See `PUBLICATION_AUDIT.md` |
 
-The production verification command is read-only:
-
-```sh
-python3 tools/smoke_live.py --output evidence/live-api-production.json
-```
-
-Automated tests use local/in-memory databases for synthetic pump observations.
-They never submit made-up prices to the public service. Real device location is
-permission-based; emulator/browser tests use controlled test coordinates.
+Synthetic pump observations only ever go to local/in-memory databases, never to
+the public service. Real device location is permission-based.
 
 Android remains a development sideload APK, not a Google Play release. The current
 SwiftUI source is migrated to the live API and approved F identity; compiling and

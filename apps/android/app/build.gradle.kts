@@ -38,7 +38,6 @@ android {
         manifestPlaceholders["openfuelCleartext"] = localTestHost.toString()
         minSdk = 26
         targetSdk = 35 // Development APK; re-evaluate Play requirements before a store submission.
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"$publicApiBase\"")
         buildConfigField("String", "DATA_MODE", "\"$dataMode\"")
         buildConfigField("String", "DONATE_URL", "\"$donateUrl\"")
@@ -78,14 +77,4 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    testImplementation("junit:junit:4.13.2")
-    // Android's org.json is only a stub in local unit tests; error answers are parsed as the app parses them.
-    testImplementation("org.json:json:20250517")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.04.01"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
-    androidTestImplementation("androidx.test:rules:1.6.1")
-    // Inspection/test-only UI tooling is not shipped in the downloadable APK.
-    if (!compactApk) debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

@@ -54,7 +54,7 @@ Use Xcode with iOS 17 or later and XcodeGen:
 
 ```sh
 brew install xcodegen
-swift test --package-path apps/ios/OpenFuelCore
+swift build --package-path apps/ios/OpenFuelCore
 python3 tools/project.py ios-build
 open apps/ios/OpenFuel.xcodeproj
 ```
@@ -73,21 +73,9 @@ location access and retain normal App Transport Security.
 First Mac validation should cover location grant/denial/restricted states, warm
 launch on a saved area, city/manual search, MapKit marker selection, sheet hiding
 and restoration, logo failures, large text, French labels, offline age display,
-and keyboard/report validation against an isolated test API. The UI tests cover
-empty-state controls without injecting sample geography. `--ui-testing` disables
-automatic location prompting in Debug builds only; it never supplies fake stations.
+and keyboard/report validation against an isolated local API.
 
-## Run portable checks
-
-```sh
-swift test --package-path apps/ios/OpenFuelCore
-OPENFUEL_READ_ONLY_TEST_API_BASE_URL=https://openfuel.ca/api/v1 \
-  swift test --package-path apps/ios/OpenFuelCore --filter LiveReadOnlyTests
-```
-
-The integration test performs GET requests only. All report tests use intercepted
-local test responses; never send invented prices to real production stations.
-Historical `PrototypeAPI` and generated sample fixtures remain reference tests,
+Historical `PrototypeAPI` and generated sample data remain in the Swift core,
 but the active UI instantiates `LiveAPIClient` and never `SampleMapView`.
 
 

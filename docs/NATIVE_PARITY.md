@@ -34,8 +34,7 @@ reference adapter; it is not the map UI dataset.
 - Both use the same price units, missing-grade handling, sorted sample data, freshness threshold and
   48 logical-pixel Go target. iOS uses SF Symbols; Android uses Material icons, not generated logos.
 - All menus are native bottom sheets. iOS settings keep Apply outside the scrolling fields.
-- Native screenshot harnesses capture the actual app, not Chromium images. Screenshot/CI code is
-  provided, but not executed here. Reference snapshots in `goldens/html` are BROWSER-only.
+- Reference snapshots in `goldens/html` are BROWSER-only, not native app screenshots.
 - Compile-time API configuration accepts a public HTTPS URL; both map screens remain **demo mode**.
   The new read Worker/DB adapter is not wired into these sample maps. That integration must replace
   illustration coordinates with a real map/camera/dataset, not overlay live prices on invented roads.
@@ -56,33 +55,6 @@ states before release. Use a small phone and a large phone on both platforms. Ch
 These are **acceptance criteria**, not completed device-test results. Shared tokens reduce divergence,
 but SwiftUI, Compose and browser fonts/safe-area behavior are not identical rendering engines.
 Aim for equivalent geometry/hierarchy/interactions, then approve real per-platform screenshots.
-
-## Capture and compare
-
-```sh
-# Browser reference images only, with Chromium and Playwright:
-python tools/capture_reference.py
-# Core checks, runnable without mobile SDKs:
-python tools/project.py android-core
-python tools/project.py ios-core
-```
-
-For real native capture, run `.github/workflows/native-review.yml` after publishing this repo. It
-uses an Android emulator and a Mac iPhone simulator. This workflow is manual and has not run here.
-Android screenshots are uploaded from instrumented tests. iOS screenshots are attachments in the
-xcresult bundle; export them in Xcode, retaining their screen labels and device/OS metadata.
-
-Initial review is human against the approved HTML and this checklist. Afterwards, commit approved
-same-platform goldens with approval metadata, then run:
-
-```sh
-python tools/visual_gate.py --platform android --current evidence/native/android-normalized
-python tools/visual_gate.py --platform ios --current evidence/native/ios-normalized
-```
-
-The tool fails on a missing baseline, missing capture, incompatible dimensions or material image
-change. It writes diff images for review. It cannot certify functional correctness or automatically
-claim a browser screenshot is a real native screen. No native approval.json is fabricated in this repo.
 
 ## Toolchain and scope
 

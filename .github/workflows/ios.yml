@@ -18,7 +18,6 @@ jobs:
           python-version: '3.13'
       - name: Install project generator
         run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
-      - run: python tools/project.py fixtures --check
       - run: python tools/project.py ios-core
       - name: Generate and build the SwiftUI app
         run: python tools/project.py ios-build

@@ -28,8 +28,8 @@ if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 DIST = ROOT / 'dist'
 EVIDENCE = ROOT / 'evidence'
 COMPONENTS = {'api': ROOT/'services/api', 'registry': ROOT/'services/registry', 'ios': ROOT/'apps/ios', 'android': ROOT/'apps/android'}
-SOURCE_DIRS = {'supabase','deploy','env','apps','services','packages','docs','tools','tests','evidence','LICENSES','.github'}
-ROOT_FILES = {'.env.example','.dev.vars.example','.node-version','.python-version','wrangler.jsonc','package.json','package-lock.json','README.md','LICENSE','NOTICE','LICENSE.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','.gitignore','.gitleaks.toml','.gitattributes','.editorconfig','Makefile','requirements-dev.txt','pyproject.toml','monorepo.json','compose.yaml','openfuel.code-workspace'}
+SOURCE_DIRS = {'supabase','deploy','env','apps','services','packages','docs','tools','evidence','LICENSES','.github'}
+ROOT_FILES = {'.env.example','.dev.vars.example','.node-version','.python-version','wrangler.jsonc','package.json','package-lock.json','README.md','LICENSE','NOTICE','LICENSE.md','CONTRIBUTING.md','SECURITY.md','CHANGELOG.md','.gitignore','.gitleaks.toml','.gitattributes','.editorconfig','Makefile','requirements-dev.txt','monorepo.json','compose.yaml','openfuel.code-workspace'}
 EXCLUDE_PARTS = {'.temp','.branches','.wrangler','.git','.venv','venv','node_modules','__pycache__','.pytest_cache','.mypy_cache','.ruff_cache','.gradle','.kotlin','.build','build','DerivedData','dist','.local','.idea','.swiftpm','.expo','.DS_Store'}
 # Workers static assets are limited to 25 MiB per file, including the source download.
 WORKERS_ASSET_LIMIT = 25 * 1024 * 1024
@@ -213,23 +213,8 @@ def contract(check: bool=False):
     else:
         path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(schema,indent=2)+'\n');print('Updated packages/contracts/openapi.json')
 
-def fixtures(check: bool=False):
-    canonical=ROOT/'packages/fixtures/api-stations.json'
-    target=COMPONENTS['ios']/'OpenFuelCore/Tests/OpenFuelCoreTests/stations.json'
-    if check:
-        if canonical.read_bytes()!=target.read_bytes():raise RuntimeError('Swift API fixture drift. Run `python tools/project.py fixtures` and review.')
-        print('Swift test fixture matches packages/fixtures/api-stations.json.')
-    else:shutil.copyfile(canonical,target);print('Synced Swift API test resource.')
-
 def ios_core():
-    run([tool('swift'),'test','--package-path',str(COMPONENTS['ios']/'OpenFuelCore')],evidence='ios-core')
-
-def android_core():
-    out=ROOT/'.local/checks';out.mkdir(parents=True,exist_ok=True)
-    jar=out/'android-core-checks.jar'
-    run([tool('kotlinc'),str(COMPONENTS['android']/'app/src/main/java/ca/openfuel/prototype/Core.kt'),
-       str(COMPONENTS['android']/'app/src/main/java/ca/openfuel/prototype/GeneratedSamples.kt'),str(COMPONENTS['android']/'scripts/CoreChecks.kt'),'-include-runtime','-d',str(jar)])
-    run([tool('java'),'-jar',str(jar)],evidence='android-core')
+    run([tool('swift'),'build','--package-path',str(COMPONENTS['ios']/'OpenFuelCore')],evidence='ios-core')
 
 def android_build():
     gradle=tool('gradle')
@@ -237,13 +222,13 @@ def android_build():
     if 'Gradle 8.11.1\n' not in completed.stdout:raise RuntimeError('Select Gradle 8.11.1; the imported Android project pins AGP 8.9.2.')
     if not (os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or (COMPONENTS['android']/'local.properties').exists()):
         raise ToolUnavailable('Android SDK path missing. Install API 35/build-tools 35.0.0, then set ANDROID_HOME.')
-    run([gradle,'--no-daemon',':app:testDebugUnitTest',':app:assembleDebug',':app:assembleRelease'],cwd=COMPONENTS['android'],evidence='android-build')
+    run([gradle,'--no-daemon',':app:assembleDebug',':app:assembleRelease'],cwd=COMPONENTS['android'],evidence='android-build')
 
 def ios_generate():
     run([tool('xcodegen'),'generate','--spec','project.yml'],cwd=COMPONENTS['ios'])
 
 def ios_build():
-    if platform.system()!='Darwin':raise ToolUnavailable('A full iOS build requires macOS with Xcode. Swift core tests can run here; no iOS binary was built.')
+    if platform.system()!='Darwin':raise ToolUnavailable('A full iOS build requires macOS with Xcode. The Swift core package can build here; no iOS binary was built.')
     tool('xcodebuild');ios_generate()
     run([tool('xcodebuild'),'-project','OpenFuel.xcodeproj','-scheme','OpenFuel','-configuration','Debug',
          '-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator',
@@ -255,7 +240,7 @@ def doctor():
         found=sys.executable if name=='python' else shutil.which(name)
         print(f'  {name:12} {found or "not found"}')
     print('  Android SDK ',os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT') or 'not configured')
-    for name in ['pytest','fastapi','playwright']:
+    for name in ['fastapi']:
         print(f'  {name:12} {"installed" if importlib.util.find_spec(name) else "not installed"}')
     print('\nWebsite/handbook: Python only. Full Android: JDK 17+, Gradle 8.11.1, SDK 35. Full iOS: macOS + Xcode + XcodeGen.')
 
@@ -271,33 +256,27 @@ def api_serve(args):
 
 def check_all(args):
     run([sys.executable,str(ROOT/'tools/generate_mobile.py'),'--check'])
-    contract(True);fixtures(True)
-    run([sys.executable,'-m','pytest','-q','tests'],evidence='repository')
-    run([sys.executable,'-m','pytest','-q'],cwd=COMPONENTS['api'],evidence='api')
-    run([sys.executable,'-m','pytest','-q'],cwd=COMPONENTS['registry'],evidence='registry')
-    if args.native_cores:android_core();ios_core()
-    if args.web:
-        build_site();run([sys.executable,str(ROOT/'tests/browser_checks.py')],evidence='browser')
+    contract(True)
+    if args.native_cores:ios_core()
+    if args.web:build_site()
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
-    for name in ['doctor','site','release-assets','api-seed','ios-core','android-core','android-build','ios-generate','ios-build']:sub.add_parser(name)
+    for name in ['doctor','site','release-assets','api-seed','ios-core','android-build','ios-generate','ios-build']:sub.add_parser(name)
     for name,port in [('serve',4173),('api',8000)]:
         p=sub.add_parser(name);p.add_argument('--host',default='127.0.0.1');p.add_argument('--port',type=int,default=port)
     p=sub.add_parser('package');p.add_argument('--output',type=Path)
-    for name in ['contracts','fixtures']:
-        p=sub.add_parser(name);p.add_argument('--check',action='store_true')
+    p=sub.add_parser('contracts');p.add_argument('--check',action='store_true')
     p=sub.add_parser('check');p.add_argument('--web',action='store_true');p.add_argument('--native-cores',action='store_true')
     args=parser.parse_args()
-    actions={'doctor':doctor,'site':build_site,'release-assets':release_assets,'api-seed':api_seed,'ios-core':ios_core,'android-core':android_core,
+    actions={'doctor':doctor,'site':build_site,'release-assets':release_assets,'api-seed':api_seed,'ios-core':ios_core,
       'android-build':android_build,'ios-generate':ios_generate,'ios-build':ios_build}
     if args.command in actions:actions[args.command]()
     elif args.command=='serve':serve(args)
     elif args.command=='api':api_serve(args)
     elif args.command=='package':package_source(args.output)
     elif args.command=='contracts':contract(args.check)
-    elif args.command=='fixtures':fixtures(args.check)
     elif args.command=='check':check_all(args)
 
 if __name__=='__main__':

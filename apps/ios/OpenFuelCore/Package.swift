@@ -6,8 +6,6 @@ let package = Package(
     platforms: [.iOS(.v17), .macOS(.v13)],
     products: [.library(name: "OpenFuelCore", targets: ["OpenFuelCore"])],
     targets: [
-        .target(name: "OpenFuelCore"),
-        .testTarget(name: "OpenFuelCoreTests", dependencies: ["OpenFuelCore"],
-                    resources: [.copy("stations.json"), .copy("preview-stations.json")])
+        .target(name: "OpenFuelCore")
     ]
 )

@@ -1,8 +1,8 @@
 PYTHON ?= python3
 .DEFAULT_GOAL := help
-.PHONY: help doctor dev site api seed check check-all android-core android ios-core ios package contracts
+.PHONY: help doctor dev site api seed check check-all android ios-core ios package contracts
 help:
-	@echo "dev | site | api | seed | check | check-all | android-core | android | ios-core | ios | package | doctor"
+	@echo "dev | site | api | seed | check | check-all | android | ios-core | ios | package | doctor"
 doctor:
 	$(PYTHON) tools/project.py doctor
 dev:
@@ -17,8 +17,6 @@ check:
 	$(PYTHON) tools/project.py check
 check-all:
 	$(PYTHON) tools/project.py check --web --native-cores
-android-core:
-	$(PYTHON) tools/project.py android-core
 android:
 	$(PYTHON) tools/project.py android-build
 ios-core:

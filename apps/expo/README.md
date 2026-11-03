@@ -89,28 +89,13 @@ reuse images. Those providers receive image requests and network metadata.
 
 ```sh
 npm --prefix apps/expo run typecheck
-npm --prefix apps/expo test
 npm --prefix apps/expo run export:android
 cd apps/expo
 npx expo-doctor
 ```
 
-Tests cover cents/millidollar conversion, missing-price visibility, rejection of
-sample data and invalid coordinates, and honest report-age labels. Bundle export
-checks Android JavaScript compilation; it is not an APK build or a device test.
-
-The exact bundled Leaflet document also has six browser regression checks for
-wide-logo sizing, safe station text and accessibility, marker selection, fuel
-changes, corrected coordinates, world wrapping and marker removal. From the
-repository root, with the repository Python development environment and a
-Playwright Chromium installed, run:
-
-```sh
-.venv/bin/python apps/expo/tests/map_browser.py
-```
-
-`CHROMIUM_PATH` can select an existing Chromium executable. Network requests in
-this test are intercepted locally; it does not test Expo Go or a native WebView.
+Bundle export checks Android JavaScript compilation; it is not an APK build or a
+device test.
 
 ## Map configuration
 
