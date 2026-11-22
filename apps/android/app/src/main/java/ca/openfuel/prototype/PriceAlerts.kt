@@ -25,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 
@@ -150,6 +151,8 @@ object PriceAlerts {
             return@withContext AlertCheck.Failed(e.message ?: "OpenFuel's database reached its free daily limit.")
         } catch (e: CancellationException) { throw e }
         catch (e: IOException) { return@withContext AlertCheck.Failed(e.message ?: "Station service unavailable.") }
+        // Android's JSONException is a checked Exception, not a RuntimeException.
+        catch (e: JSONException) { return@withContext AlertCheck.Failed("Unexpected station response.") }
         catch (e: RuntimeException) { return@withContext AlertCheck.Failed("Unexpected station response.") }
         val matches = alertMatches(stations, settings)
         if (matches.isEmpty()) return@withContext AlertCheck.NoneFound(settings)
