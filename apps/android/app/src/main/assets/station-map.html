@@ -8,9 +8,9 @@
 html,body{height:100%;width:100%;margin:0;background:#edf1ea}#map{position:fixed;inset:0}
 /* The map canvas takes focus back from closed menus and the keyboard; only real keyboard focus shows a ring. */
 .maplibregl-canvas:focus:not(:focus-visible){outline:none}
-.station-labels{position:fixed;inset:0;overflow:clip;pointer-events:none}.station-labels.exploring button{pointer-events:auto}.station-labels button{position:absolute;left:0;top:0;padding:0;border:0;background:none}
+.station-labels{position:fixed;inset:0;overflow:clip;pointer-events:none}.station-labels.exploring button{pointer-events:auto}.station-labels button{position:absolute;left:0;top:0;padding:0;border:0;border-radius:50%;background:none}
 /* Leaflet markers, used only without WebGL: numbered pins and dots, centred in their touch boxes. */
-.station-pin{background:none;border:0;display:flex;align-items:center;justify-content:center}
+.station-pin{background:none;border:0;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .station-rank{box-sizing:border-box;width:30px;height:30px;border-radius:50%;border:2px solid white;background:#17191e;color:white;font:700 13px/26px system-ui;text-align:center;box-shadow:0 1px 3px #0005}
 .station-rank.highlight{background:#ffb020;color:#17191e}
 .station-dot{box-sizing:border-box;width:14px;height:14px;border-radius:50%;border:2px solid white;background:#9ea2a9;box-shadow:0 1px 3px #0005}.station-dot.priced{background:#17191e}

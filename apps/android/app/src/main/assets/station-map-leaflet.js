@@ -11,8 +11,8 @@ const markers=new Map();let locationDot=null,changingArea=false;
 map.on('moveend',()=>{if(!changingArea){const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);}});
 window.setArea=(lat,lon,overview)=>{changingArea=true;map.setView([lat,lon],overview?3:12.5,{animate:false});changingArea=false;};
 // A numbered pin for the first stations in the app's list, the first few amber, and a dot for the rest: ink with a
-// price, grey without. Each is centred on its station; a dot's touch box is larger than the dot, a numbered pin's is
-// the pin, so it never takes taps meant for a dot beside it.
+// price, grey without. Each is centred on its station in a round touch area: a dot's is larger than the dot, a
+// numbered pin's is the pin, so it never takes taps meant for a dot beside it.
 function stationIcon(s){
    const pin=document.createElement('div');
    if(s.rank){pin.className='station-rank'+(s.highlight?' highlight':'');pin.textContent=s.rank;}

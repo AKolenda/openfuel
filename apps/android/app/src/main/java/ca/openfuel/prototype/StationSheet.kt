@@ -333,7 +333,7 @@ private fun TitleOrPrompt(title: String, area: SearchPoint, browse: () -> MapMov
                         else Icon(if (offline && !movedAway) Icons.Default.Refresh else Icons.Default.Search, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(when { syncing -> R.string.search_here_busy; offline && !movedAway -> R.string.search_here_retry; else -> R.string.search_here }),
-                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, modifier = Modifier.widthIn(max = 140.dp))
                     }
                 }
             }
@@ -452,7 +452,8 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
 private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, foldable: Boolean, modifier: Modifier) {
     val context = LocalContext.current
     var open by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(6_000); open = false }
+    // The folding credit shows for its first six seconds on screen, however long its tiles took to arrive.
+    LaunchedEffect(foldable) { if (foldable) { open = true; kotlinx.coroutines.delay(6_000); open = false } }
     val expanded = open || !foldable
     val label = stringResource(R.string.map_credits)
     val state = stringResource(if (expanded) R.string.area_expanded else R.string.area_collapsed)

@@ -77,9 +77,10 @@
   atlas.canvas.width=columns*cw;atlas.canvas.height=0;
   let placed=[],gpu=null;
   // The numbered pins match the first rows of the app's list; the first few are amber. Other stations are dots,
-  // ink with a price and grey without. Touch boxes are larger than the dots.
+  // ink with a price and grey without.
   const ink='#17191e',amber='#ffb020',grey='#9ea2a9';
-  const touchSize=s=>s.rank?36:28;
+  // Touch areas are circles: a numbered pin's is the pin itself, a dot's is larger than the dot.
+  const touchSize=s=>s.rank?32:28;
   function drawChip(g,slot,s){
    const x=(slot%columns)*cw,y=Math.floor(slot/columns)*ch,r=s.rank?13:5;
    g.setTransform(1,0,0,1,0,0);g.clearRect(x,y,cw,ch);
@@ -157,8 +158,8 @@
   map.on('webglcontextrestored',()=>map.once('style.load',()=>{
    contextLost=false;if(!map.getLayer('stations'))map.addLayer(stationLayer);showLocation();startBase();
   }));
-  // Whether the point (x, y) lies in the pin's touch box on screen.
-  const inside=(item,x,y)=>{const p=map.project(item.at);return Math.abs(x-p.x)<=item.w/2&&Math.abs(y-p.y)<=item.h/2;};
+  // Whether the point (x, y) lies in the pin's round touch area on screen.
+  const inside=(item,x,y)=>{const p=map.project(item.at);return Math.hypot(x-p.x,y-p.y)<=item.w/2;};
   // A tap selects the pin in front, the one drawn last, and lists the pins drawn behind it whose station it
   // covers, front first, so the app can offer the stations hidden under it. The bridge takes at most 12.
   function selectStack(i){
