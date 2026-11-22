@@ -16,7 +16,9 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -134,6 +136,8 @@ internal fun PriceAlertSettings(close: () -> Unit) {
 
     // What an alert matches: one card of rows, each with its label on the left and its value on the right.
     val parsed = FuelCore.parsePrice(priceText)
+    val priceLabel = stringResource(R.string.alerts_price)
+    val priceError = stringResource(R.string.alerts_price_error)
     Surface(shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Rule), color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp)) {
         Column {
@@ -141,15 +145,19 @@ internal fun PriceAlertSettings(close: () -> Unit) {
                 update(settings.copy(grade = it))
             }
             HorizontalDivider(color = Rule)
-            SettingRow(stringResource(R.string.alerts_price)) {
+            SettingRow(priceLabel) {
                 OutlinedTextField(priceText, { text ->
                     priceText = text.take(6)
                     FuelCore.parsePrice(priceText)?.let { if (it != settings.maxPrice) update(settings.copy(maxPrice = it)) }
                 }, suffix = { Text("¢/L") }, singleLine = true, isError = parsed == null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.width(132.dp).padding(vertical = 6.dp).testTag("alerts-price"))
+                    // The row's label and the correction below it are separate texts, so the field names both itself.
+                    modifier = Modifier.width(132.dp).padding(vertical = 6.dp).testTag("alerts-price").semantics {
+                        contentDescription = priceLabel
+                        if (parsed == null) error(priceError)
+                    })
             }
-            if (parsed == null) Text(stringResource(R.string.alerts_price_error), color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
+            if (parsed == null) Text(priceError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             HorizontalDivider(color = Rule)
             ChoiceRow(stringResource(R.string.alerts_distance), settings.radiusMetres, AlertSettings.RADII, { "${it / 1000} km" }, "alerts-radius") {
@@ -197,13 +205,12 @@ private fun SettingRow(label: String, modifier: Modifier = Modifier, value: @Com
     }
 }
 
-/** A row whose value opens a menu of [options]. TalkBack reads it as one dropdown with its label and value. */
+/** A row whose value opens a menu of [options]. TalkBack reads it as one dropdown, with its label and value merged. */
 @Composable
 private fun <T> ChoiceRow(label: String, selected: T, options: List<T>, name: @Composable (T) -> String, tag: String, select: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val value = name(selected)
-    SettingRow(label, Modifier.clickable(role = Role.DropdownList) { open = true }
-        .semantics(mergeDescendants = true) { stateDescription = value }.testTag(tag)) {
+    SettingRow(label, Modifier.clickable(role = Role.DropdownList) { open = true }.testTag(tag)) {
         Box {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(value, fontWeight = FontWeight.SemiBold)
@@ -212,6 +219,7 @@ private fun <T> ChoiceRow(label: String, selected: T, options: List<T>, name: @C
             DropdownMenu(open, onDismissRequest = { open = false }, containerColor = MaterialTheme.colorScheme.surface) {
                 options.forEach { option ->
                     DropdownMenuItem(text = { Text(name(option)) }, onClick = { open = false; if (option != selected) select(option) },
+                        modifier = Modifier.semantics { this.selected = option == selected },
                         trailingIcon = if (option == selected) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null)
                 }
             }

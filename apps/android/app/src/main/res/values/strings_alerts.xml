@@ -19,13 +19,13 @@
   <string name="alerts_interval">Check every</string>
   <string name="alerts_minutes">%1$d min</string>
   <string name="alerts_hour">1 hour</string>
-  <string name="alerts_recent_only">Last day’s prices only</string>
+  <string name="alerts_recent_only">Prices from the last 24 h only</string>
   <string name="alerts_check_now">Check now</string>
   <string name="alerts_found_sent">Alert sent: %1$s, %2$s ¢/L, %3$s away.</string>
   <string name="alerts_found">%1$s has %2$s ¢/L, %3$s away. Notifications are off, so no alert was sent.</string>
   <string name="alerts_none">No station within %3$s reports %1$s at or under %2$s ¢/L right now.</string>
   <string name="alerts_no_location">Your location isn’t available right now. Try again in a moment.</string>
-  <string name="alerts_privacy">Each check sends your location, rounded to about 100 m, to OpenFuel. Nothing is saved. Prices are unverified community reports.</string>
+  <string name="alerts_privacy">Each check sends your location, rounded to about 100 m, to OpenFuel to find nearby stations. Prices are unverified community reports.</string>
   <string name="alerts_channel">Price alerts</string>
   <string name="alerts_channel_description">Stations near you at or under your alert price</string>
   <string name="alerts_notification_title">%1$s · %2$s ¢/L %3$s</string>
