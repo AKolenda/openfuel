@@ -146,7 +146,7 @@ private fun AreaChip(area: SearchPoint, expanded: Boolean, modifier: Modifier, o
                 onClick { onClick(); true }
             }) {
             Row(Modifier.heightIn(min = 40.dp).padding(start = if (compact) 6.dp else 12.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(areaIcon(area), null, Modifier.size(18.dp), tint = Forest)
+                Icon(areaIcon(area), null, Modifier.size(18.dp), tint = Ink)
                 if (!compact) {
                     Spacer(Modifier.width(6.dp))
                     Text(name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
@@ -181,7 +181,7 @@ private fun AreaRow(text: String, icon: ImageVector, tag: String, selected: Bool
         leadingIcon = { Icon(icon, null, Modifier.size(20.dp)) },
         trailingIcon = when {
             busy -> { { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) } }
-            selected -> { { Icon(Icons.Default.Check, null, tint = Forest) } }
+            selected -> { { Icon(Icons.Default.Check, null, tint = Ink) } }
             else -> null
         },
         modifier = (if (selected) Modifier.semantics { this.selected = true } else Modifier).testTag(tag))
@@ -277,11 +277,11 @@ internal fun CitySearch(expanded: Boolean, recent: List<SearchPoint>, area: Sear
         Surface(shape = RoundedCornerShape(50), color = Color.White, contentColor = Ink, shadowElevation = 3.dp,
             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable, enabled = false)) {
             Row(Modifier.height(48.dp).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, null, Modifier.size(20.dp), tint = Forest)
+                Icon(Icons.Default.Search, null, Modifier.size(20.dp), tint = Ink)
                 BasicTextField(query, { query = it.take(80) }, singleLine = true,
                     modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
                         .focusRequester(field).semantics { contentDescription = hint }.testTag("city-query"),
-                    textStyle = LocalTextStyle.current.copy(color = Ink, fontSize = 16.sp), cursorBrush = SolidColor(Forest),
+                    textStyle = LocalTextStyle.current.copy(color = Ink, fontSize = 16.sp), cursorBrush = SolidColor(Ink),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { searchKey() }),
                     decorationBox = { inner ->

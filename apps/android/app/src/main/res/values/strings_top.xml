@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<!-- The search card, the area chip and its menu, the city search and the "Search here" pill. -->
+<!-- The search row, the area chip and its menu, the city search and the sheet's "Search this area" prompt. -->
 <resources>
   <string name="clear_search">Clear search</string>
   <string name="saved_only_tip">Show saved stations only</string>
@@ -26,7 +26,8 @@
     <item quantity="one">%1$d city</item>
     <item quantity="other">%1$d cities</item>
   </plurals>
-  <string name="search_here">Search here</string>
+  <string name="search_here">Search this area</string>
+  <string name="map_moved">Map moved</string>
   <string name="search_here_busy">Searching…</string>
   <string name="search_here_retry">Retry</string>
   <string name="location_off">Location unavailable. Turn on device location or choose a city.</string>

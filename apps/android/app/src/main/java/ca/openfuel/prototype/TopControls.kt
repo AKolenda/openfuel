@@ -2,8 +2,15 @@
 package ca.openfuel.prototype
 
 import androidx.compose.animation.*
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,12 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
@@ -39,67 +43,110 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
 /**
- * The station search card, and under it the area chip with its menu, the "Search here" pill and the saved-stations
- * filter. "Choose a city…", or a change of [areaRequest], turns the chip row into the city search.
+ * The row over the map: a search button, the fuel-grade switch and the filters button. The search button opens the
+ * station search in the row's place, with the area chip and the saved-stations filter under it. "Choose a city…",
+ * or a change of [areaRequest], turns that second row into the city search. The search stays open while it has a
+ * query, a saved-only filter or a city search; its close button clears the query and the filter.
  *
- * [browse] is the map's view after the last pan or zoom. It is read here, in a derived state, so a pan recomposes
- * only this row, and only when the pill comes or goes.
+ * [browse] is the map's view after the last pan or zoom, read in a derived state so a pan recomposes only the
+ * area menu's "Search this map area" row, and only when it is enabled or disabled.
  */
 @Composable
-internal fun TopControls(chrome: MapChrome, query: String, onQueryChange: (String) -> Unit, area: SearchPoint, browse: () -> MapMove?,
-                         syncing: Boolean, offline: Boolean, locating: Boolean, areaRequest: Int, searchCities: suspend (String) -> List<SearchPoint>,
+internal fun TopControls(chrome: MapChrome, query: String, onQueryChange: (String) -> Unit, grade: Grade, onGradeChange: (Grade) -> Unit,
+                         area: SearchPoint, browse: () -> MapMove?, locating: Boolean, areaRequest: Int, searchCities: suspend (String) -> List<SearchPoint>,
                          savedOnly: Boolean, onSavedOnlyChange: (Boolean) -> Unit, openSettings: () -> Unit, useLocation: () -> Unit,
                          searchArea: (SearchPoint) -> Unit, chooseCity: (SearchPoint) -> Unit) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val recentAreas = remember { RecentAreas(context) }
     var recent by remember { mutableStateOf(recentAreas.load()) }
     var editing by rememberSaveable { mutableStateOf(false) }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var focusRequest by remember { mutableIntStateOf(0) } // Raised by the search button to focus the field.
     var handledAreaRequest by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(areaRequest) {
         if (areaRequest > handledAreaRequest) editing = true
         handledAreaRequest = areaRequest
     }
+    val open = searching || editing || query.isNotEmpty() || savedOnly
     val chipFocus = remember { FocusRequester() }
     // Leaving the city search gives focus back to the chip (outside touch mode), so the map's web view does not take it.
     var wasEditing by remember { mutableStateOf(editing) }
     LaunchedEffect(editing) {
-        if (wasEditing && !editing) runCatching { chipFocus.requestFocus() }
+        if (wasEditing && !editing && open) runCatching { chipFocus.requestFocus() }
         wasEditing = editing
     }
     val movedAway by remember(area) { derivedStateOf { mapMovedAway(area, browse()) } }
-    // The area the pill last asked for; the pill stays, reading "Searching…", while it loads.
-    var searched by remember { mutableStateOf<SearchPoint?>(null) }
-    val pill = (movedAway || offline || syncing && area == searched) && chrome.detent != Detent.FULL && !editing
     fun searchHere() {
-        val center = browse()?.center
-        // Offline without a move, the pill retries the loaded area as it is.
-        val next = if (movedAway && center != null) center.copy(label = "Map area", source = SearchSource.MAP) else area
-        searched = next
-        searchArea(next)
+        val center = browse()?.center ?: return
+        searchArea(center.copy(label = "Map area", source = SearchSource.MAP))
     }
     fun choose(city: SearchPoint) {
         editing = false
         recent = recentAreas.add(city)
         chooseCity(city)
     }
-    Column(Modifier.widthIn(max = 560.dp).padding(16.dp).onGloballyPositioned { chrome.topControlsBottomPx = (it.positionInParent().y + it.size.height).roundToInt() }) {
-        StationSearch(query, onQueryChange, openSettings)
-        Box(Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp).testTag("map-filter-row"), contentAlignment = Alignment.CenterStart) {
-            Crossfade(editing, Modifier.fillMaxWidth(), animationSpec = tween(150), label = "area row") { cityMode ->
-                if (cityMode) CitySearch(expanded = editing, recent, area, searchCities, choose = { choose(it) }, close = { editing = false },
-                    modifier = Modifier.fillMaxWidth())
-                else Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                    // The pill is measured first and the chip takes what is left. TalkBack announces the pill once.
-                    Row(Modifier.padding(end = 56.dp).semantics { liveRegion = LiveRegionMode.Polite },
-                        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    fun close() {
+        focusManager.clearFocus()
+        onQueryChange(""); onSavedOnlyChange(false)
+        editing = false; searching = false; focusRequest = 0
+    }
+    BackHandler(enabled = open && !editing) { close() }
+    var columnTop by remember { mutableIntStateOf(0) }
+    var firstRowBottom by remember { mutableIntStateOf(0) }
+    Column(Modifier.widthIn(max = 560.dp).padding(12.dp).onGloballyPositioned {
+        columnTop = it.positionInParent().y.roundToInt()
+        chrome.topControlsBottomPx = columnTop + it.size.height
+        chrome.mapTopPx = columnTop + firstRowBottom
+    }) {
+        Row(Modifier.fillMaxWidth().onGloballyPositioned {
+            firstRowBottom = (it.positionInParent().y + it.size.height).roundToInt()
+            chrome.mapTopPx = columnTop + firstRowBottom
+        }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (open) StationSearch(query, onQueryChange, focusRequest, close = { close() }, modifier = Modifier.weight(1f))
+            else {
+                RoundButton(Icons.Default.Search, stringResource(R.string.search), "open-search") { searching = true; focusRequest++ }
+                GradeSwitch(grade, onGradeChange, Modifier.weight(1f))
+            }
+            RoundButton(Icons.Default.Tune, stringResource(R.string.settings), "open-settings", onClick = openSettings)
+        }
+        AnimatedVisibility(open, enter = fadeIn(tween(150)) + expandVertically(), exit = fadeOut(tween(100)) + shrinkVertically()) {
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 48.dp).testTag("map-filter-row"), contentAlignment = Alignment.CenterStart) {
+                Crossfade(editing, Modifier.fillMaxWidth(), animationSpec = tween(150), label = "area row") { cityMode ->
+                    if (cityMode) CitySearch(expanded = editing, recent, area, searchCities, choose = { choose(it) }, close = { editing = false },
+                        modifier = Modifier.fillMaxWidth())
+                    else Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                         AreaMenu(area, recent, movedAway, locating, chipFocus, useLocation = useLocation, searchMapArea = { searchHere() },
-                            choose = { choose(it) }, searchCity = { editing = true }, modifier = Modifier.weight(1f, fill = false))
-                        AnimatedVisibility(pill, enter = fadeIn(tween(150)) + expandHorizontally(expandFrom = Alignment.Start),
-                            exit = fadeOut(tween(100)) + shrinkHorizontally(shrinkTowards = Alignment.Start)) {
-                            SearchHerePill(syncing, offline) { searchHere() }
-                        }
+                            choose = { choose(it) }, searchCity = { editing = true }, modifier = Modifier.padding(end = 56.dp))
+                        SavedToggle(savedOnly, onSavedOnlyChange, Modifier.align(Alignment.CenterEnd))
                     }
-                    SavedToggle(savedOnly, onSavedOnlyChange, Modifier.align(Alignment.CenterEnd))
+                }
+            }
+        }
+    }
+}
+
+/** A 48 dp white round button over the map. */
+@Composable
+private fun RoundButton(icon: ImageVector, label: String, tag: String, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = CircleShape, color = Color.White, contentColor = Ink, shadowElevation = 3.dp,
+        modifier = Modifier.size(48.dp).semantics { contentDescription = label }.testTag(tag)) {
+        Box(contentAlignment = Alignment.Center) { Icon(icon, null, Modifier.size(22.dp)) }
+    }
+}
+
+/** Regular, Premium and Diesel as one switch; the chosen grade is ink. */
+@Composable
+private fun GradeSwitch(grade: Grade, onChange: (Grade) -> Unit, modifier: Modifier) {
+    Surface(shape = RoundedCornerShape(50), color = Color.White, shadowElevation = 3.dp, modifier = modifier.heightIn(min = 48.dp)) {
+        Row(Modifier.padding(4.dp).selectableGroup().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Grade.entries.forEach { fuel ->
+                val chosen = grade == fuel
+                Box(Modifier.weight(1f).fillMaxHeight().heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(if (chosen) Ink else Color.Transparent)
+                    .selectable(chosen, role = Role.RadioButton) { onChange(fuel) }.testTag("grade-${fuel.name.lowercase()}"),
+                    contentAlignment = Alignment.Center) {
+                    Text(gradeLabel(fuel), fontSize = 14.sp, fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (chosen) Color.White else Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 6.dp))
                 }
             }
         }
@@ -107,31 +154,27 @@ internal fun TopControls(chrome: MapChrome, query: String, onQueryChange: (Strin
 }
 
 /**
- * The station search card with the settings button, which gives way to a clear button while there is a query.
- * The Search key, or hiding the keyboard, ends the search, so no cursor keeps blinking. The "openfuel" wordmark
- * shows only when there is room for it.
+ * The station search field, with a close button that clears it. The Search key, or hiding the keyboard, ends the
+ * typing, so no cursor keeps blinking. A new [focusRequest] focuses the field and shows the keyboard.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StationSearch(query: String, onQueryChange: (String) -> Unit, openSettings: () -> Unit) {
+private fun StationSearch(query: String, onQueryChange: (String) -> Unit, focusRequest: Int, close: () -> Unit, modifier: Modifier) {
     val focusManager = LocalFocusManager.current
+    val field = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
     val keyboard = WindowInsets.isImeVisible
     LaunchedEffect(keyboard) { if (!keyboard && focused) focusManager.clearFocus() }
+    LaunchedEffect(focusRequest) { if (focusRequest > 0) { runCatching { field.requestFocus() }; keyboardController?.show() } }
     val label = stringResource(R.string.search)
-    val wordmark = LocalConfiguration.current.screenWidthDp >= 400 && LocalDensity.current.fontScale <= 1.15f
-    Surface(shape = RoundedCornerShape(20.dp), color = Color.White, shadowElevation = 3.dp) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 14.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.openfuel_mark), null, Modifier.size(28.dp))
-            if (wordmark) {
-                Spacer(Modifier.width(6.dp))
-                Text("openfuel", fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
-            }
-            Spacer(Modifier.width(12.dp)); VerticalDivider(Modifier.height(24.dp))
+    Surface(shape = RoundedCornerShape(50), color = Color.White, shadowElevation = 3.dp, modifier = modifier) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 14.dp, end = 0.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Search, null, Modifier.size(20.dp), tint = Muted)
             BasicTextField(query, onQueryChange, singleLine = true,
-                modifier = Modifier.weight(1f).padding(horizontal = 12.dp).onFocusChanged { focused = it.isFocused }
+                modifier = Modifier.weight(1f).padding(horizontal = 10.dp).focusRequester(field).onFocusChanged { focused = it.isFocused }
                     .semantics { contentDescription = label }.testTag("station-search"),
-                textStyle = LocalTextStyle.current.copy(color = Ink, fontSize = 16.sp), cursorBrush = SolidColor(Forest),
+                textStyle = LocalTextStyle.current.copy(color = Ink, fontSize = 16.sp), cursorBrush = SolidColor(Ink),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 decorationBox = { inner ->
@@ -142,28 +185,10 @@ private fun StationSearch(query: String, onQueryChange: (String) -> Unit, openSe
                         inner()
                     }
                 })
-            if (query.isNotEmpty()) IconButton(onClick = { onQueryChange("") }, modifier = Modifier.testTag("clear-search")) {
+            IconButton(onClick = close, modifier = Modifier.testTag("clear-search")) {
                 Icon(Icons.Default.Close, stringResource(R.string.clear_search), tint = Muted)
-            } else IconButton(onClick = openSettings, modifier = Modifier.testTag("open-settings")) {
-                Icon(Icons.Default.Tune, stringResource(R.string.settings), tint = Forest)
             }
         }
-    }
-}
-
-/** Loads the area on the map once it has moved away from the loaded area, or retries while offline. */
-@Composable
-private fun SearchHerePill(syncing: Boolean, offline: Boolean, onClick: () -> Unit) {
-    Button(onClick = onClick, enabled = !syncing, contentPadding = PaddingValues(start = 12.dp, end = 14.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Forest, contentColor = Color.White,
-            disabledContainerColor = Forest, disabledContentColor = Color.White.copy(alpha = .8f)),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp, pressedElevation = 3.dp, disabledElevation = 3.dp),
-        modifier = Modifier.heightIn(min = 40.dp).testTag("search-map-area")) {
-        if (syncing) CircularProgressIndicator(Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-        else Icon(if (offline) Icons.Default.Refresh else Icons.Default.Search, null, Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(stringResource(when { syncing -> R.string.search_here_busy; offline -> R.string.search_here_retry; else -> R.string.search_here }),
-            fontSize = 14.sp, maxLines = 1)
     }
 }
 
@@ -177,7 +202,7 @@ private fun SavedToggle(savedOnly: Boolean, onChange: (Boolean) -> Unit, modifie
         TooltipBox(positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
             tooltip = { PlainTooltip { Text(stringResource(R.string.saved_only_tip)) } }, state = rememberTooltipState()) {
             Surface(checked = savedOnly, onCheckedChange = onChange, shape = CircleShape, shadowElevation = 3.dp,
-                color = if (savedOnly) Forest else Color.White, contentColor = if (savedOnly) Color.White else Forest,
+                color = if (savedOnly) Ink else Color.White, contentColor = if (savedOnly) Color.White else Ink,
                 modifier = Modifier.size(40.dp).semantics { role = Role.Checkbox; stateDescription = state }.testTag("saved-filter")) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(if (savedOnly) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, stringResource(R.string.saved), Modifier.size(20.dp))

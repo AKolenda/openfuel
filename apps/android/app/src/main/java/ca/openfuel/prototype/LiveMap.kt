@@ -3,7 +3,6 @@ package ca.openfuel.prototype
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
 import android.view.View
 import android.view.accessibility.AccessibilityManager
 import android.webkit.*
@@ -22,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.SequenceInputStream
 import java.util.Collections
@@ -63,15 +61,16 @@ private fun mapFile(context: Context, path: String?): WebResourceResponse? {
 }
 
 /**
- * Bundled map code shares one compositor for tiles and geographically anchored logos.
+ * Bundled map code shares one compositor for tiles and station pins. [stations] is the list in its order: the first
+ * [NUMBERED_STATIONS] get numbered pins that match the list, and the rest are dots.
  * [padding] is the part of the map covered by controls; the map centres itself in the rest. [visible] is false while
  * the map is covered, so it stops drawing. A tapped chip calls [onSelect] with its station and every station whose chip
  * lies under it, front first.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-internal fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, brandLogos: Map<String, Bitmap>, onMove: (MapMove) -> Unit,
-            onBaseMap: (String) -> Unit = {}, modifier: Modifier = Modifier, padding: () -> PaddingValues = { PaddingValues() }, visible: () -> Boolean = { true },
+internal fun LiveMap(stations: List<Station>, grade: Grade, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, onMove: (MapMove) -> Unit,
+            onBaseMap: (String) -> Unit = {}, onBaseShown: () -> Unit = {}, modifier: Modifier = Modifier, padding: () -> PaddingValues = { PaddingValues() }, visible: () -> Boolean = { true },
             onSelect: (Station, List<Station>) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -79,6 +78,7 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, cen
     val inset by rememberUpdatedState(padding)
     val moved by rememberUpdatedState(onMove)
     val baseMap by rememberUpdatedState(onBaseMap)
+    val baseShown by rememberUpdatedState(onBaseShown)
     val stationIndex = remember(stations) { stations.associateBy { it.id } }
     val currentStations by rememberUpdatedState(stationIndex)
     val start by rememberUpdatedState(center)
@@ -113,7 +113,8 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, cen
                 moved = { lat, lon, side -> post { if (FuelCore.validStationPoint(lat, lon)) moved(MapMove(SearchPoint(lat, lon, "Map area", SearchSource.MAP), side)) } },
                 // Ids that went stale between the tap and this post are dropped; a stale front chip selects nothing.
                 selected = { ids -> post { currentStations[ids.first()]?.let { front -> select(front, ids.mapNotNull(currentStations::get)) } } },
-                base = { name -> post { baseMap(name) } }
+                base = { name -> post { baseMap(name) } },
+                shown = { post { baseShown() } }
             ), "OpenFuelMap")
             // The page opens on the search area, so its first tiles are that area's rather than Canada's.
             val area = start.takeIf { it.source != SearchSource.OVERVIEW }
@@ -140,30 +141,15 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, cen
     LaunchedEffect(ready, centerRequest) {
         if (ready) view?.evaluateJavascript("window.setArea(${center.latitude},${center.longitude},${center.source == SearchSource.OVERVIEW});", null)
     }
-    var encodedLogos by remember { mutableStateOf(JSONObject()) }
-    var encodedCache by remember { mutableStateOf<Map<String, Pair<Bitmap, String>>>(emptyMap()) }
-    LaunchedEffect(brandLogos) { withContext(Dispatchers.Main.immediate) {
-        val previous = encodedCache
-        val next = withContext(Dispatchers.Default) {
-            brandLogos.mapValues { (url, bitmap) ->
-                previous[url]?.takeIf { it.first === bitmap } ?: run {
-                    val output = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-                    bitmap to ("data:image/png;base64," + android.util.Base64.encodeToString(output.toByteArray(), android.util.Base64.NO_WRAP))
-                }
-            }
-        }
-        encodedCache = next
-        encodedLogos = JSONObject().apply { next.forEach { (url, value) -> put(url, value.second) } }
-    } }
-    LaunchedEffect(ready, stations, grade, bestId, encodedLogos) { withContext(Dispatchers.Main.immediate) {
+    LaunchedEffect(ready, stations, grade) { withContext(Dispatchers.Main.immediate) {
         if (!ready) return@withContext
         // Serializing the station snapshot never blocks a list-scroll frame.
         val payload = withContext(Dispatchers.Default) {
-            JSONObject().put("logos", encodedLogos).put("stations", JSONArray().apply {
-                stations.forEach { station -> if (FuelCore.validStationPoint(station.latitude, station.longitude)) put(JSONObject()
+            JSONObject().put("stations", JSONArray().apply {
+                stations.forEachIndexed { index, station -> if (FuelCore.validStationPoint(station.latitude, station.longitude)) put(JSONObject()
                     .put("id", station.id).put("name", station.name).put("lat", station.latitude).put("lon", station.longitude)
-                    .put("price", station.price(grade) ?: JSONObject.NULL).put("logo", station.brandLogoUrl ?: JSONObject.NULL).put("best", station.id == bestId)) }
+                    .put("price", station.price(grade) ?: JSONObject.NULL)
+                    .put("rank", if (index < NUMBERED_STATIONS) index + 1 else 0).put("highlight", index < HIGHLIGHTED_STATIONS && station.price(grade) != null)) }
             }).toString()
         }
         view?.evaluateJavascript("window.setStations($payload);", null)
@@ -195,7 +181,7 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, bestId: String?, cen
  * unknown. [selected] gets 1 to 12 station ids, the tapped one first.
  */
 internal class MapBridge(private val ready: () -> Unit, private val moved: (Double, Double, Double) -> Unit, private val selected: (List<String>) -> Unit,
-                         private val base: (String) -> Unit) {
+                         private val base: (String) -> Unit, private val shown: () -> Unit = {}) {
     @JavascriptInterface fun ready() = ready.invoke()
     /** The Leaflet page, which does not report the size of its view. */
     @JavascriptInterface fun moved(latitude: Double, longitude: Double) = moved.invoke(latitude, longitude, Double.NaN)
@@ -211,4 +197,6 @@ internal class MapBridge(private val ready: () -> Unit, private val moved: (Doub
         selected.invoke(ids)
     }
     @JavascriptInterface fun base(name: String) { if (name == "openfreemap" || name == "openstreetmap") base.invoke(name) }
+    /** A settled frame has drawn part of the base map. The Leaflet page does not call it, so its credit never folds. */
+    @JavascriptInterface fun baseShown() = shown.invoke()
 }

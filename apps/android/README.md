@@ -5,8 +5,8 @@ coordinates. On first arrival, the app explains location use and requests Androi
 precise/approximate permission. Location is a bounded one-shot fix, never continuous tracking; it is
 used in the background only for price alerts, after you turn them on.
 Declining permission offers Canadian city search. The current search area is always labelled;
-a chosen city or cached area never masquerades as GPS. Pan and tap **Search here**
-to load another part of the map, or tap the location button to recenter.
+a chosen city or cached area never masquerades as GPS. Pan and tap **Search this area**
+in the station list to load another part of the map, or tap the location button to recenter.
 
 Fresh installs load no map, and request no tiles, until you grant location access or choose an area.
 No city is silently selected. Nearby searches round coordinates to three decimal places
@@ -15,8 +15,8 @@ No city is silently selected. Nearby searches round coordinates to three decimal
 The public HTTPS API is `https://openfuel.ca/api/v1`. Stations without a price remain visible
 and reportable. Prices are actual community submissions, labelled **unverified**, with report
 age. No invented starting prices or sample stations appear. Confirm prices at the pump.
-Directions open the station's actual coordinates. Search, fuel grades, sorting, favorites,
-Cards/List layouts and report forms are native Compose controls. Only the map uses WebView; no hosted web page or Metro server is required.
+Directions open the station's actual coordinates. Search, fuel grades, sorting, favorites
+and report forms are native Compose controls. Only the map uses WebView; no hosted web page or Metro server is required.
 
 The last chosen city or area and its real stations appear immediately on reopening while the
 network and foreground location refresh. A later GPS fix cannot replace a newer city/map
@@ -46,12 +46,13 @@ Without WebGL, or if OpenFreeMap refuses its tiles, the map uses OpenStreetMap's
 have usage limits. There are no analytics.
 
 Station brand logos load directly from the API's curated HTTPS URLs on Wikimedia, Shell, Co-op and Tempo, with 4 MiB memory and 8 MiB disposable device HTTP caches. No station logo binaries are
-bundled or hosted by OpenFuel. MapLibre draws the base map, the cached brand/price chips and the location dot in one WebGL frame and handles station taps; each distinct chip is drawn once, so a pinch or pan moves no page elements. Prices appear above the brand icon.
+bundled or hosted by OpenFuel. MapLibre draws the base map, the station pins and the location dot in one WebGL frame and handles station taps; each distinct pin is drawn once, so a pinch or pan moves no page elements. The first nine stations in the list get numbered pins that match the list, the first three with a price in amber; the rest are dots, ink with a price and grey without.
 
-The approved curved F is used in the launcher and header. The area selector opens a dropdown
-with location, recent cities and city search. **Search here** appears beside it after a pan;
-the distance threshold scales with zoom. Fuel grades, About and data-source details live in
-Settings. Tapping overlapping station markers opens details with an **Also at this spot** row
+The approved curved F is used in the launcher. Over the map sit a search button, a Regular / Premium /
+Diesel switch and the filters button. Search opens the station search with the area selector, a dropdown
+with location, recent cities and city search, and the saved-stations filter. After a pan, a **Map moved**
+prompt with **Search this area** takes the station list's title line; the distance threshold scales with
+zoom. About and data-source details live in Settings. Tapping overlapping station markers opens details with an **Also at this spot** row
 for the other stations, without changing the map zoom.
 
 **Price alerts** (Settings → Price alerts) notify you when a station near you reports a price at or
@@ -70,7 +71,10 @@ Drag the station panel's header or list to move between collapsed, half-open and
 The list starts scrolling when the panel is expanded; pulling down from the list's top lowers
 it again. The panel always retains its header. Tap the refresh button in the header to update
 prices. Sort opens a dropdown, and Saved changes the heading and empty state to saved stations.
-Map attribution and the location button move above the panel and fade out at its expanded stop.
+The list is a price board: brand logo with its list number, price, name, distance and report age, and
+directions. Map attribution shows beside an info button. On OpenFreeMap's tiles it folds away at the first map
+move after the tiles have drawn and the button shows it again; on OpenStreetMap's raster tiles it always shows. It and the location button move above the panel and fade out at its
+expanded stop.
 The map stays full-size during drags and becomes invisible while covered by the expanded list.
 Menu sheets slide closed and
 crossfade between their contents. Cached logo encoding, station serialization and atomic
