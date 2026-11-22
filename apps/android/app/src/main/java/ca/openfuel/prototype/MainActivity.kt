@@ -110,7 +110,8 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var menu by remember { mutableStateOf<Menu?>(null) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var stackIds by rememberSaveable { mutableStateOf(emptyList<String>()) } // A tapped map chip's stations, front first.
-    var baseMap by remember { mutableStateOf<String?>(null) } // "openfreemap" or "openstreetmap" once shown.
+    var baseMap by remember { mutableStateOf<String?>(null) } // "openfreemap" or "openstreetmap" once chosen.
+    var baseShown by remember { mutableStateOf(false) } // A settled frame has drawn part of the base map.
     var mapMoves by remember { mutableIntStateOf(0) } // Map moves reported so far: pans, zooms and resizes.
     val chrome = remember { MapChrome() }
     val draftStore = remember { LocalDraftStore(context) }
@@ -315,6 +316,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     centerRequest = centerRequest,
                     onMove = { onMapMove(it) },
                     onBaseMap = { baseMap = it },
+                    onBaseShown = { baseShown = true },
                     modifier = Modifier.fillMaxSize().testTag("station-map"),
                     // The map centres itself between the top row and the half-open sheet, and stops drawing while covered.
                     padding = with(LocalDensity.current) { { PaddingValues(top = chrome.mapTopPx.toDp(), bottom = (this@BoxWithConstraints.constraints.maxHeight - chrome.halfTopPx).toDp()) } },
@@ -344,7 +346,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
             }
         }
         // Map credit, location button and snackbar, which travel with the station sheet.
-        SheetOverlays(sheet, chrome, snackbar, baseMap, mapMoves = { mapMoves }, locating, requestLocation = { requestLocation() })
+        SheetOverlays(sheet, chrome, snackbar, baseMap, baseShown, mapMoves = { mapMoves }, locating, requestLocation = { requestLocation() })
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
         title = { Text(stringResource(R.string.intro_title)) },

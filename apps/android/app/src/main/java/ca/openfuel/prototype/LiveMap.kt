@@ -70,7 +70,7 @@ private fun mapFile(context: Context, path: String?): WebResourceResponse? {
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 internal fun LiveMap(stations: List<Station>, grade: Grade, center: SearchPoint, currentLocation: SearchPoint?, centerRequest: Int, onMove: (MapMove) -> Unit,
-            onBaseMap: (String) -> Unit = {}, modifier: Modifier = Modifier, padding: () -> PaddingValues = { PaddingValues() }, visible: () -> Boolean = { true },
+            onBaseMap: (String) -> Unit = {}, onBaseShown: () -> Unit = {}, modifier: Modifier = Modifier, padding: () -> PaddingValues = { PaddingValues() }, visible: () -> Boolean = { true },
             onSelect: (Station, List<Station>) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -78,6 +78,7 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, center: SearchPoint,
     val inset by rememberUpdatedState(padding)
     val moved by rememberUpdatedState(onMove)
     val baseMap by rememberUpdatedState(onBaseMap)
+    val baseShown by rememberUpdatedState(onBaseShown)
     val stationIndex = remember(stations) { stations.associateBy { it.id } }
     val currentStations by rememberUpdatedState(stationIndex)
     val start by rememberUpdatedState(center)
@@ -112,7 +113,8 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, center: SearchPoint,
                 moved = { lat, lon, side -> post { if (FuelCore.validStationPoint(lat, lon)) moved(MapMove(SearchPoint(lat, lon, "Map area", SearchSource.MAP), side)) } },
                 // Ids that went stale between the tap and this post are dropped; a stale front chip selects nothing.
                 selected = { ids -> post { currentStations[ids.first()]?.let { front -> select(front, ids.mapNotNull(currentStations::get)) } } },
-                base = { name -> post { baseMap(name) } }
+                base = { name -> post { baseMap(name) } },
+                shown = { post { baseShown() } }
             ), "OpenFuelMap")
             // The page opens on the search area, so its first tiles are that area's rather than Canada's.
             val area = start.takeIf { it.source != SearchSource.OVERVIEW }
@@ -179,7 +181,7 @@ internal fun LiveMap(stations: List<Station>, grade: Grade, center: SearchPoint,
  * unknown. [selected] gets 1 to 12 station ids, the tapped one first.
  */
 internal class MapBridge(private val ready: () -> Unit, private val moved: (Double, Double, Double) -> Unit, private val selected: (List<String>) -> Unit,
-                         private val base: (String) -> Unit) {
+                         private val base: (String) -> Unit, private val shown: () -> Unit = {}) {
     @JavascriptInterface fun ready() = ready.invoke()
     /** The Leaflet page, which does not report the size of its view. */
     @JavascriptInterface fun moved(latitude: Double, longitude: Double) = moved.invoke(latitude, longitude, Double.NaN)
@@ -195,4 +197,6 @@ internal class MapBridge(private val ready: () -> Unit, private val moved: (Doub
         selected.invoke(ids)
     }
     @JavascriptInterface fun base(name: String) { if (name == "openfreemap" || name == "openstreetmap") base.invoke(name) }
+    /** A settled frame has drawn part of the base map. The Leaflet page does not call it, so its credit never folds. */
+    @JavascriptInterface fun baseShown() = shown.invoke()
 }

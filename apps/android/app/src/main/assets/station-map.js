@@ -51,14 +51,14 @@
    if(style.sprite)map.setSprite(style.sprite);
    for(const [id,source] of Object.entries(style.sources))map.addSource(id,source);
    for(const layer of style.layers)map.addLayer(layer,'location');
-   // The app learns the base map once a settled frame shows some of it, so the credit it folds has been seen with
-   // the tiles. Vector tiles count once the frame has features from them (failed or empty tiles draw none); raster
-   // tiles, whose credit never folds, count at their first settled frame.
-   chosen=true;map.off('moveend',startBase);
+   // The app learns the base map at once, so its credit names it before any tile draws, and learns separately when
+   // a settled frame shows some of it, after which the credit may fold. Vector tiles count once the frame has
+   // features from them (failed or empty tiles draw none); raster tiles count at their first settled frame.
+   chosen=true;map.off('moveend',startBase);OpenFuelMap.base(name);
    const sources=new Set(Object.keys(style.sources)),vector=Object.values(style.sources).some(source=>source.type==='vector');
    const shown=()=>{
     if(vector&&!map.queryRenderedFeatures().some(feature=>sources.has(feature.source)))return;
-    map.off('idle',shown);OpenFuelMap.base(name);
+    map.off('idle',shown);OpenFuelMap.baseShown();
    };
    map.on('idle',shown);
   }

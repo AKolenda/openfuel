@@ -325,7 +325,7 @@ private fun TitleOrPrompt(title: String, area: SearchPoint, browse: () -> MapMov
         if (prompt) Surface(color = AmberSoft, shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth().padding(start = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }) {
             Row(Modifier.heightIn(min = 40.dp).padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(if (offline && !movedAway) R.string.sheet_offline else R.string.map_moved), fontSize = 13.sp, lineHeight = 16.sp,
+                Text(stringResource(if (offline) R.string.sheet_offline else R.string.map_moved), fontSize = 13.sp, lineHeight = 16.sp,
                     color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Surface(onClick = { searchHere() }, enabled = !syncing, color = Color.White, contentColor = Ink, shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.testTag("search-map-area")) {
@@ -420,7 +420,7 @@ internal fun SheetScrim(sheet: StationSheetState) {
  * snackbar sits above the credit row so it never covers the credit.
  */
 @Composable
-internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chrome: MapChrome, snackbar: SnackbarHostState, baseMap: String?, mapMoves: () -> Int,
+internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chrome: MapChrome, snackbar: SnackbarHostState, baseMap: String?, baseShown: Boolean, mapMoves: () -> Int,
                                                    locating: Boolean, requestLocation: () -> Unit) {
     val density = LocalDensity.current
     val mapBottom = constraints.maxHeight - WindowInsets.navigationBars.getBottom(density).toFloat()
@@ -430,7 +430,7 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
     if (!chrome.mapCovered) {
         MapCredit(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm), maxWidth - 136.dp,
             // OpenStreetMap's own tiles require their credit to stay visible, so it never folds away on them.
-            foldable = baseMap == "openfreemap", mapMoves = mapMoves,
+            foldable = baseMap == "openfreemap" && baseShown, mapMoves = mapMoves,
             Modifier.align(Alignment.TopStart).offset { IntOffset(0, (sheetTop() - 8.dp.toPx() - creditHeight).roundToInt()) }
                 .onSizeChanged { creditHeight = it.height }.graphicsLayer { alpha = sheet.mapAlpha() }.padding(start = 4.dp))
         val label = stringResource(R.string.sheet_use_location)
@@ -453,9 +453,8 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
 }
 
 /**
- * The info button and the credit text beside it, at most [textWidth] wide. Only a [foldable] credit can hide. The
- * app learns of OpenFreeMap once its first tiles have drawn, which makes the credit [foldable]; it then folds at the
- * next map move ([mapMoves] counts them), as MapLibre's compact attribution does, so it is seen with the tiles first.
+ * The info button and the credit text beside it, at most [textWidth] wide. Only a [foldable] credit can hide. An
+ * OpenFreeMap credit becomes [foldable] once a settled frame has drawn its tiles; it then folds at the next map move ([mapMoves] counts them), as MapLibre's compact attribution does, so it is seen with the tiles first.
  */
 @Composable
 private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, foldable: Boolean, mapMoves: () -> Int, modifier: Modifier) {
