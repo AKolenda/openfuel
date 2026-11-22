@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The saved snapshot is parsed, and its area's fresh stations requested, off the UI thread while the UI starts.
         val startup = StationRepository.startup(applicationContext)
+        PriceAlerts.resume(applicationContext)
         super.onCreate(savedInstanceState)
         // The app has a light surface even when Android's system theme is dark.
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),

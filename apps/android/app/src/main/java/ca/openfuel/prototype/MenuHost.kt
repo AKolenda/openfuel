@@ -103,12 +103,13 @@ internal fun MenuBody(
 ) {
     when (menu) {
         Menu.SETTINGS -> SettingsContent(filters, provider, fullWidth, grade,
-            changeGrade = changeGrade, about = { openMenu(Menu.ABOUT) },
+            changeGrade = changeGrade, about = { openMenu(Menu.ABOUT) }, alerts = { openMenu(Menu.ALERTS) },
             donate = donate, refresh = { refreshNow(); closeMenu {} },
             dismiss = { closeMenu {} }, apply = { f, p, wide ->
                 applySettings(f, p, wide)
                 closeMenu {}
             })
+        Menu.ALERTS -> PriceAlertSettings(close = { openMenu(Menu.SETTINGS) })
         Menu.ABOUT -> {
             SheetTitle(stringResource(R.string.about)) { closeMenu {} }
             Text(stringResource(R.string.about_body), lineHeight = 24.sp, color = Muted)
@@ -131,7 +132,7 @@ internal fun MenuBody(
     }
 }
 
-@Composable private fun SettingsContent(initial: Filters, initialProvider: MapProvider, initialWide: Boolean, grade: Grade, changeGrade: (Grade) -> Unit, about: () -> Unit, donate: (() -> Unit)?, refresh: () -> Unit, dismiss: () -> Unit, apply: (Filters, MapProvider, Boolean) -> Unit) {
+@Composable private fun SettingsContent(initial: Filters, initialProvider: MapProvider, initialWide: Boolean, grade: Grade, changeGrade: (Grade) -> Unit, about: () -> Unit, alerts: () -> Unit, donate: (() -> Unit)?, refresh: () -> Unit, dismiss: () -> Unit, apply: (Filters, MapProvider, Boolean) -> Unit) {
     var f by remember { mutableStateOf(initial) }; var provider by remember { mutableStateOf(initialProvider) }; var wide by remember { mutableStateOf(initialWide) }
     SheetTitle(stringResource(R.string.settings), dismiss)
     Text("Fuel type", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
@@ -141,6 +142,7 @@ internal fun MenuBody(
     }
     Text(stringResource(R.string.sheet_settings_help), fontSize = 12.sp, color = Muted)
     TextButton(onClick = refresh, modifier = Modifier.testTag("refresh-prices")) { Text("Refresh stations now") }
+    PriceAlertsRow(alerts)
     Text("Station data", fontWeight = FontWeight.SemiBold)
     Text("Station locations: OpenStreetMap contributors. Community pump prices are unverified; check the report time and confirm at the pump.", fontSize = 12.sp, color = Muted)
     TextButton(onClick = about, modifier = Modifier.testTag("open-about")) { Text("About OpenFuel and data sources") }
