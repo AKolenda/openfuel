@@ -265,8 +265,12 @@ internal fun StationSheetContent(handle: Modifier, header: Modifier, list: LazyL
             Box(handle.fillMaxWidth().height(20.dp).testTag("station-sheet-handle"), contentAlignment = Alignment.Center) {
                 Box(Modifier.width(36.dp).height(4.dp).background(Color(0xFFD9DADD), CircleShape))
             }
-            TitleOrPrompt(if (savedOnly) stringResource(R.string.saved) else stringResource(R.string.sheet_title, gradeLabel(grade)),
-                sort, changeSort, area, browse, syncing, offline = syncState == "offline", onRefresh, searchArea)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TitleOrPrompt(if (savedOnly) stringResource(R.string.saved) else stringResource(R.string.sheet_title, gradeLabel(grade)),
+                    area, browse, syncing, offline = syncState == "offline", onRefresh, searchArea, Modifier.weight(1f))
+                SortMenu(sort, changeSort)
+                Spacer(Modifier.width(4.dp))
+            }
             // Status belongs to the measured header so it cannot take space reserved for the first rows at HALF.
             if (syncState == "limited") LimitNotice(limitResetsAt, saved = hasStations, donate = donate)
             else if (syncState == "cached") Text(stringResource(R.string.sheet_cached),
@@ -296,15 +300,15 @@ internal fun StationSheetContent(handle: Modifier, header: Modifier, list: LazyL
 }
 
 /**
- * The header's title line: the title with the refresh button and the sort menu, or, once the map has moved away from
+ * The header's title line beside the sort menu: the title with the refresh button, or, once the map has moved away from
  * the loaded area or the connection is lost, a prompt to load the area on the map (or retry the loaded one). The
  * prompt stays, reading "Searching…", while the area it asked for loads. Both have the same height, so the sheet and
  * the map's padding never move when one replaces the other. [browse] is read in a derived state, so a pan recomposes
  * only this line, and only when the prompt comes or goes.
  */
 @Composable
-private fun TitleOrPrompt(title: String, sort: SortMode, changeSort: (SortMode) -> Unit, area: SearchPoint, browse: () -> MapMove?,
-                          syncing: Boolean, offline: Boolean, onRefresh: () -> Unit, searchArea: (SearchPoint) -> Unit) {
+private fun TitleOrPrompt(title: String, area: SearchPoint, browse: () -> MapMove?, syncing: Boolean, offline: Boolean,
+                          onRefresh: () -> Unit, searchArea: (SearchPoint) -> Unit, modifier: Modifier) {
     val movedAway by remember(area) { derivedStateOf { mapMovedAway(area, browse()) } }
     // The area the prompt last asked for.
     var searched by remember { mutableStateOf<SearchPoint?>(null) }
@@ -316,9 +320,9 @@ private fun TitleOrPrompt(title: String, sort: SortMode, changeSort: (SortMode) 
         searched = next
         searchArea(next)
     }
-    Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(bottom = 4.dp), contentAlignment = Alignment.CenterStart) {
+    Box(modifier.heightIn(min = 48.dp).padding(bottom = 4.dp), contentAlignment = Alignment.CenterStart) {
         if (prompt) Surface(color = AmberSoft, shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }) {
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }) {
             Row(Modifier.heightIn(min = 40.dp).padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(if (offline && !movedAway) R.string.sheet_offline else R.string.map_moved), fontSize = 13.sp, lineHeight = 16.sp,
                     color = Ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -333,11 +337,10 @@ private fun TitleOrPrompt(title: String, sort: SortMode, changeSort: (SortMode) 
                     }
                 }
             }
-        } else Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        } else Row(Modifier.fillMaxWidth().padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).semantics { heading() })
             RefreshButton(syncing, onRefresh)
-            SortMenu(sort, changeSort)
         }
     }
 }
@@ -410,8 +413,9 @@ internal fun SheetScrim(sheet: StationSheetState) {
  * button fade out as the sheet rises and leave once it covers the map, so they never take taps meant for the top
  * controls; the snackbar then sits above the navigation bar.
  *
- * The required attribution is an info button at the map's lower left. Its text shows beside it when the map opens
- * and folds away after a few seconds; the button shows it again, and the text opens OpenStreetMap's copyright page.
+ * The required attribution is an info button at the map's lower left with the credit beside it, which opens
+ * OpenStreetMap's copyright page. On OpenFreeMap's tiles the text folds away a few seconds after the map opens and
+ * the button shows it again; on OpenStreetMap's raster tiles it always shows.
  */
 @Composable
 internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chrome: MapChrome, snackbar: SnackbarHostState, baseMap: String?,
@@ -421,6 +425,8 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
     fun sheetTop() = minOf(sheet.top(), mapBottom)
     if (!chrome.mapCovered) {
         MapCredit(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm), maxWidth - 136.dp,
+            // OpenStreetMap's own tiles require their credit to stay visible, so it never folds away on them.
+            foldable = baseMap == "openfreemap",
             Modifier.align(Alignment.TopStart).offset { IntOffset(0, (sheetTop() - 56.dp.toPx()).roundToInt()) }
                 .graphicsLayer { alpha = sheet.mapAlpha() }.padding(start = 4.dp))
         val label = stringResource(R.string.sheet_use_location)
@@ -441,16 +447,17 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
     }.onSizeChanged { snackbarHeight = it.height })
 }
 
-/** The info button and, while [expanded][MapCredit], the credit text beside it, at most [textWidth] wide. */
+/** The info button and the credit text beside it, at most [textWidth] wide. Only a [foldable] credit can hide. */
 @Composable
-private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, modifier: Modifier) {
+private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, foldable: Boolean, modifier: Modifier) {
     val context = LocalContext.current
-    var expanded by rememberSaveable { mutableStateOf(true) }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(6_000); expanded = false }
+    var open by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(6_000); open = false }
+    val expanded = open || !foldable
     val label = stringResource(R.string.map_credits)
     val state = stringResource(if (expanded) R.string.area_expanded else R.string.area_collapsed)
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(48.dp).clickable { expanded = !expanded }
+        Box(Modifier.size(48.dp).clickable(enabled = foldable) { open = !expanded }
             .semantics { contentDescription = label; stateDescription = state }.testTag("map-credit"), contentAlignment = Alignment.Center) {
             Surface(shape = CircleShape, color = Color.White.copy(alpha = .9f), shadowElevation = 1.dp, modifier = Modifier.size(28.dp)) {
                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = Muted) }

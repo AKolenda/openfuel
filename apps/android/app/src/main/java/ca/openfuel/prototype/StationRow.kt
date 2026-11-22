@@ -48,8 +48,11 @@ internal fun StationRow(s: Station, rank: Int, highlight: Boolean, logo: Bitmap?
             Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Brand(s, logo, rank, highlight)
-                Text(price?.let(FuelCore::priceText) ?: "—", Modifier.widthIn(min = 62.dp), fontSize = if (price != null) 21.sp else 18.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp, color = if (price != null) Ink else Faint, maxLines = 1)
+                Row(Modifier.widthIn(min = 82.dp), verticalAlignment = Alignment.Bottom) {
+                    Text(price?.let(FuelCore::priceText) ?: "—", fontSize = if (price != null) 21.sp else 18.sp,
+                        fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp, color = if (price != null) Ink else Faint, maxLines = 1)
+                    if (price != null) Text(" ¢/L", fontSize = 10.sp, color = Muted, maxLines = 1, modifier = Modifier.padding(bottom = 3.dp))
+                }
                 Column(Modifier.weight(1f)) {
                     Text(s.name, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val reported = if (age == Int.MAX_VALUE) stringResource(R.string.sheet_no_report) else ageLabel(age)
