@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Download every OpenFuel community price report, refreshed daily, under the ODbL.">
+<title>Open data · OpenFuel</title>
+<link rel="stylesheet" href="/legal.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content / Aller au contenu</a>
+<header class="page-header"><div class="inner">
+<a href="/" aria-label="OpenFuel home"><img src="/brand/openfuel-wordmark-light.svg" alt="OpenFuel" width="154" height="45"></a>
+<nav aria-label="Policies and data"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/open-data/" aria-current="page">Open data</a><a href="/preview/">Open app</a></nav>
+</div></header>
+<main id="main">
+<p class="label">Open data</p>
+<h1>Every price, yours to use.</h1>
+<p class="lead">Every community price report OpenFuel has received, refreshed daily and free to use under the ODbL. Download the files: no key, no sign-up.</p>
+<p class="meta"><a class="lang-switch" href="#fr" hreflang="fr-CA" lang="fr-CA">Français</a></p>
+
+<h2>Downloads</h2>
+<ul class="downloads">
+<li><a href="/open-data/openfuel-price-reports.csv.gz"><div><strong>Price reports</strong><span>Every report since launch: the full price history.</span></div><em>CSV · gzip</em></a></li>
+<li><a href="/open-data/openfuel-current-prices.csv.gz"><div><strong>Current prices</strong><span>The latest price for each station and fuel grade, as the app shows it.</span></div><em>CSV · gzip</em></a></li>
+<li><a href="/open-data/openfuel-stations.csv.gz"><div><strong>Stations</strong><span>The OpenStreetMap station snapshot the reports refer to.</span></div><em>CSV · gzip</em></a></li>
+<li><a href="/open-data/openfuel-open-data.json"><div><strong>Manifest</strong><span>When the files were made, row counts and SHA-256 checksums.</span></div><em>JSON</em></a></li>
+</ul>
+<p class="meta">Files are refreshed every day around 09:30 UTC and served from the project's <a href="https://github.com/AKolenda/openfuel/releases/tag/open-data">GitHub release</a>.</p>
+
+<h2>Columns</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Column</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>station_id</code></td><td>OpenStreetMap object, such as <code>osm-node-10004701439</code>. Matches the stations file.</td></tr>
+<tr><td><code>fuel_type</code></td><td><code>regular</code>, <code>premium</code> or <code>diesel</code>.</td></tr>
+<tr><td><code>price_milli</code></td><td>Thousandths of a Canadian dollar per litre: <code>1429</code> means $1.429/L, or 142.9&nbsp;¢/L.</td></tr>
+<tr><td><code>observed_at</code></td><td>When OpenFuel received the report, in UTC, cut to the minute.</td></tr>
+<tr><td><code>source</code></td><td>Current prices only. <code>community-unverified</code> for every community report.</td></tr>
+</tbody></table></div>
+<p>The stations file has <code>station_id</code>, <code>name</code>, <code>brand</code>, <code>address</code>, <code>latitude</code>, <code>longitude</code> and <code>osm_url</code>.</p>
+
+<h2>What's left out</h2>
+<p>Nothing in these files identifies who reported a price. There are no installation IDs, report IDs, IP addresses or locations of the people reporting, and times are cut to the minute. The <a href="https://github.com/AKolenda/openfuel/blob/main/services/live/worker.mjs">export query</a> removes them inside the database, before anything leaves it.</p>
+<p class="note">Prices are unverified reports from people at the pump. They aren't official prices, and some will be wrong.</p>
+
+<h2>Licence and credit</h2>
+<p>The files are licensed under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License (ODbL&nbsp;1.0)</a>. You can use them for anything, including commercially, if you:</p>
+<ul>
+<li>credit "OpenFuel and © OpenStreetMap contributors", linking to this page;</li>
+<li>share any database you adapt from them under the ODbL; and</li>
+<li>don't present the prices as verified.</li>
+</ul>
+
+<h2>How it stays free</h2>
+<p>Once a day, a <a href="https://github.com/AKolenda/openfuel/blob/main/.github/workflows/open-data.yml">GitHub job</a> reads the reports through a protected export and uploads these files. Downloads are served by GitHub and never touch OpenFuel's database, so heavy use of the data can't slow the app or run up its costs. The <a href="https://github.com/AKolenda/openfuel/blob/main/tools/open_data.py">script</a> that builds the files is open source too.</p>
+
+<section class="fr" id="fr" lang="fr-CA">
+<p class="label">Données ouvertes</p>
+<h2>Tous les prix, à votre disposition.</h2>
+<p class="lead">Tous les signalements de prix reçus par OpenFuel, actualisés chaque jour et libres d'utilisation sous licence ODbL. Téléchargez les fichiers : aucune clé, aucune inscription.</p>
+<p class="meta"><a class="lang-switch" href="#main" hreflang="en-CA" lang="en-CA">English</a></p>
+<h3>Téléchargements</h3>
+<ul>
+<li><a href="/open-data/openfuel-price-reports.csv.gz">Signalements de prix</a> (CSV compressé) : tous les signalements depuis le lancement.</li>
+<li><a href="/open-data/openfuel-current-prices.csv.gz">Prix actuels</a> (CSV compressé) : le dernier prix par station et par carburant.</li>
+<li><a href="/open-data/openfuel-stations.csv.gz">Stations</a> (CSV compressé) : l'instantané OpenStreetMap auquel les signalements renvoient.</li>
+<li><a href="/open-data/openfuel-open-data.json">Manifeste</a> (JSON) : date de création, nombre de lignes et sommes de contrôle SHA-256.</li>
+</ul>
+<p>Les fichiers sont actualisés chaque jour vers 9&nbsp;h&nbsp;30 UTC. <code>price_milli</code> est en millièmes de dollar canadien par litre : <code>1429</code> signifie 1,429&nbsp;$/L, soit 142,9&nbsp;¢/L. <code>observed_at</code> est l'heure de réception du signalement, en UTC, tronquée à la minute.</p>
+<h3>Ce qui est exclu</h3>
+<p>Rien dans ces fichiers n'identifie la personne qui a signalé un prix : aucun identifiant d'installation, identifiant de signalement, adresse IP ou position. La requête d'exportation retire ces champs dans la base de données même, avant que quoi que ce soit en sorte.</p>
+<p class="note">Les prix sont des signalements non vérifiés faits à la pompe. Ce ne sont pas des prix officiels, et certains seront erronés.</p>
+<h3>Licence et mention</h3>
+<p>Les fichiers sont sous <a href="https://opendatacommons.org/licenses/odbl/1-0/">licence ODbL&nbsp;1.0</a>. Vous pouvez les utiliser à toute fin, y compris commerciale, à condition de mentionner « OpenFuel et © les contributeurs d'OpenStreetMap » avec un lien vers cette page, de partager sous ODbL toute base de données adaptée et de ne pas présenter les prix comme vérifiés.</p>
+<h3>Pourquoi c'est gratuit</h3>
+<p>Une fois par jour, une tâche GitHub lit les signalements par une exportation protégée et téléverse ces fichiers. GitHub sert les téléchargements, qui ne touchent jamais la base de données d'OpenFuel : un usage intensif des données ne peut ni ralentir l'application ni en augmenter les coûts.</p>
+</section>
+</main>
+<footer><div class="inner"><a href="/">OpenFuel home</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://github.com/AKolenda/openfuel">Source code</a></div></footer>
+</body>
+</html>

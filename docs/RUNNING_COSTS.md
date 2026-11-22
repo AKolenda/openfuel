@@ -40,6 +40,9 @@ the round trips per request as low as possible.
   about 1.5 ms and a lookup under 0.5 ms in Node 22.
 - **No database for static facts.** Regions, city search and the Statistics Canada averages come
   from the bundled snapshot files; health only asks D1 to answer (`SELECT 1`, no rows read).
+- **Open data never touches D1 per download.** The daily open-data job reads each report and current
+  price once (2,000 rows per call), at most about 140,000 rows a day at the 100,000-report ceiling.
+  The files are GitHub release assets, so downloads cost nothing and count against no Cloudflare limit.
 - **Cheap writes.** The report capacity check reads one row, and re-seeding skips rows that did
   not change.
 

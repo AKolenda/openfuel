@@ -1,5 +1,9 @@
 # OpenFuel data flows
 
+The public promises are at [openfuel.ca/privacy](https://openfuel.ca/privacy/) and the terms at
+[openfuel.ca/terms](https://openfuel.ca/terms/). Keep both pages true to the behaviour described here;
+change the pages (and their dates) before changing anything they promise.
+
 The website, native Android app, Expo client and current SwiftUI source use the
 public Cloudflare Worker and D1 database for real Canadian stations and
 unverified community pump prices. Swift’s portable core is tested independently;
@@ -98,3 +102,13 @@ when recently submitted. There is no account-based deletion interface, automated
 report-retention job or deployed station-moderation service yet. The archive
 ceiling stops further reports rather than deleting old ones. Private station
 evidence should not be submitted or placed in public source or issues.
+
+## Open data
+
+Once a day, `.github/workflows/open-data.yml` reads every report and current price through
+`/api/v1/export` and publishes them, with the station snapshot, as files on the `open-data` GitHub
+release under ODbL 1.0 ([openfuel.ca/open-data](https://openfuel.ca/open-data/)). The export's SQL
+returns only station, fuel grade, price and the receipt time cut to the minute: installation IDs and
+report IDs never leave D1, and `tools/open_data.py` refuses any row with other fields. The endpoint
+needs the job's token (GitHub secret `OPENFUEL_EXPORT_TOKEN`); `wrangler.jsonc` publishes only its
+SHA-256. To rotate it, set a new secret and its hash, then deploy.

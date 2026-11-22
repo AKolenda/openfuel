@@ -404,6 +404,35 @@ function spendingCap(error, env) {
       :"OpenFuel's free database allowance for today is used up. Saved stations still show; live prices return after midnight UTC.",
     donate_url:env.OPENFUEL_DONATE_URL||null},503,{'retry-after':String(Math.max(60,Math.ceil((error.until-now)/1000)))});
 }
+// Open data: the daily GitHub job (.github/workflows/open-data.yml) pages through the reports and current
+// prices here and publishes them as release files, so the public downloads the files and never queries D1.
+// The SQL below is the whole sanitization: no installation ID, no report ID, and times cut to the minute.
+// Only the job's token opens it; wrangler.jsonc holds that token's SHA-256, which is safe to publish.
+const EXPORT_PAGE = 2000;
+const exportQueries = {
+  reports: "SELECT rowid AS seq, station_id, fuel_type, price_milli, strftime('%Y-%m-%dT%H:%M:00Z', observed_at) AS observed_at FROM price_reports WHERE rowid > ?1 ORDER BY rowid LIMIT ?2",
+  prices: "SELECT rowid AS seq, station_id, fuel_type, price_milli, strftime('%Y-%m-%dT%H:%M:00Z', observed_at) AS observed_at, source FROM current_prices WHERE rowid > ?1 ORDER BY rowid LIMIT ?2",
+};
+const sha256 = async text => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+async function exportAllowed(request, env) {
+  const expected = String(env.OPENFUEL_EXPORT_TOKEN_SHA256 || '').toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(expected)) return null;
+  const token = (request.headers.get('authorization') || '').match(/^Bearer (\S{32,200})$/)?.[1];
+  if (!token) return false;
+  const given = await sha256(token), wanted = Uint8Array.from(expected.match(/../g), byte => parseInt(byte, 16));
+  return crypto.subtle.timingSafeEqual ? crypto.subtle.timingSafeEqual(given, wanted) : given.every((byte, i) => byte === wanted[i]);
+}
+async function exportPage(env, query) {
+  if ([...query.keys()].some(key => !['table', 'after'].includes(key))) throw new InputError('invalid_query', 'Use table and after.');
+  const sql = exportQueries[query.get('table')], after = Number(query.get('after') || 0);
+  if (!sql || !Number.isSafeInteger(after) || after < 0) throw new InputError('invalid_query', 'Use table=reports or table=prices and a non-negative after.');
+  checkBudget(env);
+  const learn = budgetStatement(env), day = budget.day;
+  const results = meter(await env.DB.batch([env.DB.prepare(sql).bind(after, EXPORT_PAGE), ...(learn ? [learn] : [])]));
+  if (learn) learnBudget(day, results[1].results[0]);
+  const rows = results[0].results;
+  return {rows: rows.map(({seq, ...row}) => row), next: rows.length === EXPORT_PAGE ? rows.at(-1).seq : null};
+}
 export default {
   async fetch(request,env,ctx) {
     const url=new URL(request.url);
@@ -425,6 +454,12 @@ export default {
       } else if(url.pathname==='/api/v1/stations') { body=await nearby(env,url.searchParams,url.origin,ctx); cacheControl='private, max-age=15'; }
       else if(url.pathname==='/api/v1/geocode') { body=geocode(url.searchParams); cacheControl='public, max-age=86400'; }
       else if(url.pathname==='/api/v1/regions') { body={regions:[{id:'CA',name:'Canada',is_demo:false,...metadata}]}; cacheControl='public, max-age=3600'; }
+      else if(url.pathname==='/api/v1/export') {
+        const allowed=await exportAllowed(request,env);
+        if(allowed===null) return json({error:'not_found'},404);
+        if(!allowed) return json({error:'unauthorized'},401,{'www-authenticate':'Bearer'});
+        body=await exportPage(env,url.searchParams); cacheControl='no-store';
+      }
       else return json({error:'not_found'},404);
       const extra={'cache-control':cacheControl};
       return request.method==='HEAD'?new Response(null,{headers:{...headers,...extra}}):json(body,200,extra);
