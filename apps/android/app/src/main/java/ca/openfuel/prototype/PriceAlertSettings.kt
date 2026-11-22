@@ -157,12 +157,13 @@ internal fun PriceAlertSettings(close: () -> Unit) {
     }, enabled = !checking && hasLocationPermission(context), modifier = Modifier.fillMaxWidth().padding(top = 6.dp).testTag("alerts-check")) {
         if (checking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.alerts_check_now))
     }
+    // Each result describes the settings it was checked with, even after they change.
     result?.let { r ->
-        val price = FuelCore.priceText(settings.maxPrice); val km = "${settings.radiusMetres / 1000} km"
         Text(when (r) {
             is AlertCheck.Found -> stringResource(if (r.notified) R.string.alerts_found_sent else R.string.alerts_found,
-                r.station.name, FuelCore.priceText(r.station.price(settings.grade)!!), FuelCore.distanceText(r.station.distanceMetres))
-            AlertCheck.NoneFound -> stringResource(R.string.alerts_none, gradeLabel(settings.grade), price, km)
+                r.station.name, FuelCore.priceText(r.price), FuelCore.distanceText(r.station.distanceMetres))
+            is AlertCheck.NoneFound -> stringResource(R.string.alerts_none, gradeLabel(r.settings.grade),
+                FuelCore.priceText(r.settings.maxPrice), "${r.settings.radiusMetres / 1000} km")
             AlertCheck.NoLocation -> stringResource(R.string.alerts_no_location)
             AlertCheck.MissingPermission -> stringResource(R.string.alerts_need_location)
             is AlertCheck.Failed -> r.message

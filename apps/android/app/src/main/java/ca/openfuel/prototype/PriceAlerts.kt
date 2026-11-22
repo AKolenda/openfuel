@@ -47,12 +47,14 @@ data class AlertSettings(
     }
 }
 
-/** What a price-alert check found, for the settings screen. */
+/** What a price-alert check found, for the settings screen. Results keep the [AlertSettings] they were checked with. */
 sealed interface AlertCheck {
     data object NoLocation : AlertCheck
     data object MissingPermission : AlertCheck
-    data class Found(val station: Station, val more: Int, val notified: Boolean) : AlertCheck
-    data object NoneFound : AlertCheck
+    data class Found(val station: Station, val more: Int, val notified: Boolean, val settings: AlertSettings) : AlertCheck {
+        val price: Int get() = station.price(settings.grade)!!
+    }
+    data class NoneFound(val settings: AlertSettings) : AlertCheck
     data class Failed(val message: String) : AlertCheck
 }
 
@@ -150,15 +152,15 @@ object PriceAlerts {
         catch (e: IOException) { return@withContext AlertCheck.Failed(e.message ?: "Station service unavailable.") }
         catch (e: RuntimeException) { return@withContext AlertCheck.Failed("Unexpected station response.") }
         val matches = alertMatches(stations, settings)
-        if (matches.isEmpty()) return@withContext AlertCheck.NoneFound
+        if (matches.isEmpty()) return@withContext AlertCheck.NoneFound(settings)
         val announced = announced(context, now)
         val fresh = if (manual) matches else matches.filter { s ->
             announced[key(s, settings.grade)]?.let { it > s.price(settings.grade)!! } ?: true
         }
-        if (fresh.isEmpty()) return@withContext AlertCheck.Found(matches.first(), matches.size - 1, notified = false)
+        if (fresh.isEmpty()) return@withContext AlertCheck.Found(matches.first(), matches.size - 1, notified = false, settings)
         val notified = notify(context, fresh.first(), fresh.size - 1, settings)
         if (notified) saveAnnounced(context, announced + fresh.associate { key(it, settings.grade) to it.price(settings.grade)!! }, now)
-        AlertCheck.Found(fresh.first(), fresh.size - 1, notified)
+        AlertCheck.Found(fresh.first(), fresh.size - 1, notified, settings)
     }
 
     /** Stations within the alert distance at or under its price, cheapest then nearest first. */
