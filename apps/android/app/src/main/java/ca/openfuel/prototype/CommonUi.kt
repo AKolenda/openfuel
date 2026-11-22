@@ -21,7 +21,7 @@ import java.time.Instant
 internal fun resetTime(context: Context, at: Instant): String = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date.from(at))
 @Composable internal fun Price(value: Int?, fontSize: Int) {
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(value?.let(FuelCore::priceText) ?: "—", fontSize = fontSize.sp, letterSpacing = (-1).sp, fontWeight = FontWeight.Bold, color = Forest)
+        Text(value?.let(FuelCore::priceText) ?: "—", fontSize = fontSize.sp, letterSpacing = (-1).sp, fontWeight = FontWeight.Bold, color = Ink)
         Text(" ¢/L", fontSize = 10.sp, color = Muted, modifier = Modifier.padding(bottom = 3.dp))
     }
 }

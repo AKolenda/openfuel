@@ -59,9 +59,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(android.graphics.Color.WHITE, android.graphics.Color.WHITE))
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(primary = Forest, onPrimary = Color.White,
+            MaterialTheme(colorScheme = lightColorScheme(primary = Ink, onPrimary = Color.White,
                 background = Color.White, surface = Color.White, onSurface = Ink, outlineVariant = Rule,
-                secondary = Forest, onSecondary = Color.White, secondaryContainer = Pale, onSecondaryContainer = Forest)) {
+                secondary = Ink, onSecondary = Color.White, secondaryContainer = AmberSoft, onSecondaryContainer = Ink)) {
                 val ready = startup.collectAsState().value
                 if (ready != null) OpenFuelApp(ready) else Box(Modifier.fillMaxSize().background(Color(MAP_BACKGROUND)))
             }
@@ -105,7 +105,6 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var favorites by remember { mutableStateOf(prefs.getStringSet("favorites", emptySet())!!.toSet()) }
     var provider by remember { mutableStateOf(if (prefs.getString("maps", "google") == "ask") MapProvider.ASK else MapProvider.GOOGLE) }
     var fullWidth by rememberSaveable { mutableStateOf(prefs.getBoolean("wide", false)) }
-    var cards by rememberSaveable { mutableStateOf(false) } // List is always the initial layout.
     var query by rememberSaveable { mutableStateOf("") }
     var savedOnly by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf<Menu?>(null) }
@@ -118,7 +117,6 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     val drafts = remember { mutableStateListOf<StationProposal>().apply { addAll(loadedDrafts.getOrDefault(emptyList())) } }
     val visible = remember(stations, grade, sort, filters, query, savedOnly, favorites) { FuelCore.visible(stations, grade, sort, filters, query, savedOnly, favorites) }
     val brandLogos = rememberBrandLogos(stations) // The area's logos, so filtering the list loads none again.
-    val bestId = visible.filter { it.price(grade) != null && it.age(grade) <= 60 }.minByOrNull { it.price(grade, filters.members)!! }?.id
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val unavailable = stringResource(R.string.maps_unavailable)
@@ -232,8 +230,8 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
         selectedId = station.id; stackIds = stack.map { it.id }; menu = Menu.DETAIL
     }
     /**
-     * The map was panned or zoomed. A move far enough to offer "Search here" keeps a pending location fix from
-     * replacing it. Only the top controls read [browse], so a pan does not recompose the whole screen.
+     * The map was panned or zoomed. A move far enough to offer "Search this area" keeps a pending location fix from
+     * replacing it. Only the sheet's status line and the area menu read [browse], so a pan does not recompose the whole screen.
      */
     fun onMapMove(move: MapMove) {
         if (mapMovedAway(point, move)) selectionVersion++
@@ -285,19 +283,19 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     visible = visible,
                     sort = sort,
                     changeSort = { sort = it },
-                    cards = cards,
-                    onCardsChange = { cards = it },
                     syncState = syncState,
                     limitResetsAt = limitResetsAt,
                     hasStations = stations.isNotEmpty(),
                     donate = donate,
                     syncing = syncing,
                     onRefresh = { if (hasSearchArea && !syncing) refresh(recenter = false, fresh = true) },
+                    area = point,
+                    browse = { browse },
+                    searchArea = { refresh(it, recenter = false) },
                     resetFilters = { query = ""; filters = Filters(); savedOnly = false },
                     showAll = { savedOnly = false },
                     filters = filters,
                     fullWidth = fullWidth,
-                    bestId = bestId,
                     brandLogos = brandLogos,
                     select = { openDetail(it) },
                     go = { go(it) },
@@ -310,16 +308,14 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                 if (hasSearchArea) LiveMap(
                     stations = visible,
                     grade = grade,
-                    bestId = bestId,
                     center = point,
                     currentLocation = devicePoint,
                     centerRequest = centerRequest,
-                    brandLogos = brandLogos,
                     onMove = { onMapMove(it) },
                     onBaseMap = { baseMap = it },
                     modifier = Modifier.fillMaxSize().testTag("station-map"),
-                    // The map centres itself between the top controls and the half-open sheet, and stops drawing while covered.
-                    padding = with(LocalDensity.current) { { PaddingValues(top = chrome.topControlsBottomPx.toDp(), bottom = (this@BoxWithConstraints.constraints.maxHeight - chrome.halfTopPx).toDp()) } },
+                    // The map centres itself between the top row and the half-open sheet, and stops drawing while covered.
+                    padding = with(LocalDensity.current) { { PaddingValues(top = chrome.mapTopPx.toDp(), bottom = (this@BoxWithConstraints.constraints.maxHeight - chrome.halfTopPx).toDp()) } },
                     visible = { !chrome.mapCovered },
                     onSelect = { station, stack -> openDetail(station, stack) }
                 )
@@ -329,10 +325,10 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
                     chrome = chrome,
                     query = query,
                     onQueryChange = { query = it },
+                    grade = grade,
+                    onGradeChange = { grade = it; prefs.edit().putString("fuel-grade", it.name).apply() },
                     area = point,
                     browse = { browse },
-                    syncing = syncing,
-                    offline = syncState == "offline",
                     locating = locating,
                     areaRequest = areaRequest,
                     searchCities = { repository.searchCities(it) },

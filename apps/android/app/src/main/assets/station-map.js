@@ -66,39 +66,32 @@
     .then(index=>{if(!contextLost)index?vector(index):raster();},()=>{}).finally(()=>{pending=false;});
   }
 
-  // Stations. Each distinct chip (price, logo or initial, highlight) is drawn once, at the map's pixel density,
-  // into a cell of one texture, with the brand centre (the geographic anchor) at the same place in every cell.
-  // Each frame then draws every chip on screen as one batch of quads: no page elements move and MapLibre's
-  // symbol tiles, which would copy the chip images again for every tile and zoom level, are not used.
-  const cell=[72,74],anchor=[36,50],ratio=map.getPixelRatio(),logos=new Map();
+  // Stations. Each distinct pin (a list number, or a dot with or without a price) is drawn once, at the map's
+  // pixel density, into a cell of one texture, with the station (the geographic anchor) at the centre of every cell.
+  // Each frame then draws every pin on screen as one batch of quads: no page elements move and MapLibre's
+  // symbol tiles, which would copy the pin images again for every tile and zoom level, are not used.
+  const cell=[40,40],anchor=[20,20],ratio=map.getPixelRatio();
   const cw=Math.ceil(cell[0]*ratio),ch=Math.ceil(cell[1]*ratio),ax=Math.round(anchor[0]*ratio),ay=Math.round(anchor[1]*ratio),columns=Math.floor(4096/cw);
-  // The chips are drawn in memory, so a lost WebGL context cannot take them with it.
+  // The pins are drawn in memory, so a lost WebGL context cannot take them with it.
   const atlas={canvas:document.createElement('canvas'),slots:new Map(),free:[],version:0};
   atlas.canvas.width=columns*cw;atlas.canvas.height=0;
   let placed=[],gpu=null;
-  function logoImage(uri){
-   if(!logos.has(uri)){const image=new Image();image.src=uri;logos.set(uri,image.decode().then(()=>image,()=>null));}
-   return logos.get(uri);
-  }
-  // CanvasRenderingContext2D.roundRect needs WebView 99; MapLibre runs on older ones.
-  function roundedRect(g,x,y,w,h,r){
-   g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
-  }
-  function drawChip(g,slot,s,logo){
-   const known=s.price!=null,w=known?64:42,h=known?66:40,border=s.best?2:1,x=(slot%columns)*cw,y=Math.floor(slot/columns)*ch;
+  // The numbered pins match the first rows of the app's list; the first few are amber. Other stations are dots,
+  // ink with a price and grey without. Touch boxes are larger than the dots.
+  const ink='#17191e',amber='#ffb020',grey='#9ea2a9';
+  const touchSize=s=>s.rank?36:28;
+  function drawChip(g,slot,s){
+   const x=(slot%columns)*cw,y=Math.floor(slot/columns)*ch,r=s.rank?13:5;
    g.setTransform(1,0,0,1,0,0);g.clearRect(x,y,cw,ch);
-   g.setTransform(ratio,0,0,ratio,x+(anchor[0]-w/2)*ratio,y+(anchor[1]-h+20)*ratio);
-   g.beginPath();roundedRect(g,border/2,border/2,w-border,h-border,13-border/2);
-   g.save();g.shadowColor='#0003';g.shadowOffsetY=ratio;g.shadowBlur=3*ratio;g.fillStyle='white';g.fill();g.restore();
-   g.lineWidth=border;g.strokeStyle='#285b43';g.stroke();
-   g.fillStyle='#285b43';g.textAlign='center';g.textBaseline='middle';
-   if(known){g.font='700 15px system-ui';g.fillText((s.price/10).toFixed(1),w/2,17);}
-   // The brand centre is 20 px above the chip's foot; adding a price grows the chip upward.
-   if(logo){const scale=Math.min(29/logo.naturalWidth,29/logo.naturalHeight),lw=logo.naturalWidth*scale,lh=logo.naturalHeight*scale;g.drawImage(logo,w/2-lw/2,h-20-lh/2,lw,lh);}
-   else{g.font='700 18px system-ui';g.fillText(s.name.slice(0,1).toUpperCase()||'F',w/2,h-20);}
+   g.setTransform(ratio,0,0,ratio,x,y);
+   g.beginPath();g.arc(anchor[0],anchor[1],r+2,0,2*Math.PI);
+   g.save();g.shadowColor='#0005';g.shadowOffsetY=ratio;g.shadowBlur=3*ratio;g.fillStyle='white';g.fill();g.restore();
+   g.beginPath();g.arc(anchor[0],anchor[1],r,0,2*Math.PI);
+   g.fillStyle=s.rank?(s.highlight?amber:ink):(s.price!=null?ink:grey);g.fill();
+   if(s.rank){g.fillStyle=s.highlight?ink:'white';g.textAlign='center';g.textBaseline='middle';g.font='700 13px system-ui';g.fillText(String(s.rank),anchor[0],anchor[1]+.5);}
   }
   /** Gives every chip in use a cell, drawing only the new ones and reusing cells of chips no longer shown. */
-  function updateAtlas(stations,images){
+  function updateAtlas(stations){
    const used=new Set(stations.map(item=>item.chip));
    for(const [chip,slot] of atlas.slots)if(!used.has(chip)){atlas.slots.delete(chip);atlas.free.push(slot);}
    const added=[...new Map(stations.filter(item=>!atlas.slots.has(item.chip)).map(item=>[item.chip,item])).values()];
@@ -112,7 +105,7 @@
    }
    atlas.free.sort((a,b)=>b-a);
    const g=atlas.canvas.getContext('2d',{willReadFrequently:true});
-   for(const item of added){const slot=atlas.free.pop();atlas.slots.set(item.chip,slot);drawChip(g,slot,item.s,images.get(item.logo));}
+   for(const item of added){const slot=atlas.free.pop();atlas.slots.set(item.chip,slot);drawChip(g,slot,item.s);}
    atlas.version++;
   }
   // Texture coordinates need high precision: the atlas is about 4000 texels wide, and where mediump is 16-bit
@@ -164,10 +157,10 @@
   map.on('webglcontextrestored',()=>map.once('style.load',()=>{
    contextLost=false;if(!map.getLayer('stations'))map.addLayer(stationLayer);showLocation();startBase();
   }));
-  // Whether the point (x, y) lies in the chip's box on screen.
-  const inside=(item,x,y)=>{const p=map.project(item.at);return Math.abs(x-p.x)<=item.w/2&&y>=p.y-item.h+20&&y<=p.y+20;};
-  // A tap selects the chip in front, the one drawn last, and lists the chips drawn behind it whose brand centre
-  // it covers, front first, so the app can offer the stations hidden under it. The bridge takes at most 12.
+  // Whether the point (x, y) lies in the pin's touch box on screen.
+  const inside=(item,x,y)=>{const p=map.project(item.at);return Math.abs(x-p.x)<=item.w/2&&Math.abs(y-p.y)<=item.h/2;};
+  // A tap selects the pin in front, the one drawn last, and lists the pins drawn behind it whose station it
+  // covers, front first, so the app can offer the stations hidden under it. The bridge takes at most 12.
   function selectStack(i){
    const front=placed[i],ids=[front.s.id];
    for(let j=i-1;j>=0&&ids.length<12;j--){const q=map.project(placed[j].at);if(inside(front,q.x,q.y))ids.push(placed[j].s.id);}
@@ -179,25 +172,24 @@
   // setTouchExploration), they take touches, so touching a chip reads its station, and follow the map.
   // The layer sits in MapLibre's canvas container, so pans and pinches that start on a button still move the map.
   const labels=document.createElement('div');labels.className='station-labels';map.getCanvasContainer().append(labels);
-  let generation=0,exploring=false;
-  function placeLabels(){for(const {at,w,h,button} of placed){const p=map.project(at);button.style.transform=`translate(${Math.round(p.x-w/2)}px,${Math.round(p.y-h+20)}px)`;}}
+  let exploring=false;
+  function placeLabels(){for(const {at,w,h,button} of placed){const p=map.project(at);button.style.transform=`translate(${Math.round(p.x-w/2)}px,${Math.round(p.y-h/2)}px)`;}}
   map.on('moveend',placeLabels);
   map.on('move',()=>{if(exploring)placeLabels();});
   window.setTouchExploration=on=>{exploring=!!on;labels.classList.toggle('exploring',exploring);placeLabels();};
-  window.setStations=async data=>{
-   const run=++generation;
-   const stations=data.stations.map(s=>{const logo=data.logos[s.logo]||null;return {s,logo,chip:JSON.stringify([s.price,logo?s.logo:s.name.slice(0,1).toUpperCase(),s.best])};});
-   const images=new Map(await Promise.all([...new Set(stations.map(item=>item.logo).filter(Boolean))].map(async uri=>[uri,await logoImage(uri)])));
-   if(run!==generation)return;
-   updateAtlas(stations,images);
-   // Drawn from north to south, so the chip lower on the screen is in front, as on the Leaflet page.
+  window.setStations=data=>{
+   const stations=data.stations.map(s=>({s,chip:JSON.stringify(s.rank?[s.rank,!!s.highlight]:[s.price!=null])}));
+   updateAtlas(stations);
+   // Dots are drawn from north to south, so the one lower on the screen is in front, as on the Leaflet page. The
+   // numbered pins go over every dot, with 1 in front.
+   const order=s=>s.rank?10-s.rank:0;
    placed=stations.map(({s,chip})=>{
-    const known=s.price!=null,w=known?64:42,h=known?66:40,button=document.createElement('button'),item={s,at:[s.lon,s.lat],slot:atlas.slots.get(chip),w,h,button};
-    button.setAttribute('aria-label',s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));
+    const known=s.price!=null,w=touchSize(s),h=w,button=document.createElement('button'),item={s,at:[s.lon,s.lat],slot:atlas.slots.get(chip),w,h,button};
+    button.setAttribute('aria-label',(s.rank?s.rank+'. ':'')+s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));
     button.style.width=w+'px';button.style.height=h+'px';
     button.onclick=event=>{event.stopPropagation();const i=placed.indexOf(item);if(i>=0)selectStack(i);};
     return item;
-   }).sort((a,b)=>b.s.lat-a.s.lat);
+   }).sort((a,b)=>order(a.s)-order(b.s)||b.s.lat-a.s.lat);
    labels.replaceChildren(...placed.map(item=>item.button));placeLabels();
    map.triggerRepaint();
   };

@@ -26,7 +26,8 @@
     <item quantity="many">%1$d villes</item>
     <item quantity="other">%1$d villes</item>
   </plurals>
-  <string name="search_here">Chercher ici</string>
+  <string name="search_here">Chercher dans cette zone</string>
+  <string name="map_moved">Carte déplacée</string>
   <string name="search_here_busy">Recherche…</string>
   <string name="search_here_retry">Réessayer</string>
   <string name="location_off">Position indisponible. Activez la localisation de l’appareil ou choisissez une ville.</string>

@@ -2,8 +2,6 @@
 <resources>
   <string name="app_name">OpenFuel Canada</string>
   <string name="fuel_nearby">Fuel nearby</string>
-  <string name="list">List</string>
-  <string name="cards">Cards</string>
   <string name="no_matches">No matching stations. Try another search or adjust your filters.</string>
   <string name="reset_filters">Reset search and filters</string>
   <string name="suggest_station">Suggest a station</string>
@@ -13,6 +11,7 @@
   <string name="about">About OpenFuel Canada</string>
   <string name="map_credit">OpenFreeMap © OpenMapTiles · Style after CARTO Voyager · Data © OpenStreetMap contributors</string>
   <string name="map_credit_osm">© OpenStreetMap contributors</string>
+  <string name="map_credits">Map credits</string>
   <string name="sort_stations">Sort stations</string>
   <string name="about_body">Open-source fuel prices for Canada.\n\nReal station locations from OpenStreetMap contributors (ODbL). Unknown prices stay unknown until someone reports a price. Community prices are unverified; confirm at the pump.\n\nOptional foreground location finds nearby stations. Search coordinates are sent to OpenFuel; tiles are fetched from OpenFreeMap, or OpenStreetMap when OpenFreeMap is unavailable. No background tracking, advertising or analytics.\n\nThis native Kotlin / Compose app draws its map with bundled MapLibre (Leaflet when WebGL is unavailable). Cloudflare stores shared price reports. A random installation ID accompanies reports for rate limiting.\n\nFavorites, search-area snapshots and suggestion drafts stay on this device. Suggestions are local drafts and are not published. Maps opens directions to the actual station coordinates.\n\nSource: AGPL-3.0-only. Station data: OpenStreetMap contributors, ODbL. openfuel.ca</string>
   <string name="drafts_count">%1$d local suggestions awaiting review</string>

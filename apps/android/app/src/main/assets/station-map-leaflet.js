@@ -10,28 +10,27 @@ baseMapLayer(map,mapStyle,tileOptions,(layer,name)=>OpenFuelMap.base(name));
 const markers=new Map();let locationDot=null,changingArea=false;
 map.on('moveend',()=>{if(!changingArea){const p=map.getCenter().wrap();OpenFuelMap.moved(p.lat,p.lng);}});
 window.setArea=(lat,lon,overview)=>{changingArea=true;map.setView([lat,lon],overview?3:12.5,{animate:false});changingArea=false;};
-function stationIcon(s,logo){
-   const known=s.price!=null;
-   const chip=document.createElement('div');chip.className='station-chip'+(s.best?' best':'');
-   if(known){const price=document.createElement('div');price.className='station-price';price.textContent=(s.price/10).toFixed(1);chip.append(price);}
-   const brand=document.createElement('div');brand.className='station-brand';brand.textContent=s.name.slice(0,1).toUpperCase()||'F';
-   if(logo){const img=document.createElement('img');img.alt='';img.src=logo;brand.replaceChildren(img);}
-   chip.append(brand);
-   const w=known?64:42,h=known?66:40;
-   // The brand centre is always the geographic anchor; adding a price grows upward.
-   return L.divIcon({className:'station-pin',html:chip,iconSize:[w,h],iconAnchor:[w/2,h-20]});
+// A numbered pin for the first stations in the app's list, the first few amber, and a dot for the rest: ink with a
+// price, grey without. Each is centred on its station, inside a larger touch box.
+function stationIcon(s){
+   const pin=document.createElement('div');
+   if(s.rank){pin.className='station-rank'+(s.highlight?' highlight':'');pin.textContent=s.rank;}
+   else pin.className='station-dot'+(s.price!=null?' priced':'');
+   const size=s.rank?36:28;
+   return L.divIcon({className:'station-pin',html:pin,iconSize:[size,size],iconAnchor:[size/2,size/2]});
 }
 window.setStations=data=>{
  const keep=new Set(data.stations.map(s=>s.id));
  for(const [id,item] of markers){if(!keep.has(id)){item.marker.remove();markers.delete(id);}}
  for(const s of data.stations){
-  const logo=data.logos[s.logo],known=s.price!=null,key=JSON.stringify([s.name,s.price,logo,s.best]);
+  const known=s.price!=null,key=JSON.stringify([s.name,s.price,s.rank,s.highlight]);
   let item=markers.get(s.id);
   if(!item){const marker=L.marker([s.lat,s.lon],{title:s.name,keyboard:true}).on('click',()=>OpenFuelMap.selected(s.id));item={marker,key:null};markers.set(s.id,item);}
   item.marker.setLatLng([s.lat,s.lon]);
   if(item.key!==key){
-   item.marker.setIcon(stationIcon(s,logo));
-   item.marker.addTo(map);item.marker.getElement().setAttribute('aria-label',s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));item.key=key;
+   // The numbered pins sit over the dots, with 1 in front.
+   item.marker.setIcon(stationIcon(s));item.marker.setZIndexOffset(s.rank?(10-s.rank)*1000:0);
+   item.marker.addTo(map);item.marker.getElement().setAttribute('aria-label',(s.rank?s.rank+'. ':'')+s.name+', '+(known?(s.price/10).toFixed(1)+' cents per litre':'no price reported'));item.key=key;
   }
  }
 };
