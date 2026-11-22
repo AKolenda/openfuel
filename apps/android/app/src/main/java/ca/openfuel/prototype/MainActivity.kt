@@ -111,7 +111,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var stackIds by rememberSaveable { mutableStateOf(emptyList<String>()) } // A tapped map chip's stations, front first.
     var baseMap by remember { mutableStateOf<String?>(null) } // "openfreemap" or "openstreetmap" once shown.
-    var mapMoved by remember { mutableStateOf(false) } // The user has panned or zoomed the map at least once.
+    var mapMoves by remember { mutableIntStateOf(0) } // Map moves reported so far: pans, zooms and resizes.
     val chrome = remember { MapChrome() }
     val draftStore = remember { LocalDraftStore(context) }
     val loadedDrafts = remember { runCatching { draftStore.load() } }
@@ -237,7 +237,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
     fun onMapMove(move: MapMove) {
         if (mapMovedAway(point, move)) selectionVersion++
         browse = move
-        mapMoved = true
+        mapMoves++
     }
     fun openReport() {
         reportError = null; reportLimited = false; menu = Menu.PRICE
@@ -344,7 +344,7 @@ private fun OpenFuelApp(startup: StationRepository.Startup) {
             }
         }
         // Map credit, location button and snackbar, which travel with the station sheet.
-        SheetOverlays(sheet, chrome, snackbar, baseMap, mapMoved = { mapMoved }, locating, requestLocation = { requestLocation() })
+        SheetOverlays(sheet, chrome, snackbar, baseMap, mapMoves = { mapMoves }, locating, requestLocation = { requestLocation() })
     }
     if (locationIntro) AlertDialog(onDismissRequest = { locationIntro = false; prefs.edit().putBoolean("location-intro-seen", true).apply() },
         title = { Text(stringResource(R.string.intro_title)) },

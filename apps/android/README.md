@@ -72,8 +72,8 @@ The list starts scrolling when the panel is expanded; pulling down from the list
 it again. The panel always retains its header. Tap the refresh button in the header to update
 prices. Sort opens a dropdown, and Saved changes the heading and empty state to saved stations.
 The list is a price board: brand logo with its list number, price, name, distance and report age, and
-directions. Map attribution shows beside an info button. On OpenFreeMap's tiles it folds away once you first
-pan or zoom the map and the button shows it again; on OpenStreetMap's raster tiles it always shows. It and the location button move above the panel and fade out at its
+directions. Map attribution shows beside an info button. On OpenFreeMap's tiles it folds away at the first map
+move after the tiles have drawn and the button shows it again; on OpenStreetMap's raster tiles it always shows. It and the location button move above the panel and fade out at its
 expanded stop.
 The map stays full-size during drags and becomes invisible while covered by the expanded list.
 Menu sheets slide closed and
