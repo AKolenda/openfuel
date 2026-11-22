@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
 import kotlin.math.abs
@@ -414,11 +415,12 @@ internal fun SheetScrim(sheet: StationSheetState) {
  * controls; the snackbar then sits above the navigation bar.
  *
  * The required attribution is an info button at the map's lower left with the credit beside it, which opens
- * OpenStreetMap's copyright page. On OpenFreeMap's tiles the text folds away a few seconds after the map opens and
- * the button shows it again; on OpenStreetMap's raster tiles it always shows.
+ * OpenStreetMap's copyright page. On OpenFreeMap's tiles the text folds away once the user first pans or zooms the
+ * map, and the button shows it again; on OpenStreetMap's raster tiles it always shows. While the map shows, the
+ * snackbar sits above the credit row so it never covers the credit.
  */
 @Composable
-internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chrome: MapChrome, snackbar: SnackbarHostState, baseMap: String?,
+internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chrome: MapChrome, snackbar: SnackbarHostState, baseMap: String?, mapMoved: () -> Boolean,
                                                    locating: Boolean, requestLocation: () -> Unit) {
     val density = LocalDensity.current
     val mapBottom = constraints.maxHeight - WindowInsets.navigationBars.getBottom(density).toFloat()
@@ -426,7 +428,7 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
     if (!chrome.mapCovered) {
         MapCredit(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm), maxWidth - 136.dp,
             // OpenStreetMap's own tiles require their credit to stay visible, so it never folds away on them.
-            foldable = baseMap == "openfreemap",
+            foldable = baseMap == "openfreemap", mapMoved = mapMoved,
             Modifier.align(Alignment.TopStart).offset { IntOffset(0, (sheetTop() - 56.dp.toPx()).roundToInt()) }
                 .graphicsLayer { alpha = sheet.mapAlpha() }.padding(start = 4.dp))
         val label = stringResource(R.string.sheet_use_location)
@@ -441,19 +443,22 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
         }
     }
     var snackbarHeight by remember { mutableIntStateOf(0) }
-    // The snackbar keeps its own 12 dp margin, so 4 dp more puts it 8 dp above the sheet.
+    // The snackbar keeps its own 12 dp margin. Over the map, 44 dp less puts it just above the credit row, which
+    // starts 56 dp above the sheet; once the sheet covers the map, 4 dp more puts it 8 dp above the navigation bar.
     SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).offset {
-        IntOffset(0, ((if (sheet.coversMap()) mapBottom else sheetTop()) + 4.dp.toPx() - snackbarHeight).roundToInt())
+        IntOffset(0, ((if (sheet.coversMap()) mapBottom + 4.dp.toPx() else sheetTop() - 44.dp.toPx()) - snackbarHeight).roundToInt())
     }.onSizeChanged { snackbarHeight = it.height })
 }
 
-/** The info button and the credit text beside it, at most [textWidth] wide. Only a [foldable] credit can hide. */
+/**
+ * The info button and the credit text beside it, at most [textWidth] wide. Only a [foldable] credit can hide: it
+ * folds once [mapMoved] turns true, as MapLibre's compact attribution does, so it is seen with the tiles first.
+ */
 @Composable
-private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, foldable: Boolean, modifier: Modifier) {
+private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, foldable: Boolean, mapMoved: () -> Boolean, modifier: Modifier) {
     val context = LocalContext.current
     var open by rememberSaveable { mutableStateOf(true) }
-    // The folding credit shows for its first six seconds on screen, however long its tiles took to arrive.
-    LaunchedEffect(foldable) { if (foldable) { open = true; kotlinx.coroutines.delay(6_000); open = false } }
+    LaunchedEffect(foldable) { if (foldable) snapshotFlow { mapMoved() }.first { it }.let { open = false } }
     val expanded = open || !foldable
     val label = stringResource(R.string.map_credits)
     val state = stringResource(if (expanded) R.string.area_expanded else R.string.area_collapsed)
