@@ -425,12 +425,14 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
     val density = LocalDensity.current
     val mapBottom = constraints.maxHeight - WindowInsets.navigationBars.getBottom(density).toFloat()
     fun sheetTop() = minOf(sheet.top(), mapBottom)
+    // The credit row's bottom sits 8 dp above the sheet, so a credit that wraps at large text grows upward.
+    var creditHeight by remember { mutableIntStateOf(with(density) { 48.dp.roundToPx() }) }
     if (!chrome.mapCovered) {
         MapCredit(stringResource(if (baseMap == "openfreemap") R.string.map_credit else R.string.map_credit_osm), maxWidth - 136.dp,
             // OpenStreetMap's own tiles require their credit to stay visible, so it never folds away on them.
             foldable = baseMap == "openfreemap", mapMoves = mapMoves,
-            Modifier.align(Alignment.TopStart).offset { IntOffset(0, (sheetTop() - 56.dp.toPx()).roundToInt()) }
-                .graphicsLayer { alpha = sheet.mapAlpha() }.padding(start = 4.dp))
+            Modifier.align(Alignment.TopStart).offset { IntOffset(0, (sheetTop() - 8.dp.toPx() - creditHeight).roundToInt()) }
+                .onSizeChanged { creditHeight = it.height }.graphicsLayer { alpha = sheet.mapAlpha() }.padding(start = 4.dp))
         val label = stringResource(R.string.sheet_use_location)
         // Its bottom sits 16 dp above the sheet.
         Surface(onClick = requestLocation, shape = CircleShape, color = Color.White, shadowElevation = 3.dp,
@@ -443,10 +445,10 @@ internal fun BoxWithConstraintsScope.SheetOverlays(sheet: StationSheetState, chr
         }
     }
     var snackbarHeight by remember { mutableIntStateOf(0) }
-    // The snackbar keeps its own 12 dp margin. Over the map, 44 dp less puts it just above the credit row, which
-    // starts 56 dp above the sheet; once the sheet covers the map, 4 dp more puts it 8 dp above the navigation bar.
+    // The snackbar keeps its own 12 dp margin. Over the map, that margin puts it just above the credit row; once the
+    // sheet covers the map, 4 dp more puts it 8 dp above the navigation bar.
     SnackbarHost(snackbar, Modifier.align(Alignment.TopCenter).offset {
-        IntOffset(0, ((if (sheet.coversMap()) mapBottom + 4.dp.toPx() else sheetTop() - 44.dp.toPx()) - snackbarHeight).roundToInt())
+        IntOffset(0, ((if (sheet.coversMap()) mapBottom + 4.dp.toPx() else sheetTop() - 8.dp.toPx() - creditHeight + 12.dp.toPx()) - snackbarHeight).roundToInt())
     }.onSizeChanged { snackbarHeight = it.height })
 }
 

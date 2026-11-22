@@ -51,12 +51,16 @@
    if(style.sprite)map.setSprite(style.sprite);
    for(const [id,source] of Object.entries(style.sources))map.addSource(id,source);
    for(const layer of style.layers)map.addLayer(layer,'location');
-   // The app learns the base map once one of its tiles has loaded and the frame after it has drawn, so the credit it
-   // folds has been seen with the tiles. Failed tiles load nothing and report nothing.
+   // The app learns the base map once a settled frame shows some of it, so the credit it folds has been seen with
+   // the tiles. Vector tiles count once the frame has features from them (failed or empty tiles draw none); raster
+   // tiles, whose credit never folds, count at their first settled frame.
    chosen=true;map.off('moveend',startBase);
-   const sources=new Set(Object.keys(style.sources));
-   const loaded=event=>{if(event.tile&&sources.has(event.sourceId)){map.off('sourcedata',loaded);map.once('idle',()=>OpenFuelMap.base(name));}};
-   map.on('sourcedata',loaded);
+   const sources=new Set(Object.keys(style.sources)),vector=Object.values(style.sources).some(source=>source.type==='vector');
+   const shown=()=>{
+    if(vector&&!map.queryRenderedFeatures().some(feature=>sources.has(feature.source)))return;
+    map.off('idle',shown);OpenFuelMap.base(name);
+   };
+   map.on('idle',shown);
   }
   function raster(){useBase({sources:{openstreetmap:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19}},
    layers:[{id:'openstreetmap',type:'raster',source:'openstreetmap'}]},'openstreetmap');}
