@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Publish the sanitized community price reports as files on the `open-data` release once a day, so
+# people download files from GitHub and never query OpenFuel's database. See tools/open_data.py.
+name: Open data
+on:
+  schedule:
+    - cron: '23 9 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: open-data
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - id: export
+        run: python tools/open_data.py --api https://openfuel.ca --out .local/open-data
+        env:
+          OPENFUEL_EXPORT_TOKEN: ${{ secrets.OPENFUEL_EXPORT_TOKEN }}
+      - name: Upload to the open-data release
+        if: steps.export.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # A prerelease that is never "latest", so releases/latest/download/... keeps pointing at the app release.
+        run: |
+          if gh release view open-data >/dev/null 2>&1; then
+            gh release edit open-data --notes-file .local/open-data/RELEASE_NOTES.md
+          else
+            gh release create open-data --title 'OpenFuel open data (updated daily)' \
+              --notes-file .local/open-data/RELEASE_NOTES.md --prerelease --latest=false
+          fi
+          gh release upload open-data .local/open-data/openfuel-* --clobber

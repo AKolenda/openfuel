@@ -18,3 +18,11 @@ condition = "AND"
 paths = ['''(^|/)services/api/openfuel/audit\.py$''']
 regexTarget = "secret"
 regexes = ['''^Ed25519PrivateKey$''']
+
+# A SHA-256 of the open-data export token is safe to publish; the token itself is a GitHub secret.
+[[allowlists]]
+description = "SHA-256 of the open-data export token in wrangler.jsonc"
+condition = "AND"
+paths = ['''(^|/)wrangler\.jsonc$''']
+regexTarget = "secret"
+regexes = ['''^[0-9a-f]{64}$''']

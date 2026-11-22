@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="What OpenFuel collects, what it never does with your information, and who else sees your requests.">
+<title>Privacy · OpenFuel</title>
+<link rel="stylesheet" href="/legal.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content / Aller au contenu</a>
+<header class="page-header"><div class="inner">
+<a href="/" aria-label="OpenFuel home"><img src="/brand/openfuel-wordmark-light.svg" alt="OpenFuel" width="154" height="45"></a>
+<nav aria-label="Policies and data"><a href="/privacy/" aria-current="page">Privacy</a><a href="/terms/">Terms</a><a href="/open-data/">Open data</a><a href="/preview/">Open app</a></nav>
+</div></header>
+<main id="main">
+<p class="label">Privacy</p>
+<h1>Your fill-up is your business.</h1>
+<p class="lead">OpenFuel is a free, open-source fuel map. This page sets out what it handles, what it will never do with your information, and who else sees your requests.</p>
+<p class="meta">Effective 22 November 2026 · <a class="lang-switch" href="#fr" hreflang="fr-CA" lang="fr-CA">Français</a></p>
+
+<h2>Our promises</h2>
+<ul class="promises">
+<li><strong>We don't sell your information.</strong> We don't rent it or trade it either, to advertisers, data brokers or anyone else.</li>
+<li><strong>No ads, no analytics, no tracking.</strong> The website and apps contain no advertising or analytics code and set no tracking cookies.</li>
+<li><strong>No accounts.</strong> We never ask for your name, email address or phone number.</li>
+<li><strong>Your location only finds stations.</strong> OpenFuel doesn't store your coordinates in its database or logs, and never asks for background location.</li>
+<li><strong>Your installation ID stays private.</strong> The random ID sent with price reports is never shown in the app, the API or the <a href="/open-data/">open data</a>.</li>
+<li><strong>Changes apply going forward.</strong> If these promises ever change, we'll update this page and its date first. A change applies only to information collected after it.</li>
+</ul>
+
+<h2>What OpenFuel handles</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">When you…</th><th scope="col">OpenFuel receives</th><th scope="col">What happens to it</th></tr></thead>
+<tbody>
+<tr><td>Look for nearby stations</td><td>The search coordinates. The website sends your exact position; the apps round it to about 100&nbsp;m.</td><td>Used to answer the request, then discarded. Your device remembers your last area rounded to about 1&nbsp;km.</td></tr>
+<tr><td>Search for a city</td><td>The text you type.</td><td>Answered from OpenFuel's own copy of the GeoNames place list, so it isn't sent to anyone else.</td></tr>
+<tr><td>Share a price</td><td>The station, fuel grade, price, the time we receive it and a random installation ID. No location or IP address is stored with it.</td><td>The station, grade, price and time become public, in the app and in the open data. The installation ID is used only to limit how many reports one install can send.</td></tr>
+<tr><td>Save stations or settings</td><td>Nothing. They stay on your device.</td><td>Clearing the app's or browser's data removes them.</td></tr>
+</tbody></table></div>
+
+<h2>Who else sees your requests</h2>
+<p>Like any website, the services below see your IP address and normal request details when the app uses them. Each handles that information under its own privacy policy.</p>
+<ul>
+<li><strong>Cloudflare</strong> hosts the website and API and stores the database. Its rate limiter briefly uses your IP address to stop floods of reports. Cloudflare may process data outside Canada.</li>
+<li><strong>OpenFreeMap</strong>, or OpenStreetMap's tile servers, deliver the map images, which shows them the area you're looking at. The iPhone app uses Apple Maps instead.</li>
+<li><strong>Logo hosts</strong> such as Wikimedia deliver station logos directly to your device.</li>
+<li><strong>GitHub</strong> serves app downloads and the open data files.</li>
+<li><strong>Google Maps or Apple Maps</strong> open only when you tap Directions.</li>
+</ul>
+
+<h2>Logs</h2>
+<p>Request logging is off in OpenFuel's public Cloudflare configuration, so request addresses, which include search coordinates, aren't recorded. When something fails, the log records only an event name and the page path. Anyone can check this in <a href="https://github.com/AKolenda/openfuel/blob/main/wrangler.jsonc">wrangler.jsonc</a> and the <a href="https://github.com/AKolenda/openfuel/blob/main/services/live/worker.mjs">API source</a>.</p>
+
+<h2>Keeping and removing reports</h2>
+<p>Price reports are kept as the price history and published in the open data, without anything that identifies you. Because OpenFuel doesn't know who you are, it can't look up your reports by name. Clearing the app's or browser's data removes everything stored on your device and starts a new installation ID.</p>
+<p>For questions, or to ask for a report to be removed, <a href="https://github.com/AKolenda/openfuel/issues">open an issue on GitHub</a>. Don't put personal details in a public issue; ask there for a private channel instead.</p>
+
+<h2>Children</h2>
+<p>OpenFuel isn't aimed at children and doesn't knowingly collect information about them.</p>
+<p>More technical detail is in the project's <a href="https://github.com/AKolenda/openfuel/blob/main/docs/PRIVACY.md">data-flow notes</a>.</p>
+
+<section class="fr" id="fr" lang="fr-CA">
+<p class="label">Confidentialité</p>
+<h2>Votre plein, c'est votre affaire.</h2>
+<p class="lead">OpenFuel est une carte libre et gratuite des stations-service. Cette page explique ce qu'elle traite, ce qu'elle ne fera jamais de vos renseignements et qui d'autre voit vos requêtes.</p>
+<p class="meta">En vigueur le 22 novembre 2026 · <a class="lang-switch" href="#main" hreflang="en-CA" lang="en-CA">English</a></p>
+<h3>Nos engagements</h3>
+<ul class="promises">
+<li><strong>Nous ne vendons pas vos renseignements.</strong> Nous ne les louons ni ne les échangeons non plus, ni à des annonceurs, ni à des courtiers en données, ni à quiconque.</li>
+<li><strong>Aucune publicité, aucune analyse, aucun pistage.</strong> Le site et les applications ne contiennent aucun code publicitaire ou analytique et ne déposent aucun témoin de pistage.</li>
+<li><strong>Aucun compte.</strong> Nous ne demandons jamais votre nom, votre adresse courriel ni votre numéro de téléphone.</li>
+<li><strong>Votre position sert seulement à trouver des stations.</strong> OpenFuel n'enregistre pas vos coordonnées dans sa base de données ni dans ses journaux, et ne demande jamais l'accès à la position en arrière-plan.</li>
+<li><strong>Votre identifiant d'installation reste privé.</strong> L'identifiant aléatoire envoyé avec les signalements de prix n'apparaît jamais dans l'application, l'API ou les <a href="/open-data/#fr">données ouvertes</a>.</li>
+<li><strong>Les changements valent pour l'avenir.</strong> Si ces engagements changent, nous mettrons d'abord cette page et sa date à jour. Un changement ne s'applique qu'aux renseignements recueillis après celui-ci.</li>
+</ul>
+<h3>Ce qu'OpenFuel traite</h3>
+<ul>
+<li><strong>Recherche de stations à proximité :</strong> les coordonnées de recherche (position exacte sur le site, arrondie à environ 100&nbsp;m dans les applications). Elles servent à répondre, puis sont oubliées. Votre appareil garde votre dernière zone arrondie à environ 1&nbsp;km.</li>
+<li><strong>Recherche d'une ville :</strong> le texte saisi, traité avec la copie de la liste GeoNames d'OpenFuel, sans être transmis à quiconque.</li>
+<li><strong>Signalement d'un prix :</strong> la station, le carburant, le prix, l'heure de réception et un identifiant d'installation aléatoire. Aucune position ni adresse IP n'est enregistrée. La station, le carburant, le prix et l'heure deviennent publics; l'identifiant sert seulement à limiter le nombre de signalements par installation.</li>
+<li><strong>Stations enregistrées et réglages :</strong> ils restent sur votre appareil. Effacer les données de l'application ou du navigateur les supprime.</li>
+</ul>
+<h3>Qui d'autre voit vos requêtes</h3>
+<p>Comme pour tout site Web, les services suivants voient votre adresse IP et les détails habituels des requêtes lorsque l'application les utilise. Chacun les traite selon sa propre politique.</p>
+<ul>
+<li><strong>Cloudflare</strong> héberge le site, l'API et la base de données. Son limiteur de débit utilise brièvement votre adresse IP pour bloquer les rafales de signalements. Cloudflare peut traiter des données hors du Canada.</li>
+<li><strong>OpenFreeMap</strong>, ou les serveurs de tuiles d'OpenStreetMap, fournissent la carte et voient donc la zone affichée. L'application iPhone utilise plutôt Apple Plans.</li>
+<li><strong>Les hébergeurs de logos</strong>, comme Wikimedia, envoient les logos directement à votre appareil.</li>
+<li><strong>GitHub</strong> distribue les téléchargements des applications et les fichiers de données ouvertes.</li>
+<li><strong>Google Maps ou Apple Plans</strong> s'ouvrent seulement quand vous touchez Itinéraire.</li>
+</ul>
+<h3>Journaux</h3>
+<p>La journalisation des requêtes est désactivée dans la configuration Cloudflare publique d'OpenFuel : les adresses des requêtes, qui contiennent les coordonnées de recherche, ne sont pas enregistrées. En cas d'erreur, le journal ne contient que le nom de l'événement et le chemin de la page. Chacun peut le vérifier dans <a href="https://github.com/AKolenda/openfuel/blob/main/wrangler.jsonc">wrangler.jsonc</a> et le <a href="https://github.com/AKolenda/openfuel/blob/main/services/live/worker.mjs">code de l'API</a>.</p>
+<h3>Conservation et retrait des signalements</h3>
+<p>Les signalements sont conservés comme historique des prix et publiés dans les données ouvertes, sans rien qui vous identifie. Comme OpenFuel ne sait pas qui vous êtes, il ne peut pas retrouver vos signalements par votre nom. Effacer les données de l'application ou du navigateur supprime tout ce qui est stocké sur votre appareil et crée un nouvel identifiant d'installation.</p>
+<p>Pour une question ou pour demander le retrait d'un signalement, <a href="https://github.com/AKolenda/openfuel/issues">ouvrez un ticket sur GitHub</a>. N'y inscrivez aucun renseignement personnel; demandez-y plutôt un moyen de communication privé.</p>
+<h3>Enfants</h3>
+<p>OpenFuel ne s'adresse pas aux enfants et ne recueille pas sciemment de renseignements à leur sujet.</p>
+</section>
+</main>
+<footer><div class="inner"><a href="/">OpenFuel home</a><a href="/terms/">Terms</a><a href="/open-data/">Open data</a><a href="https://github.com/AKolenda/openfuel">Source code</a></div></footer>
+</body>
+</html>

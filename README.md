@@ -33,6 +33,10 @@ or unavailable logos fall back to initials. OpenFuel does not bundle or proxy
 station logo images. Ordinary browser/device caches can reuse those downloads.
 See the [brand URL catalog](packages/brands/README.md) and [privacy details](docs/PRIVACY.md).
 
+OpenFuel doesn't sell data, show ads or run analytics; see its [privacy promises](https://openfuel.ca/privacy/)
+and [terms](https://openfuel.ca/terms/). Every community price report, without anything that
+identifies the reporter, is downloadable daily as [open data](https://openfuel.ca/open-data/) under ODbL 1.0.
+
 The included snapshot contains **12,543 OpenStreetMap fuel stations**. Station
 coverage and metadata may be incomplete. **No pump prices are invented or seeded.**
 A station price appears after somebody reports an actual observation; reports are

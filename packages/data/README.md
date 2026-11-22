@@ -2,7 +2,8 @@
 
 These files contain real public geography and dated reference statistics.
 **They contain zero seeded station pump prices.** Community observations are
-stored separately in D1 and are not included in the source distribution.
+stored separately in D1 and are not included in the source distribution; a sanitized copy is
+published daily as [open data](https://openfuel.ca/open-data/).
 
 | File | Included snapshot | Source and licence |
 | --- | --- | --- |

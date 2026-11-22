@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-only */
 // Bump with each release: installing a new worker replaces the whole shell at once, while the
 // background refresh below updates files one by one.
-const CACHE='openfuel-live-shell-v9';
+const CACHE='openfuel-live-shell-v10';
 // MapLibre is not in the page itself; the base map loads it on demand, and listing it here keeps it cached for return visits.
 const SHELL=['./','./index.html','./app.js','./styles.css','./vendor/leaflet.js','./vendor/leaflet.css','./vendor/maplibre-gl.js','./vendor/maplibre-gl.css','./vendor/leaflet-maplibre-gl.js','./map/base-map.js','./map/openfuel-style.json','/brand/openfuel-wordmark-light.svg','/favicon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));

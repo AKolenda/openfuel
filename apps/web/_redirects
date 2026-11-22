@@ -3,3 +3,8 @@
 /downloads/openfuel-android.apk.sha256 https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-android.apk.sha256 302
 /downloads/openfuel-source.zip https://github.com/AKolenda/openfuel/releases/latest/download/openfuel-source.zip 302
 /downloads/* https://github.com/AKolenda/openfuel/releases/latest 302
+# Open data files are assets of the `open-data` release, refreshed daily (tools/open_data.py); /open-data/ explains them.
+/open-data/openfuel-price-reports.csv.gz https://github.com/AKolenda/openfuel/releases/download/open-data/openfuel-price-reports.csv.gz 302
+/open-data/openfuel-current-prices.csv.gz https://github.com/AKolenda/openfuel/releases/download/open-data/openfuel-current-prices.csv.gz 302
+/open-data/openfuel-stations.csv.gz https://github.com/AKolenda/openfuel/releases/download/open-data/openfuel-stations.csv.gz 302
+/open-data/openfuel-open-data.json https://github.com/AKolenda/openfuel/releases/download/open-data/openfuel-open-data.json 302

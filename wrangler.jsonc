@@ -46,7 +46,9 @@
     }
   ],
   "vars": {
-    "OPENFUEL_ENV": "public-alpha"
+    "OPENFUEL_ENV": "public-alpha",
+    // SHA-256 of the open-data job's token (GitHub secret OPENFUEL_EXPORT_TOKEN); see .github/workflows/open-data.yml.
+    "OPENFUEL_EXPORT_TOKEN_SHA256": "8cd984676d348c3c71d38a4c055b2fda919f1682c561e6598ed5116266d85d4c"
   },
   "routes": [
     {
