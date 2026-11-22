@@ -51,8 +51,12 @@
    if(style.sprite)map.setSprite(style.sprite);
    for(const [id,source] of Object.entries(style.sources))map.addSource(id,source);
    for(const layer of style.layers)map.addLayer(layer,'location');
-   // The app learns the base map once its first tiles have drawn, so the credit it folds has been seen with them.
-   chosen=true;map.off('moveend',startBase);map.once('idle',()=>OpenFuelMap.base(name));
+   // The app learns the base map once one of its tiles has loaded and the frame after it has drawn, so the credit it
+   // folds has been seen with the tiles. Failed tiles load nothing and report nothing.
+   chosen=true;map.off('moveend',startBase);
+   const sources=new Set(Object.keys(style.sources));
+   const loaded=event=>{if(event.tile&&sources.has(event.sourceId)){map.off('sourcedata',loaded);map.once('idle',()=>OpenFuelMap.base(name));}};
+   map.on('sourcedata',loaded);
   }
   function raster(){useBase({sources:{openstreetmap:{type:'raster',tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],tileSize:256,maxzoom:19}},
    layers:[{id:'openstreetmap',type:'raster',source:'openstreetmap'}]},'openstreetmap');}

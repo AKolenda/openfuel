@@ -474,7 +474,8 @@ private fun MapCredit(credit: String, textWidth: androidx.compose.ui.unit.Dp, fo
         }
         if (expanded) Surface(shape = RoundedCornerShape(8.dp), color = Color.White.copy(alpha = .94f), shadowElevation = 1.dp,
             modifier = Modifier.widthIn(max = textWidth.coerceAtLeast(120.dp))) {
-            Text(credit, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.sp, color = Ink, maxLines = 3, overflow = TextOverflow.Ellipsis,
+            // Never cut short: at large text sizes the credit wraps to as many lines as it needs.
+            Text(credit, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 0.sp, color = Ink,
                 modifier = Modifier.clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))) }
                     .padding(horizontal = 8.dp, vertical = 4.dp).testTag("map-credit-text"))
         }
