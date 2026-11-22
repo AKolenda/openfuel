@@ -2,7 +2,8 @@
 
 A Kotlin/Compose Android app with a bundled MapLibre map (Leaflet without WebGL) in an isolated WebView and real OpenStreetMap station
 coordinates. On first arrival, the app explains location use and requests Android's foreground
-precise/approximate permission. Location is a bounded one-shot fix, never background tracking.
+precise/approximate permission. Location is a bounded one-shot fix, never continuous tracking; it is
+used in the background only for price alerts, after you turn them on.
 Declining permission offers Canadian city search. The current search area is always labelled;
 a chosen city or cached area never masquerades as GPS. Pan and tap **Search here**
 to load another part of the map, or tap the location button to recenter.
@@ -52,6 +53,18 @@ with location, recent cities and city search. **Search here** appears beside it 
 the distance threshold scales with zoom. Fuel grades, About and data-source details live in
 Settings. Tapping overlapping station markers opens details with an **Also at this spot** row
 for the other stations, without changing the map zoom.
+
+**Price alerts** (Settings → Price alerts) notify you when a station near you reports a price at or
+under your limit. You choose the fuel type, the price, the distance (1–10 km), how often to check
+(15 min, 30 min or 1 hour) and whether to ignore prices reported more than a day ago. Turning alerts
+on asks for notifications and for location "Allow all the time". Each check is an Android
+JobScheduler job: a one-shot fix (or another app's fix from the last five minutes), then the same
+`/stations` request a map search makes. Neither the fix nor the stations are saved; only which
+station and price were announced, so the same price is not announced again within a day. A
+notification names the cheapest new match with its distance and report age, and has a Directions
+button. **Check now** runs a check straight away. Android may delay checks while the phone is idle,
+and stops them if the app is force-stopped until it is opened again. After the daily limit, checks
+pause until it resets.
 
 Drag the station panel's header or list to move between collapsed, half-open and expanded.
 The list starts scrolling when the panel is expanded; pulling down from the list's top lowers

@@ -18,20 +18,23 @@ fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-/** A foreground, bounded one-shot fix; no tracking or background service. */
-suspend fun currentSearchPoint(context: Context): SearchPoint? {
+/**
+ * A bounded one-shot fix; no tracking. A fix another app received within [maxAgeMs] is reused. Price alerts
+ * call this from their background check, with a longer [maxAgeMs], only after the person turns them on.
+ */
+suspend fun currentSearchPoint(context: Context, maxAgeMs: Long = 120_000, timeoutMs: Long = 18_000): SearchPoint? {
     if (!hasLocationPermission(context)) return null
     val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).filter {
         runCatching { manager.isProviderEnabled(it) }.getOrDefault(false)
     }
     if (providers.isEmpty()) return null
-    val recent = providers.mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
-        .filter { System.currentTimeMillis() - it.time in 0..120_000 && it.accuracy <= 3000 }
+    val recent = (providers + LocationManager.PASSIVE_PROVIDER).mapNotNull { runCatching { manager.getLastKnownLocation(it) }.getOrNull() }
+        .filter { System.currentTimeMillis() - it.time in 0..maxAgeMs && it.accuracy <= 3000 }
         .minByOrNull { it.accuracy }
     fun Location.point() = SearchPoint(latitude, longitude, if (accuracy > 500) "Your approximate location" else "Your location", SearchSource.DEVICE)
     if (recent != null) return recent.point()
-    return withTimeoutOrNull(18_000) {
+    return withTimeoutOrNull(timeoutMs) {
         suspendCancellableCoroutine { continuation ->
             val listener = object : LocationListener {
                 override fun onLocationChanged(location: Location) {

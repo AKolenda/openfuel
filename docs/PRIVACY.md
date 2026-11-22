@@ -11,8 +11,15 @@ available. The iOS flows below describe the current source.
 The web app requests a one-shot foreground location on entry, subject to browser
 permission. Android, Expo and Swift request foreground location through the
 operating system. Permission may be declined; Canadian city search, manual
-coordinates or choosing a map area provide alternatives. No background tracking
+coordinates or choosing a map area provide alternatives. No continuous tracking
 or journey history is requested.
+
+Android price alerts are off unless turned on in Settings. When on, they need
+background location ("Allow all the time") and notifications. Every 15 minutes to
+an hour, as chosen, Android runs a check that takes a one-shot location fix and
+sends it to OpenFuel, rounded to three decimal places, in the same nearby-station
+query a map search uses. The fix and the stations it returns are not saved. The app
+keeps the alert settings and, for a day, which station prices it announced.
 
 Nearby-station queries send the selected coordinates to OpenFuel. The web query
 uses six decimal places; Android, Expo and Swift round to three decimal places
